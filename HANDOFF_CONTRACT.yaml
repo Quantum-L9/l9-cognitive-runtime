@@ -1,0 +1,21 @@
+contract_id: HANDOFF_CONTRACT
+contract_type: handoff_contract
+handoff_summary: Clean L9 Cognitive Runtime kernel pack with validator, planner, and universal contract compiler layers.
+loaded_context:
+  - runtime/kernels
+  - runtime/kernel_pipeline
+  - runtime/kernel_pipeline/planner
+  - runtime/contract_compiler
+  - contracts
+decisions:
+  - Flawless Victory is terminal doctrine, not Claude-specific format.
+  - Canonical contracts compile before adapter-specific renders.
+  - Adapters render execution intent without owning runtime law.
+unknowns:
+next_action: Render the universal execution contract through the adapter matching the target environment.
+adapter_notes:
+  claude_code: repo execution prompt
+  cursor: workspace task packet
+  codex: dev-kit execution prompt
+  chatgpt: handoff/task prompt
+  human_operator: runbook checklist

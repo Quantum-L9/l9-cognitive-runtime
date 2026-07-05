@@ -1,0 +1,28 @@
+contract_id: VALIDATION_CONTRACT
+contract_type: validation_contract
+validation_ladder:
+  - format
+  - schema
+  - pipeline_order
+  - kernel_roles
+  - duplicate_active_kernel_scan
+  - activation_planner
+  - contract_compiler
+  - adapter_render
+  - evidence_manifest
+evidence_required:
+  - command run or blocker reason
+  - validator name
+  - status
+  - findings
+  - timestamp or report path
+allowed_statuses:
+  - passed
+  - failed
+  - blocked
+  - not_run
+  - unknown
+  - not_applicable_with_reason
+report_outputs:
+  - runtime/kernel_pipeline/KERNEL_PIPELINE_VALIDATION_REPORT.json
+  - VALIDATION_EVIDENCE.md

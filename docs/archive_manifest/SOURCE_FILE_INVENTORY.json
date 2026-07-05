@@ -1,0 +1,407 @@
+[
+  {
+    "path": "10X Kernels/Blueprint.md",
+    "sha256": "966e268bd8e42f458a8a0aacdef4b4b679dbe1a8d680e8a1b95d3e1490df87a8",
+    "bytes": 2952
+  },
+  {
+    "path": "10X Kernels/Recursive Alignment.md",
+    "sha256": "203e423d9b096cb496db7706bd68f862771fb833bad9343289d3cfd23075fbde",
+    "bytes": 5091
+  },
+  {
+    "path": "10X Kernels/Recursive Improvement (L9).md",
+    "sha256": "2a2d8b307fbec97a1ab53cde0f377654ae48aed7340bda7aa896285e9696837f",
+    "bytes": 7004
+  },
+  {
+    "path": "10X Kernels/Recursive Leverage.md",
+    "sha256": "11a5e5d1a35a5805c338552b102bd61b8d43c8d0dc1dee61fd01b098ecb69ee3",
+    "bytes": 21507
+  },
+  {
+    "path": "10X Kernels/Validate & Eliminate Stubs.md",
+    "sha256": "87af68c3374ef909e761da7f1277554abbffeb176949175998e55e98b870d801",
+    "bytes": 7096
+  },
+  {
+    "path": "10X Kernels/Validate & Fill Gaps.md",
+    "sha256": "6e35a1d0083f09c95c1379fc5e6a62662683e885db3f6dc54d4594ff48cab4ee",
+    "bytes": 13196
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/Blue Sky Audit.md",
+    "sha256": "e0cc987a2cfe7ade471ac5777ea01e137a001f5108d9bc770cd554c7ac38f52b",
+    "bytes": 5919
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/Blue Sky B.md",
+    "sha256": "69f393b766c3968fe852705671c039eee584d58016be11c305f03492be56f53f",
+    "bytes": 4176
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/Blue Sky Blueprint Build Contract.md",
+    "sha256": "031e361d1bb08555e142e5afa388687b97ef4e65ec52d4d2e2d71bc8b805f5dc",
+    "bytes": 8170
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/Blue Sky Build Blueprint.md",
+    "sha256": "2a6bd9209d775283fc2b3cc948c2cc4fd491b24af479a14818c35f5b30b76831",
+    "bytes": 9003
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/MANIFEST.json",
+    "sha256": "9f028b30a3f3e85e8989d7d0c40a4e90425aed2ad0b498da07e84516542b18ca",
+    "bytes": 2377
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/README.md",
+    "sha256": "cbf910943831ccb072f052aa8c80d3ce21a63046115b4e409970de1d186e822e",
+    "bytes": 1459
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/Step 1 - Realign.md",
+    "sha256": "6b57387a947afcef9e06352609e167c76c6e68ea1460d770b09f704fc58bd4c3",
+    "bytes": 12186
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/l9_first_order_thinking_enforcement.kernel.yaml",
+    "sha256": "361a4a4e1a017d05f49ecbc643a1d6ecb4ee346b8becbf7e41109a2e822d5d67",
+    "bytes": 6886
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/l9_zero_stub_build_protocol.kernel.yaml",
+    "sha256": "a2514ee88f51282d05195b829e143554c936e287d7f9984a20f0bbb608502be5",
+    "bytes": 15726
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/pack_audit_harden_regenerate.kernel.yaml",
+    "sha256": "7243f49318bddec4705df1399f8c5d3a2ed58f719b9c50011b9a4e6c592523ba",
+    "bytes": 4873
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/reasoning_think_strategy.kernel.yaml",
+    "sha256": "f0f3189544624840b4f94fd6d869a89f7b96fd013f2eeb110f2815cd548d9c18",
+    "bytes": 6026
+  },
+  {
+    "path": "Founder Chief-of-Staff Runtime Profile/user_memory_context.kernel.yaml",
+    "sha256": "113919dbc7b909fa936f8a3202bcbf88b00e16b98cc5ef8515bb120c2507b5a9",
+    "bytes": 8048
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/ACTIVATION_STATUS.txt",
+    "sha256": "6440c12cee1fb9d5ee86640e47ce2c7a7a60054413aff7bec2a22093eb7ad8f5",
+    "bytes": 161
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/Analysis Of Pack.md",
+    "sha256": "48ace5b917d7d4100bbde6d0377001432989e4a385b109190df8e16d24e7d23f",
+    "bytes": 9454
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/Blue Sky B.md",
+    "sha256": "2667ba28ba8d3c0d24415b1340d59b42cd12415dd1dace6b71413cebc3a6c3df",
+    "bytes": 5757
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/Blue Sky Build Contract.md",
+    "sha256": "4c09e8a415fac3cd306f5c984c66232a80100143796f09cd31eb97a02025a61d",
+    "bytes": 9916
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/Blue Sky C.md",
+    "sha256": "1c5a2dc1dc9bc9b3831afc7c22998e9077fc537906ca89bc97fa00071509fde2",
+    "bytes": 5421
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/Blue Sky.md",
+    "sha256": "8192d4b6e4c16841e9646b53a0d7152d716659ca8c016d34db75b9d21816fc1d",
+    "bytes": 10478
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/FILETREE.md",
+    "sha256": "fd64efd3339dffba40e9ae2797c396e073a297b3ffdefd50526710beb4c17f45",
+    "bytes": 1414
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/KERNEL_ACTIVATION_ORDER.yaml",
+    "sha256": "c8ab34dbd60745a93d2c725aef916c7c6cad60730d06ddaa0200c321b4ed82bc",
+    "bytes": 1844
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/KERNEL_COMPATIBILITY_MATRIX.yaml",
+    "sha256": "53318b28baba7d59eefd8b5c768ddcfcf05687dc4e347d8e2207dba36e94086c",
+    "bytes": 4971
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/MANIFEST.json",
+    "sha256": "ba0cbe82b001a98fafee66267a7fcd065840208611478d7b135e13c10943ed5c",
+    "bytes": 11175
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/README.md",
+    "sha256": "6720ee41f3ed81a2cabd303e1dd77f7fe864dd7858fca3a1067902979eaffbfa",
+    "bytes": 1251
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/RUNTIME BUILD CONTRACT.md",
+    "sha256": "da36f7cd2f5930da50fea04d5e6ced7c28580d7cb6a4553e40caaab5162aa493",
+    "bytes": 6866
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/primary_task/code_review_ci_kernel.yaml",
+    "sha256": "b2884681291ddd6273023846e24466c3989fd68f041380fea5dccdae6c13db78",
+    "bytes": 1348
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/primary_task/developer_core_kernel.yaml",
+    "sha256": "317059262f59704f4c745b83b2df8e31e475104429ea01d84878b3d9c0d5ce29",
+    "bytes": 1524
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/primary_task/l9_engine_build_kernel.yaml",
+    "sha256": "9601be257bc95f57f9bb853962d1b85563ebd70b295cf4d6d3bd7c36924673ec",
+    "bytes": 1436
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/primary_task/prompt_compiler_kernel.yaml",
+    "sha256": "fc30ec70c5761a8a9baf7c2e33ac38541db0a7a41ad7b6d61a04963d8ad6b22c",
+    "bytes": 1735
+  },
+  {
+    "path": "L9 Cognitive Runtime Platform/primary_task/repo_auditor_kernel.yaml",
+    "sha256": "1af652b020df28d8559b6a323d00b3b0b0d7db84f8da0abbd47af6d566ae8f46",
+    "bytes": 1496
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/Build Contract.md",
+    "sha256": "f3aca688312aea378eac9672a2d90ca567e4469c4c3d7874726e6a722ce78885",
+    "bytes": 14233
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/Cursor GMP Canonical.md",
+    "sha256": "2be776bc9f627cf631f8c4374f0f35623ea39242d9c7d12e2087d32ec05399ab",
+    "bytes": 5621
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/Filetree.md",
+    "sha256": "b481a87f8383c1a94e2cee1650aeb500dfb33ff97064ccb842c0f6039d7e1ae9",
+    "bytes": 10109
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/L9_DEPENDENCIES_SSOT.md",
+    "sha256": "436011458005b53206fc519886238842c6e45b9e7739e2d8ea2a110111d349fa",
+    "bytes": 15124
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/L9_IDEMPOTENCY_SSOT.md",
+    "sha256": "27de524660bc4e83ec32ebd591c194dc1d8560d840ea306419265429608fb6e5",
+    "bytes": 7499
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/L9_OPERATIONAL-WIRING-MAP.md",
+    "sha256": "fd19afa3f5b0f1e2b05bd76cfa0f58e3742cd14f7c75afdc79102ab61ce8bacb",
+    "bytes": 24551
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/L9_REPO_CONTEXT.md",
+    "sha256": "e0ef43aab6ea14db3fa51dad20408c4dd098fb9f53f66f0949b5097c7951e9a6",
+    "bytes": 52584
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/L9_RUNTIME_SSOT.md",
+    "sha256": "4740d22bcf66e8ce3fef6dd8f6477400e82736d7b6267257ba1244b6d9ec3c01",
+    "bytes": 18991
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/architecture.txt",
+    "sha256": "b2b810f1b30d8bf990a49b784afcab2784414e63f8800ac3a99acf943ce3b47d",
+    "bytes": 1518
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/config_files.txt",
+    "sha256": "a1cbe3defd22ce4af958c472e8d752b9560038b1c4611d2fc3c7a36c41a92bb2",
+    "bytes": 1924
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/env_refs.txt",
+    "sha256": "211da836f6162658e3080adb0327fac53fcfc39d70cbfc13915985cd42193ae6",
+    "bytes": 664
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/function_signatures.txt",
+    "sha256": "865ee2ddf25b5ffde73ef5a3e614aa188085418722fdb3013bb0df020007f1fa",
+    "bytes": 18960
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/MANIFEST.yaml",
+    "sha256": "73a7b825a4e253b140d75005d8e4f346b93cc7410c9b5b99c9508ca143544e1f",
+    "bytes": 760
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/Pack Analysis.md",
+    "sha256": "9744f1aebedcf3bc6f9a9a001c98e580313a38345c98ec7cd524d899d03d0d05",
+    "bytes": 8584
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/README.md",
+    "sha256": "e57e99e460f4aec078510b84ef086ddccb9400493fa6858d438c83810f89d39a",
+    "bytes": 2062
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/briefings/decision_matrix.md",
+    "sha256": "8fca72ca39c9bc70f8be01c852ae26a1c103c056f945e7563ed64121715e432a",
+    "bytes": 990
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/briefings/future_agent_briefing.md",
+    "sha256": "830b9f880e18f532b17fe47d21ab700f3d2607add837f6dcfc0e9f435e1e3748",
+    "bytes": 1364
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/contracts/constellation_bundle_contract.v1.md",
+    "sha256": "8b3e711ef83b9fb6da16d6fbfaef7bde7c27dbe34b7b18d299ec300c6983b467",
+    "bytes": 1763
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/contracts/dependency_codegen_mirror_pack_contract.v1.md",
+    "sha256": "25b7400a2e197f41308e8d6912cfafd6257f7f3aa33ff9367d6549c4e8eaddb8",
+    "bytes": 2376
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/contracts/dependency_spec_pack_contract.v1.md",
+    "sha256": "c158672ecf326395e308e12efda7c7ec1b5524d737171ee5b82342410ec28f21",
+    "bytes": 2756
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/contracts/node_extras_contract.v1.md",
+    "sha256": "4ae6877af8429723aed50622287298407382365490315bef412d8ccf4000bf52",
+    "bytes": 1198
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/examples/constellation_bundle_pyproject.example.toml.md",
+    "sha256": "5692b2ebbe611ab369bbb3e4a3ec08cf27a26480ae962b61ecf6023c97181bfb",
+    "bytes": 1196
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/examples/generated_node_pyproject_extras.example.toml.md",
+    "sha256": "5dba7e272d3d45015e760c7ac5dab7217aa46169c0d355a8076d142e22eefb89",
+    "bytes": 742
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/kernels/L9_CODING_KERNEL__bundle_and_node_extras.md",
+    "sha256": "d7ca353a0043e99a2205ac6f65df1192e80143b7109e59b5f77f5bbac0838204",
+    "bytes": 4149
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/kernels/L9_CODING_KERNEL__dependency_birth_and_mirror_codegen.md",
+    "sha256": "8b5f1dae445c84d77efce958d89d3c657253a509130e7b9212a51a987d31107b",
+    "bytes": 5770
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/l9_coding_kernels_dependency_architecture_v1/kernels/L9_CODING_KERNEL__repo_taxonomy_and_dependency_architecture.md",
+    "sha256": "bfdef2425e40308bf40c39f67c868d9d3bc6f15cc7e062b56a6ddacd849a66a1",
+    "bytes": 6565
+  },
+  {
+    "path": "L9 Constellation Birth & Dependency Architecture Kernel Pack/tree.txt",
+    "sha256": "3bb2e3ddca02be00256e0e029fdaf13797814ca9f90182004243c2d4fe4b93e4",
+    "bytes": 12052
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/Blue Sky Audit.md",
+    "sha256": "4405e111d0ce5e367acaa09377328428ff1eea2f7f417f8d74927f2fedc0a525",
+    "bytes": 12623
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/Blue Sky Blueprint.md",
+    "sha256": "6e6a29f634b2393d9e03ff77210ac1064829180dd2aaa781df34ba4e5523a83e",
+    "bytes": 5290
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/Blue Sky Build Contract - Repo Primitive - Preflight \u2261\u0192\u00dc\u00c7.md",
+    "sha256": "ede32f6dd14012827e9366c82661a9aede8f30c752fd594a24a3f89b5d8148d6",
+    "bytes": 3110
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/MANIFEST.json",
+    "sha256": "bb3f34ecbb118beb143f4a360cf8c7020fbae0d2f8ce451b2de7b34fefabfd9b",
+    "bytes": 4019
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/README.md",
+    "sha256": "ddbad428f3f5bd4ed123ca399530bd3181978b271f1962e8c77fbdcdb724cd7b",
+    "bytes": 3646
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/kernels/K01-platform-architecture-engine.yaml",
+    "sha256": "43df2cc07c12757f77235885bbc32cb0136a17882619615a68888f031731a60c",
+    "bytes": 10999
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/kernels/K02-contracts-code-laws-enforcement.yaml",
+    "sha256": "6d20b92d363531f7493e3c2167cdb92ded41f297efe7c6b97c6e06461e9bfbb6",
+    "bytes": 17469
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/kernels/K03-constellation-transport-authority.yaml",
+    "sha256": "f73f61e7d1fbb3a253c3c75dfcd9e5ee1b06be55e8bdb3d4d86da20590a13b79",
+    "bytes": 11723
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/kernels/K04-domain-spec-yaml-authoring.yaml",
+    "sha256": "70c6d7df1d4710a13bd8f24ef518e2a4aba7b3c422f6879d4785cf65d30bba09",
+    "bytes": 13317
+  },
+  {
+    "path": "L9 Constitutional Build Runtime/kernels/K05-file-ownership-placement-capability-registry.yaml",
+    "sha256": "1205ece946d2da8ad0699c37da6cefec286469e19c44d5fb2e8dda0f550a6fc1",
+    "bytes": 14365
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/Blue Sky Audit.md",
+    "sha256": "7acf05c80e8ccae27468cd5ebfe54c8d1e90cde25a95bb595abfec2454404669",
+    "bytes": 14615
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/Blue Sky Build Contract 2.md",
+    "sha256": "89399d493c3aa879b7ef5a3c707578e603a31af9fa08e33e85f321c6a10de87a",
+    "bytes": 9122
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/Blue Sky Build Contract.md",
+    "sha256": "1ec3eee01f3a30afc1286f045f132f4881a1e5b1f7f50a95eda2e82b4ab4b1c0",
+    "bytes": 12288
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/MANIFEST.json",
+    "sha256": "2c4c09e4e835ed2e1974ec9ad985db2a22caf83924a1dc0ea55dfc62bc94abe8",
+    "bytes": 1911
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/README.md",
+    "sha256": "a9997d0a2c4d9f4f3985e786c6d3367870be47e67bcf3ef3f7f8e6581211f9d9",
+    "bytes": 1318
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/high_velocity_execution_copilot.kernel.yaml",
+    "sha256": "fc86e14e6048ba61028b72379ddb9aeab43a1015aa7e0fd5e1ffb452979921ca",
+    "bytes": 6434
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/high_velocity_reasoning_mode.kernel.yaml",
+    "sha256": "f1b0f058ab722aaf5f89b80149d2fa05a95f4e30803955f98e133d34ea7a4dba",
+    "bytes": 4325
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/high_velocity_reasoning_mode_01.kernel.yaml",
+    "sha256": "06b380cfe12edc3dd8ed39e4d802ebd95650fe3a1a946f05b9ffc2106283b76c",
+    "bytes": 4329
+  },
+  {
+    "path": "L9 High-Velocity Operator Profile/project_completion_agent.kernel.yaml",
+    "sha256": "eb0e77481a0cdbc7469df9eb0d504046a27f33412360fb53c112d019230f93bc",
+    "bytes": 6809
+  }
+]

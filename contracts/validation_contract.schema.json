@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "allowed_statuses": {
+      "items": {
+        "enum": [
+          "passed",
+          "failed",
+          "blocked",
+          "not_run",
+          "unknown",
+          "not_applicable_with_reason"
+        ]
+      },
+      "type": "array"
+    },
+    "contract_id": {
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "validation_contract"
+    },
+    "evidence_required": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "report_outputs": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "validation_ladder": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "contract_id",
+    "contract_type",
+    "validation_ladder",
+    "evidence_required",
+    "allowed_statuses"
+  ],
+  "title": "L9 Validation Contract",
+  "type": "object"
+}

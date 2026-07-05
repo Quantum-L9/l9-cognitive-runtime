@@ -1,0 +1,217 @@
+kernel_id: K03-constellation-transport-authority
+canonical_name: Constellation Transport Authority & Boundary Model
+version: "2.1.0"
+status: ACTIVE
+category: execution_and_no_drift
+activation_order: 3
+
+source_files:
+  - Boundaries-Defined.md
+  - L9-Constellation-Structure.md
+  - L9-Constellation-2.md
+  - L9-Constellation-3.md
+  - What-Lives-Where.md (transport sections)
+
+purpose: >
+  Define the Gate/Orchestrator/Runtime authority model, TransportPacket
+  inter-node contract, hub-spoke topology, routing policy, module ownership,
+  CI enforcement integration, discovery confidence thresholds, and the
+  26 Constellation feedback loops.
+
+activation_trigger:
+  required_always: false
+  load_when_any:
+    - task_involves: ["constellation node development", "inter-node communication", "hub-spoke design"]
+    - task_involves: ["GCE governance flows", "node registration", "GRAPH or ENRICH integration"]
+  load_order: 3
+  prerequisite_kernels: [K01, K02]
+  test: "K01 and K02 are loaded before K03 is activated."
+
+authority_order:
+  inherits: K01 -> K02
+  1: "GateSDK (github.com/cryptoxdog/GateSDK) — canonical transport source"
+  2: "ARCHITECTURE.md — topology, active transport bundle"
+  3: "K01 — chassis, transport law, H-gates (canonical)"
+  4: "K02 — contract enforcement"
+  5: "K03 (this kernel)"
+
+topology:
+  hub: "GCE (Governance.Compliance.Engine)"
+  spokes: [ENRICH, GRAPH, SCORE, ROUTE, FORECAST, SIGNAL, HEALTH, HANDOFF]
+  hub_role: "Constitutional hub. Ships policy tile bundles. Records evidence. Runs discovery."
+  spoke_role: "Receives tile bundles. Evaluates locally. Posts evidence back to hub."
+  cardinal_rule: "GCE MUST NEVER execute spoke code. Tile bundles are source-only. (C-24)"
+
+data_flow:
+  1: "Node registers with hub via TransportPacket(action=node.register)"
+  2: "Hub ships tile bundle as source archive. MUST NOT execute spoke code. (C-24)"
+  3: "Spoke CI evaluates tiles locally using BundleEvaluator."
+  4: "Evidence POSTed back via TransportPacket(action=evidence.post)"
+  5: "Hub records evidence in append-only hash-chained store. (C-23, INV-21)"
+  6: "Discovery engine runs on L9_DISCOVERY_INTERVAL_SECONDS schedule."
+  7: "Proposals generated only if confidence >= 0.70. (INV-23)"
+  8: "Human approves new tiles via H-3."
+  9: "Activated tiles reshipped in next bundle cycle."
+
+authority_model:
+  Gate:
+    role: "Transport ingress authority. Owns v1/execute route."
+    file: "app/api/v1/chassis_endpoint.py"
+    tier: T4
+    owns: [v1/execute route, transport validation, tenant header extraction]
+    MUST_NOT: [contain business logic, call engine modules directly]
+  Orchestrator:
+    role: "Handler coordination. Registers SDK actions. Routes to handlers."
+    file: "app/engines/orchestration_layer.py"
+    tier: T4
+    owns: [handler registration, action routing, SDK action dispatch]
+    MUST_NOT: ["define v1/execute", "import FastAPI", "perform database writes"]
+  Runtime:
+    role: "SDK execution context. Owns create_app() and create_transport_packet()."
+    source: constellation_node_sdk
+    owns: [create_app(), create_transport_packet(), v1/execute implementation]
+    MUST_NOT: [be overridden, be re-routed, be bypassed]
+
+transport_packet_contract:
+  canonical_fields:
+    action:    {type: str,           rule: "MUST be pre-registered in orchestration_layer.py."}
+    tenant_id: {type: str,           rule: "Required. Never empty. (C-03)"}
+    payload:   {type: "dict[str, Any]", rule: "Action-specific structured payload."}
+    trace_id:  {type: "str | None",  rule: "Optional distributed tracing correlation ID."}
+  construction: "create_transport_packet(action=..., tenant_id=..., payload=...)"
+  immutability: "MUST NOT mutate any field after construction. (C-11, INV-15)"
+  deprecated_equivalent: "PacketEnvelope — does not exist in production. Gate-10 blocks any occurrence."
+
+routing_policy:
+  operating_rules:
+    - "MUST NOT route unregistered actions. MUST return structured error."
+    - "MUST NOT define v1/execute outside app/main.py. (C-21)"
+    - "MUST NOT bypass Gate authority for any inbound TransportPacket."
+    - "MUST validate tenant_id on every inbound packet before handler dispatch. (C-03)"
+    - "MUST log routing decisions with trace_id, action, tenant_id at DEBUG level. (C-04)"
+
+constellation_feedback_loops:
+  FBL-01: "Node registers -> hub ships bundle -> spoke evaluates -> evidence POSTs back"
+  FBL-02: "Evidence accumulates -> discovery engine runs on schedule -> gap signals detected"
+  FBL-03: "Cross-node co-failure (>=3 nodes, same contract) -> pattern signal -> TileProposal"
+  FBL-04: "Tile SKIP rate >30% -> tile_too_broad signal -> human review queue"
+  FBL-05: "Tile PASS rate >80% across all nodes -> obsolescence signal -> deprecation proposal"
+  FBL-06: "Human approves proposal (H-3) -> YAML tile authored -> activated -> bundle reshipped"
+  FBL-07: "FAIL followed by PASS on same file within 48h -> remediation_signal=fixed"
+  FBL-08: "False positive rate >20% -> tile flagged for human review"
+  FBL-09: "GRAPH community assignment -> GCE writes graph_community_id to future evidence records"
+  FBL-10: "Community co-failure patterns -> stronger cross-node discovery signals"
+  FBL-11: "Evidence chain hash mismatch -> Gate-9 FAIL -> merge blocked"
+  FBL-12: "Transport symbol detected -> Gate-10 FAIL -> merge blocked"
+  FBL-13: "governance.report SDK action triggered -> ConstellationHealthReport published"
+  FBL-14: "Compliance trajectory degrading -> governance alert -> human notified"
+  FBL-15: "Node deregistration (H-7) -> bundle pull -> compliance score archived"
+  FBL-16_through_FBL-26: "Unknown — verify complete loop definitions against L9-Constellation-3.md source."
+
+gce_constitutional_extensions:
+  C-22: {rule: "Tile evaluators MUST be pure functions — no side effects", severity: CRITICAL, gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-22"}
+  C-23: {rule: "Evidence records MUST be append-only — no UPDATE/DELETE", severity: CRITICAL, gate: Gate-9, test: "python tools/evidence_integrity.py --depth 100"}
+  C-24: {rule: "Hub MUST NEVER execute spoke-side code", severity: CRITICAL, gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-24"}
+  C-25: {rule: "TransportPacket MUST be constructed via create_transport_packet()", severity: HIGH, gate: Gate-10, test: "python tools/transport_clean.py --strict"}
+  C-26: {rule: "Tile status: proposed -> active -> deprecated only", severity: HIGH, gate: Gate-8, test: "python tools/tile_validator.py tiles/active"}
+  INV-21: {rule: "Evidence prev_hash MUST match SHA256 of prior record canonical JSON", severity: CRITICAL, test: "python tools/evidence_integrity.py --depth 100"}
+  INV-22: {rule: "Tile registry is SSOT — no tile evaluated outside registry.py", severity: CRITICAL, test: "python tools/audit_engine.py --strict --contracts C-22"}
+  INV-23: {rule: "Discovery proposals require confidence >= 0.70 before storage", severity: HIGH, test: "pytest tests/compliance/test_discovery_confidence.py"}
+
+discovery_thresholds:
+  minimum_confidence_to_persist: 0.70
+  fast_track_confidence: 0.95
+  fast_track_action: "Unknown — verify whether confidence >= 0.95 bypasses H-3 or only expedites it."
+  below_threshold_action: "Log at DEBUG level. Discard. MUST NOT persist."
+  contract_proposals: "MUST always require H-5 human review. No auto-activation regardless of confidence."
+  h_gate_for_tile_activation: H-3
+
+spoke_client:
+  package: gce-spoke-client
+  methods:
+    - "SpokeClient.fetch_bundle(gce_url: str, node_name: str, api_key: str) -> BundleArchive"
+    - "SpokeClient.post_evidence(gce_url: str, decisions: list[PolicyDecision]) -> None"
+    - "BundleEvaluator.run(bundle: BundleArchive, repo_path: str) -> list[PolicyDecision]"
+  resilience:
+    rule: "MUST cache last-known-good bundle. MUST use cache if hub is unreachable."
+    cache_ttl: "Unknown — verify maximum acceptable cache age against ARCHITECTURE.md."
+    transport_rule: "MUST use TransportPacket. MUST NOT use PacketEnvelope."
+
+dependency_graph:
+  upstream_inputs: [K01, K02, GateSDK, ARCHITECTURE.md]
+  downstream_consumers: [K04, K05]
+  prerequisites: [K01 loaded, K02 loaded, GateSDK accessible]
+  blast_radius: {severity: HIGH, scope: "Hub-spoke communication failure. GCE evidence chain at risk."}
+
+invariants:
+  - id: INV-K03-1
+    rule: "GCE MUST NEVER execute spoke-side code. (C-24)"
+    severity: CRITICAL
+    test: "python tools/audit_engine.py --strict --contracts C-24"
+  - id: INV-K03-2
+    rule: "Evidence store is append-only. No UPDATE or DELETE. (C-23, INV-21)"
+    severity: CRITICAL
+    test: "python tools/evidence_integrity.py --depth 100"
+  - id: INV-K03-3
+    rule: "Discovery proposals below 0.70 MUST NOT be persisted. (INV-23)"
+    severity: HIGH
+    test: "pytest tests/compliance/test_discovery_confidence.py"
+  - id: INV-K03-4
+    rule: "v1/execute is owned by SDK runtime. (C-21)"
+    severity: CRITICAL
+    test: "python tools/transport_clean.py --strict"
+
+edge_cases:
+  - scenario: "Spoke node unreachable during bundle fetch"
+    recovery: "SpokeClient uses cached bundle. Cache TTL Unknown — see spoke_client.resilience.cache_ttl."
+    test: "pytest tests/integration/test_spoke_resilience.py"
+  - scenario: "Discovery proposal confidence exactly 0.70"
+    recovery: "Persisted (threshold is >= 0.70). Full H-3 human review required."
+    test: "INV-K03-3"
+  - scenario: "Hub receives evidence from unregistered node"
+    recovery: "Evidence rejected with 403. MUST NOT persist unregistered node evidence."
+    test: "pytest tests/integration/test_node_registration.py"
+  - scenario: "Tile status: proposed -> deprecated directly"
+    recovery: "C-26 FAIL. Gate-8 blocks merge. Must follow proposed -> active -> deprecated."
+    test: "python tools/tile_validator.py tiles/active"
+
+validation_checks:
+  - id: VC-K03-1
+    command: "pytest tests/integration -q"
+    passes_when: "Full register -> bundle -> evaluate -> POST loop completes."
+  - id: VC-K03-2
+    command: "python tools/evidence_integrity.py --depth 100"
+    passes_when: "exit 0"
+  - id: VC-K03-3
+    command: "python tools/transport_clean.py --strict"
+    passes_when: "exit 0"
+  - id: VC-K03-4
+    command: "python tools/audit_engine.py --strict --contracts C-22,C-24"
+    passes_when: "exit 0"
+
+acceptance_criteria:
+  - "Hub-spoke topology enforced. GCE never executes spoke code. Gate-6 passes."
+  - "Evidence chain integrity maintained across all nodes. Gate-9 passes."
+  - "All H-gates enforced at governance API endpoints."
+  - "Discovery proposals below 0.70 confidence never persisted."
+
+regression_guards:
+  - "Append-only evidence constraint MUST NOT be relaxed under any circumstances."
+  - "C-24 (hub-never-executes-spoke) MUST NOT be weakened."
+  - "Confidence threshold for proposals MUST remain >= 0.70."
+
+stop_conditions:
+  - "Evidence hash chain integrity failure. Stop. Human investigates before any merge."
+  - "H-3 (tile approval) reached. Stop. Await human reviewer."
+  - "H-7 (node deregistration) reached. Stop. Human confirmation required."
+
+output_requirements:
+  - "All inter-node communication uses TransportPacket via create_transport_packet()."
+  - "All tile evaluators are pure functions with no side effects. (C-22)"
+  - "All evidence records are append-only with valid hash chain. (C-23, INV-21)"
+  - "All governance API approval/rejection endpoints enforce H-3."
+
+unknowns:
+  - "FBL-16 through FBL-26: Verify against L9-Constellation-3.md original source."
+  - "spoke_client.resilience.cache_ttl: Verify maximum acceptable age against ARCHITECTURE.md."
+  - "fast_track_confidence (0.95): Whether this bypasses H-3 or only expedites it — verify against AGENTS.md."

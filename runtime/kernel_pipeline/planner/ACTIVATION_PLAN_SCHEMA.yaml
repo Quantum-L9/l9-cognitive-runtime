@@ -1,0 +1,26 @@
+schema_id: kernel_activation_plan.schema.v1
+required_fields:
+  task_summary: string
+  matched_route: string
+  confidence: string
+  phase_sequence: list
+  active_kernels: list
+  skipped_kernels: list
+  terminal_allowed: boolean
+  required_outputs: list
+  blockers: list
+  unknowns: list
+  next_phase: string
+allowed_confidence:
+  - high
+  - medium
+  - low
+allowed_phase_ids:
+  - P0_UNPACK
+  - P1_CONSTITUTIONAL_PREFLIGHT
+  - P2_TASK_ROUTING
+  - P3_ARCHITECTURE_DECISION
+  - P4_ALIGNMENT_AND_STUB_GATE
+  - P5_RECURSIVE_IMPROVEMENT
+  - P6_LEVERAGE_COMPRESSION
+  - P7_FLAWLESS_VICTORY

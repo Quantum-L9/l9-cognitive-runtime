@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "adapter_targets": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "authority_order": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "contract_id": {
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "universal_execution_contract"
+    },
+    "execution_sequence": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "kernel_activation": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "output_contract": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "source_activation_plan": {
+      "type": "string"
+    },
+    "stop_conditions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "terminal_doctrine": {
+      "type": "string"
+    },
+    "validation_requirements": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "contract_type",
+    "source_activation_plan",
+    "terminal_doctrine",
+    "objective",
+    "authority_order",
+    "kernel_activation",
+    "execution_sequence",
+    "validation_requirements",
+    "output_contract",
+    "adapter_targets"
+  ],
+  "title": "L9 Universal Execution Contract",
+  "type": "object"
+}

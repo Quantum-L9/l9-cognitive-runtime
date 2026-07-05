@@ -1,0 +1,144 @@
+{
+  "edges": [
+    {
+      "from": "front_end_intake",
+      "reason": "phase_order",
+      "to": "semantic_preflight"
+    },
+    {
+      "from": "semantic_preflight",
+      "reason": "phase_order",
+      "to": "strategic_expansion"
+    },
+    {
+      "from": "strategic_expansion",
+      "reason": "phase_order",
+      "to": "architecture_synthesis"
+    },
+    {
+      "from": "architecture_synthesis",
+      "reason": "phase_order",
+      "to": "structural_validation"
+    },
+    {
+      "from": "structural_validation",
+      "reason": "phase_order",
+      "to": "optimization"
+    },
+    {
+      "from": "optimization",
+      "reason": "phase_order",
+      "to": "global_optimization"
+    },
+    {
+      "from": "global_optimization",
+      "reason": "phase_order",
+      "to": "emission"
+    }
+  ],
+  "graph_id": "l9_execution_graph.v1",
+  "nodes": [
+    {
+      "id": "front_end_intake",
+      "kernel_refs": [
+        "repo_auditor_kernel"
+      ],
+      "outputs": [
+        "FRONT_END_INTAKE.md"
+      ],
+      "phase": "Phase 0 Front-End / Intent Intake",
+      "status": "planned"
+    },
+    {
+      "id": "semantic_preflight",
+      "kernel_refs": [
+        "K01",
+        "K02",
+        "K03",
+        "K04",
+        "K05"
+      ],
+      "outputs": [
+        "SEMANTIC_PREFLIGHT.md"
+      ],
+      "phase": "Phase 1 Semantic Analysis / Constitutional Preflight",
+      "status": "planned"
+    },
+    {
+      "id": "strategic_expansion",
+      "kernel_refs": [
+        "prompt_compiler_kernel"
+      ],
+      "outputs": [
+        "STRATEGIC_EXPANSION.md"
+      ],
+      "phase": "Phase 2 Strategic Expansion",
+      "status": "planned"
+    },
+    {
+      "id": "architecture_synthesis",
+      "kernel_refs": [
+        "l9_engine_build_kernel"
+      ],
+      "outputs": [
+        "ARCHITECTURE_SYNTHESIS.md"
+      ],
+      "phase": "Phase 3 Architecture Synthesis",
+      "status": "planned"
+    },
+    {
+      "id": "structural_validation",
+      "kernel_refs": [
+        "validate_eliminate_stubs"
+      ],
+      "outputs": [
+        "STRUCTURAL_VALIDATION.md"
+      ],
+      "phase": "Phase 4 Structural Validation",
+      "status": "planned"
+    },
+    {
+      "id": "optimization",
+      "kernel_refs": [
+        "recursive_improvement"
+      ],
+      "outputs": [
+        "OPTIMIZATION.md"
+      ],
+      "phase": "Phase 5 Optimization",
+      "status": "planned"
+    },
+    {
+      "id": "global_optimization",
+      "kernel_refs": [
+        "recursive_leverage"
+      ],
+      "outputs": [
+        "GLOBAL_OPTIMIZATION.md"
+      ],
+      "phase": "Phase 6 Global Optimization",
+      "status": "planned"
+    },
+    {
+      "id": "emission",
+      "kernel_refs": [
+        "flawless_victory"
+      ],
+      "outputs": [
+        "EMISSION.md"
+      ],
+      "phase": "Phase 7 Emission",
+      "status": "planned"
+    }
+  ],
+  "source_contract": "FINAL_EXECUTION_CONTRACT.yaml",
+  "terminal_node": "emission",
+  "validation_gates": [
+    "pipeline_order",
+    "kernel_roles",
+    "no_duplicate_active_kernels",
+    "phase_outputs",
+    "contract_compiler",
+    "execution_graph"
+  ]
+}

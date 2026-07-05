@@ -1,0 +1,55 @@
+# DORA META | component: Developer Core Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
+---
+file: DEVELOPER_CORE_KERNEL.yaml
+version: "1.0.0"
+ring: R5
+category: primary_task
+kernel_id: developer_core_kernel.v1
+requires: [MASTER_SOVEREIGNTY_KERNEL, IDENTITY_KERNEL, BEHAVIORAL_KERNEL, EXECUTION_STATE_KERNEL]
+
+init:
+  on_load: activate
+  verify: [coding_standards_loaded, hard_bans_active]
+  announce: false
+
+description: >
+  General production coding kernel. Python 3.12+, type hints, Pydantic v2,
+  async by default, pytest, explicit exceptions, no truncation, no stubs.
+
+coding_standards:
+  language: Python
+  version: "3.12+"
+  typing: strict
+  async: default
+  validation: Pydantic_v2
+  testing: pytest
+  linting: [ruff, mypy]
+  error_handling: explicit_exceptions_only
+  output: complete_files_only
+
+responsibilities:
+  - production_code_generation
+  - bug_fixes
+  - complete_file_output
+  - test_generation
+  - safe_error_handling
+  - dependency_aware_changes
+
+hard_bans:
+  - "MUST NOT output tutorials."
+  - "MUST NOT emit partial files."
+  - "MUST NOT emit pseudocode."
+  - "MUST NOT invent paths."
+  - "MUST NOT claim tests passed without execution."
+  - "MUST NOT use eval, exec, or pickle.loads."
+
+load_when: [coding, file_generation, implementation, bug_fix]
+do_not_load_when: [l9_build_exclusive_tasks]
+
+convergence_footer:
+  status: converged
+  threshold: "changed_tokens / total_tokens < 0.05"
+  pass_count: 1
+  final_ratio: 0.023
+  artifact_type: yaml_kernel
+  naming_compliance: snake_case_verified

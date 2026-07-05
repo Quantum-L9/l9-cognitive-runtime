@@ -1,0 +1,397 @@
+{
+  "pack_name": "l9_cognitive_runtime_kernel_pack_clean",
+  "pack_version": "v5_convergence_commit_pack_roadmap_patch",
+  "supersedes": "l9_cognitive_runtime_kernel_pack_clean_v5_convergence_commit_pack.zip",
+  "file_count": 77,
+  "files": [
+    {
+      "path": "ADAPTER_RENDER.md",
+      "bytes": 717,
+      "sha256": "f17bd07d1c6aa2972337a240b0c481d1de49de0ee8bbaf3af2ced41cb7fc0bb5"
+    },
+    {
+      "path": "COMMIT_PACK.md",
+      "bytes": 1326,
+      "sha256": "8d61e5f77c666188a3c0b08f993435cf76c830471566490eeb2a5c57bdc0e30e"
+    },
+    {
+      "path": "CONVERGENCE.md",
+      "bytes": 1351,
+      "sha256": "2b2bda15c0eb6b9ac01136815d04be5b777ea93f37e80f1a19f8d113b7a2678c"
+    },
+    {
+      "path": "EXECUTION_GRAPH.json",
+      "bytes": 3101,
+      "sha256": "ba8e01fc1e3dc21f27e6cacdca6f818dbef7f8ed7b43c4e8c93da2e22e20463b"
+    },
+    {
+      "path": "EXECUTION_GRAPH.md",
+      "bytes": 1066,
+      "sha256": "c215e3eee8c9ffaf98b84301a9b93007e82ace07ad3c27555359b5890b0cf3c8"
+    },
+    {
+      "path": "FINAL_EXECUTION_CONTRACT.yaml",
+      "bytes": 2236,
+      "sha256": "4d61abb5826e85b148a8b83b16bb4289337208a0d0fde94a4d98a05c1c87dd47"
+    },
+    {
+      "path": "HANDOFF_CONTRACT.yaml",
+      "bytes": 840,
+      "sha256": "0c7a11ee8108a3d7ebfa44e6ec14fd5324d89552d95d5a4f4f3bc81b852b0156"
+    },
+    {
+      "path": "MANIFEST.json",
+      "bytes": 14268,
+      "sha256": "d7e08faca456bd9fff561024d9f53d45467973c19e116347e5e7cec547bde071"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5924,
+      "sha256": "38e2f4cf8dcc71a886f11a66b60518e60d05809f7eb8cce45a1b89affdb2ce92"
+    },
+    {
+      "path": "ROADMAP.md",
+      "bytes": 2911,
+      "sha256": "9e1236a88d8ec6fc37aeca341bb40977d7b99d1448caa7331998bf4891b293a6"
+    },
+    {
+      "path": "VALIDATION_CONTRACT.yaml",
+      "bytes": 606,
+      "sha256": "c336c5e3aa9f11db4da88dbc7923914238f97b763e26d1e6f26606fc9420a6cc"
+    },
+    {
+      "path": "VALIDATION_EVIDENCE.md",
+      "bytes": 3800,
+      "sha256": "56ca226514eb0d33a094bdc8569e3d3cb91cc19f77c238ad50d7c2ab863bdfb3"
+    },
+    {
+      "path": "archive_manifest/SOURCE_FILE_INVENTORY.json",
+      "bytes": 16430,
+      "sha256": "d968be52a54ae528f2986319e391debf90e0cf0d1e8acf48cf5109f265f7f982"
+    },
+    {
+      "path": "contracts/adapter_render.schema.json",
+      "bytes": 634,
+      "sha256": "03df182e01b1133ac995c8ae19d99f60059d7b5dea418191644802ef046e7ca6"
+    },
+    {
+      "path": "contracts/execution_contract.schema.json",
+      "bytes": 1573,
+      "sha256": "57660a3c4730a19ef140d518f522059ce9dcdca31e32b43061a57893087899f2"
+    },
+    {
+      "path": "contracts/handoff_contract.schema.json",
+      "bytes": 855,
+      "sha256": "44789635cebdfe82cfabe52ad38bb3da9b47d1f0d66f5a6c164fb70371ffcf55"
+    },
+    {
+      "path": "contracts/intent_contract.schema.json",
+      "bytes": 807,
+      "sha256": "6fe0f52891beec597e9e6a92fbaa0055fd2feef0ef9d87b1ac2bd413b47370ff"
+    },
+    {
+      "path": "contracts/validation_contract.schema.json",
+      "bytes": 964,
+      "sha256": "c0864c89e802d5641c81a3d31a5f680e0cf34bae30ef131d3b9f59ea8226220e"
+    },
+    {
+      "path": "docs/SUPERSEDES.md",
+      "bytes": 934,
+      "sha256": "3d66a1fc4c74ff201bf46a511e925f2838ca0fe1607485aaa12a86ad326c134a"
+    },
+    {
+      "path": "runtime/contract_compiler/README.md",
+      "bytes": 876,
+      "sha256": "080079dac9e5d44a86d0ebaaef1fa0868d5b2d9c72f2a6378f9d71373a2efc09"
+    },
+    {
+      "path": "runtime/contract_compiler/_compiler_common.py",
+      "bytes": 2720,
+      "sha256": "5d3c2f170a29404e6f3fa93f63dba9070e3c3004fcbd52937cb20eff325c4da9"
+    },
+    {
+      "path": "runtime/contract_compiler/adapters/chatgpt.md",
+      "bytes": 188,
+      "sha256": "2f89b97a3523a8b65210aa2f02ca5ba70f1be2b505e56d961d1f76ee0d14f511"
+    },
+    {
+      "path": "runtime/contract_compiler/adapters/claude_code.md",
+      "bytes": 265,
+      "sha256": "6ba939d8019a5d41adf5446ba06888e1fddc54edc7eda01a64d377b470ba749b"
+    },
+    {
+      "path": "runtime/contract_compiler/adapters/codex.md",
+      "bytes": 212,
+      "sha256": "e74da12b74effe6a8414784ef9d3c267a28023d3cf44c415ad35e89eb0f3f439"
+    },
+    {
+      "path": "runtime/contract_compiler/adapters/cursor.md",
+      "bytes": 237,
+      "sha256": "3cb2605568671fdf87c1a08ade86e555603dd3594c71ceca255b2fef45f3f7e6"
+    },
+    {
+      "path": "runtime/contract_compiler/adapters/human_operator.md",
+      "bytes": 185,
+      "sha256": "d6a4a9c834b21a574db52f6539fbf2d5f003ec92a6ba84b2f3271b2dae548dfe"
+    },
+    {
+      "path": "runtime/contract_compiler/compile_execution_contract.py",
+      "bytes": 5951,
+      "sha256": "1cf654aafd9f6dd2117e5c1a85b4362cf89b9507cc0fe9308aad3fc2f729e954"
+    },
+    {
+      "path": "runtime/contract_compiler/compile_handoff_contract.py",
+      "bytes": 4061,
+      "sha256": "807bcd848c3b0e72510cff52c07963ab2e85753b520aa899ec57b3c78d439c0c"
+    },
+    {
+      "path": "runtime/contract_compiler/compile_validation_contract.py",
+      "bytes": 3655,
+      "sha256": "ad137c336f4e704a02a62803020217db397040bdfc3f37c366db3bb6b6dc63b6"
+    },
+    {
+      "path": "runtime/execution_graph/README.md",
+      "bytes": 341,
+      "sha256": "7f86e70774092bde2a88aae4e6014443782798eb398bc7db787603cb73cddbbd"
+    },
+    {
+      "path": "runtime/execution_graph/build_execution_graph.py",
+      "bytes": 1918,
+      "sha256": "0d0840094fa59cdc73eb361985e48d4e1861b21d893dee01cf631eab77c0d227"
+    },
+    {
+      "path": "runtime/execution_graph/dependency_resolver.py",
+      "bytes": 693,
+      "sha256": "d8ffd11bf732cc0f7f92a13f2e8bb6b9ecd3bec952fdd1f631ec28ad2403276d"
+    },
+    {
+      "path": "runtime/execution_graph/graph.schema.json",
+      "bytes": 1643,
+      "sha256": "8e779d2033fc458d247acb96c522b61f25928507281797ee6c0fb8ed68434b42"
+    },
+    {
+      "path": "runtime/execution_graph/graph_validator.py",
+      "bytes": 1291,
+      "sha256": "2cd9163b5fba131423691b3f3e2c0eccfbe7f57689bcca9611cdf3f699ecb257"
+    },
+    {
+      "path": "runtime/execution_graph/graph_visualizer.py",
+      "bytes": 750,
+      "sha256": "ea233d674a50ce245d27abc0b8825b5cf1e2b765ed1bdfdb88a26bc1c67c4f05"
+    },
+    {
+      "path": "runtime/execution_graph/scheduler.py",
+      "bytes": 293,
+      "sha256": "df0a49171d8d63d6e226227059f33ea7224f0c206f4d02ecc55f71aac3659581"
+    },
+    {
+      "path": "runtime/intent_compiler/INTENT_COMPILER.yaml",
+      "bytes": 412,
+      "sha256": "09224c523fb4c3e5af453e7717f3ae956cd66f2754a0a6a878f55fce313bc3a8"
+    },
+    {
+      "path": "runtime/intent_compiler/README.md",
+      "bytes": 471,
+      "sha256": "9fcbf702e54f863d2b54cbd473abcccb0c6cf1cd6b805be0297fcc47b4d80de0"
+    },
+    {
+      "path": "runtime/intent_compiler/compile_intent_contract.py",
+      "bytes": 1384,
+      "sha256": "a8e93c93f005f26e069509c741ac7f4b6ed71cfcb39652f1bc8d747992af84b7"
+    },
+    {
+      "path": "runtime/kernel_pipeline/DUPLICATE_KERNEL_POLICY.yaml",
+      "bytes": 860,
+      "sha256": "c183720a0f37aede2a76131cfd6d67b631027f0fc84b791fe3e4542f5fa3bb4e"
+    },
+    {
+      "path": "runtime/kernel_pipeline/KERNEL_PIPELINE.yaml",
+      "bytes": 4543,
+      "sha256": "b89164a87d2de1c15cfe75ba84459dab815cdba06b0104b0f5e4dba21faed0db"
+    },
+    {
+      "path": "runtime/kernel_pipeline/KERNEL_PIPELINE_VALIDATION_REPORT.json",
+      "bytes": 2962,
+      "sha256": "4a3e7c343c87d6ce827eabf5b135608c76b4128e1b4127c7377ebe8bb69e5d46"
+    },
+    {
+      "path": "runtime/kernel_pipeline/KERNEL_ROLE_MAP.yaml",
+      "bytes": 834,
+      "sha256": "3aec31c7c4913a75bf18066935b2ab7b87a3f9af0e3b151ddd7bf0d6dc49450c"
+    },
+    {
+      "path": "runtime/kernel_pipeline/PHASE_OUTPUT_CONTRACTS.yaml",
+      "bytes": 734,
+      "sha256": "8fe242d632ff2695d00e49898f3c2c2cb42b1b644a42a79f19908131b73ad07a"
+    },
+    {
+      "path": "runtime/kernel_pipeline/VALIDATOR_README.md",
+      "bytes": 921,
+      "sha256": "fd6762920b33494867352f2543be7b0896289156eb182d2c721b8f683be72295"
+    },
+    {
+      "path": "runtime/kernel_pipeline/planner/ACTIVATION_PLAN_SCHEMA.yaml",
+      "bytes": 581,
+      "sha256": "291cb96bd482a54d40609629dcc8831eac89e4e2b90b51a111a191e0d09ab402"
+    },
+    {
+      "path": "runtime/kernel_pipeline/planner/KERNEL_ACTIVATION_PLAN.example.yaml",
+      "bytes": 1669,
+      "sha256": "a5093924a8272759f57fe30e6e9b348498884d280f8923c312f17a3e0c0e677d"
+    },
+    {
+      "path": "runtime/kernel_pipeline/planner/README.md",
+      "bytes": 958,
+      "sha256": "1272921b45763a4bf6762af89fac4d764a972bc6066bc35a80d7bca0229fc78d"
+    },
+    {
+      "path": "runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml",
+      "bytes": 4566,
+      "sha256": "a9da9759ed3427e5d17e55c3fc54871f272b2fd21b072f0c76ffdc34597c74ce"
+    },
+    {
+      "path": "runtime/kernel_pipeline/planner/plan_activation.py",
+      "bytes": 6479,
+      "sha256": "ff9784f6113446f5c8927957f0ab1b8313198cedc7fd6cb586de70d362a4bd50"
+    },
+    {
+      "path": "runtime/kernel_pipeline/run_validators.py",
+      "bytes": 1415,
+      "sha256": "6a9a7600cbd1769ca67cc840009333d7a70b74032f18d6417d0f24a7baba1368"
+    },
+    {
+      "path": "runtime/kernel_pipeline/validators/_common.py",
+      "bytes": 2798,
+      "sha256": "f45c12fa15be74ee780bf0e24099e851dfddc52b81aebbff219faedc63bcc42e"
+    },
+    {
+      "path": "runtime/kernel_pipeline/validators/validate_activation_planner.py",
+      "bytes": 3318,
+      "sha256": "1b750ae9573d3fdbe8304d0f4e40a83a987757599e24a04550b95a45ee8c9763"
+    },
+    {
+      "path": "runtime/kernel_pipeline/validators/validate_contract_compiler.py",
+      "bytes": 1557,
+      "sha256": "633ce8aba3b6b108c2252e2b30b229e1aecac6edf9c7d57ff4baf22f56e4fd64"
+    },
+    {
+      "path": "runtime/kernel_pipeline/validators/validate_intent_and_execution_graph.py",
+      "bytes": 1652,
+      "sha256": "eb3f7a7d9be55c04be474ea4b33af1cfefbbeace3e380bf830a24b1b7e6da5ad"
+    },
+    {
+      "path": "runtime/kernel_pipeline/validators/validate_kernel_roles.py",
+      "bytes": 2526,
+      "sha256": "42f65d789cdd9950fcc3fbccf7283737897bb7f691b76f4d1ed8bdb03e8f71e1"
+    },
+    {
+      "path": "runtime/kernel_pipeline/validators/validate_no_duplicate_active_kernels.py",
+      "bytes": 1750,
+      "sha256": "6a3465686760af41266e5402637d1e6c9ea5a45eedc58329215ca94629db7193"
+    },
+    {
+      "path": "runtime/kernel_pipeline/validators/validate_phase_outputs.py",
+      "bytes": 2965,
+      "sha256": "d23908cc6bd781b07a29a50270034f844bb94922eeeaf572bb153bbd8c24ed84"
+    },
+    {
+      "path": "runtime/kernel_pipeline/validators/validate_pipeline_order.py",
+      "bytes": 3128,
+      "sha256": "d08e992456c9f559c0b798f25f4d9916530d0ef611e086542fcfb226877e5429"
+    },
+    {
+      "path": "runtime/kernels/architecture/bundle_and_node_extras.md",
+      "bytes": 4149,
+      "sha256": "d7ca353a0043e99a2205ac6f65df1192e80143b7109e59b5f77f5bbac0838204"
+    },
+    {
+      "path": "runtime/kernels/architecture/dependency_birth_and_mirror_codegen.md",
+      "bytes": 5770,
+      "sha256": "8b5f1dae445c84d77efce958d89d3c657253a509130e7b9212a51a987d31107b"
+    },
+    {
+      "path": "runtime/kernels/architecture/repo_taxonomy_and_dependency_architecture.md",
+      "bytes": 6565,
+      "sha256": "bfdef2425e40308bf40c39f67c868d9d3bc6f15cc7e062b56a6ddacd849a66a1"
+    },
+    {
+      "path": "runtime/kernels/constitutional/K01-platform-architecture-engine.yaml",
+      "bytes": 10999,
+      "sha256": "43df2cc07c12757f77235885bbc32cb0136a17882619615a68888f031731a60c"
+    },
+    {
+      "path": "runtime/kernels/constitutional/K02-contracts-code-laws-enforcement.yaml",
+      "bytes": 17469,
+      "sha256": "6d20b92d363531f7493e3c2167cdb92ded41f297efe7c6b97c6e06461e9bfbb6"
+    },
+    {
+      "path": "runtime/kernels/constitutional/K03-constellation-transport-authority.yaml",
+      "bytes": 11723,
+      "sha256": "f73f61e7d1fbb3a253c3c75dfcd9e5ee1b06be55e8bdb3d4d86da20590a13b79"
+    },
+    {
+      "path": "runtime/kernels/constitutional/K04-domain-spec-yaml-authoring.yaml",
+      "bytes": 13317,
+      "sha256": "70c6d7df1d4710a13bd8f24ef518e2a4aba7b3c422f6879d4785cf65d30bba09"
+    },
+    {
+      "path": "runtime/kernels/constitutional/K05-file-ownership-placement-capability-registry.yaml",
+      "bytes": 14365,
+      "sha256": "1205ece946d2da8ad0699c37da6cefec286469e19c44d5fb2e8dda0f550a6fc1"
+    },
+    {
+      "path": "runtime/kernels/improvement/recursive_alignment.md",
+      "bytes": 1359,
+      "sha256": "0898b3f338746ee893a08bb1247941c0151e7518ea22a5dd8eeed7cd7d5a427b"
+    },
+    {
+      "path": "runtime/kernels/improvement/recursive_improvement.md",
+      "bytes": 1398,
+      "sha256": "c6f5a95375bf297130d1e3129a99e133993865c2b5d7eaa8f03604958d2e03ac"
+    },
+    {
+      "path": "runtime/kernels/improvement/recursive_leverage.md",
+      "bytes": 1104,
+      "sha256": "34c61a5c1e24fc7ccf7ed979469ba63450259a6e51ca9f18a67f58f32c442430"
+    },
+    {
+      "path": "runtime/kernels/improvement/validate_eliminate_stubs.md",
+      "bytes": 1469,
+      "sha256": "81129caf9a224ed8d866927b5b973d0919d9900c215bc819ee25618783b7d778"
+    },
+    {
+      "path": "runtime/kernels/task/code_review_ci_kernel.yaml",
+      "bytes": 1348,
+      "sha256": "b2884681291ddd6273023846e24466c3989fd68f041380fea5dccdae6c13db78"
+    },
+    {
+      "path": "runtime/kernels/task/developer_core_kernel.yaml",
+      "bytes": 1524,
+      "sha256": "317059262f59704f4c745b83b2df8e31e475104429ea01d84878b3d9c0d5ce29"
+    },
+    {
+      "path": "runtime/kernels/task/l9_engine_build_kernel.yaml",
+      "bytes": 1436,
+      "sha256": "9601be257bc95f57f9bb853962d1b85563ebd70b295cf4d6d3bd7c36924673ec"
+    },
+    {
+      "path": "runtime/kernels/task/prompt_compiler_kernel.yaml",
+      "bytes": 1735,
+      "sha256": "fc30ec70c5761a8a9baf7c2e33ac38541db0a7a41ad7b6d61a04963d8ad6b22c"
+    },
+    {
+      "path": "runtime/kernels/task/repo_auditor_kernel.yaml",
+      "bytes": 1496,
+      "sha256": "1af652b020df28d8559b6a323d00b3b0b0d7db84f8da0abbd47af6d566ae8f46"
+    },
+    {
+      "path": "runtime/kernels/terminal/flawless_victory.contract.yaml",
+      "bytes": 3409,
+      "sha256": "a338e9af7fa5e1c02fa0b4fffa56abcf7ca965973472a189ca0e1d6412006add"
+    }
+  ],
+  "notes": [
+    "Roadmap patched to defer deterministic adapter renderer scripts until canonical execution contract and execution graph are stable across 2-3 real use cases.",
+    "Adapter renderers are serialization modules only, not planning or validation engines."
+  ]
+}

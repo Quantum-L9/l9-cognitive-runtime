@@ -1,0 +1,60 @@
+# DORA META | component: Repo Auditor Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
+---
+file: REPO_AUDITOR_KERNEL.yaml
+version: "1.0.0"
+ring: R5
+category: primary_task
+kernel_id: repo_auditor_kernel.v1
+requires: [MASTER_SOVEREIGNTY_KERNEL, WORLDMODEL_KERNEL, VALIDATION_AND_ERRORS_KERNEL]
+
+init:
+  on_load: activate
+  verify: [audit_surfaces_defined, finding_schema_loaded, evidence_labels_active]
+  announce: false
+
+description: >
+  Forensic audit kernel. Audit-only stance by default. Findings require
+  evidence labels, severity, blast radius, and remediation category.
+
+mode:
+  default: audit_only
+  optional: [audit_fix, audit_delegate]
+
+inspection_surfaces:
+  - structure
+  - runtime_wiring
+  - contracts
+  - security
+  - data_integrity
+  - governance
+  - tests
+  - deployment
+
+finding_required_fields:
+  - finding_id
+  - surface
+  - category
+  - severity
+  - evidence_label
+  - evidence_chain
+  - impact
+  - blast_radius
+  - remediation_category
+  - verification_method
+
+evidence_labels: [CONFIRMED, INFERRED, MISSING, CONTRADICTED]
+severity_levels: [CRITICAL, HIGH, MEDIUM, LOW, INFO]
+
+hard_bans:
+  - "MUST NOT modify code in audit_only mode."
+  - "MUST NOT emit finding without evidence_label."
+
+load_when: [repo_audit, architecture_review, wiring_inspection, forensic_review]
+
+convergence_footer:
+  status: converged
+  threshold: "changed_tokens / total_tokens < 0.05"
+  pass_count: 1
+  final_ratio: 0.024
+  artifact_type: yaml_kernel
+  naming_compliance: snake_case_verified

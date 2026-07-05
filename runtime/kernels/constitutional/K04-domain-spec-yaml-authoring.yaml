@@ -1,0 +1,244 @@
+# =============================================================================
+# K04 — DOMAIN SPEC, YAML AUTHORING & TILE SCHEMA
+# L9 Master Kernel Pack | Category: repo_alignment_and_remediation
+# Authority: L9 Constitutional Law | Version: 2.1.0 | Status: ACTIVE
+# Supersedes: L9_YAML_SPEC_V2.md, L9_CONTRACT_SPECIFICATIONS.md (spec sections),
+#             K04 v2.0.0
+# =============================================================================
+
+kernel_id: K04-domain-spec-yaml-authoring
+canonical_name: Domain Spec, YAML Authoring & Tile Schema
+version: "2.1.0"
+status: ACTIVE
+category: repo_alignment_and_remediation
+activation_order: 4
+
+source_files:
+  - L9_YAML_SPEC_V2.md
+  - L9_CONTRACT_SPECIFICATIONS.md (spec authoring sections)
+
+purpose: >
+  Define the canonical spec.yaml structure, YAML Spec Generator V2.0 rules,
+  policy tile YAML schema, tile lifecycle management, packet type registry,
+  and all spec authoring invariants for L9 constellation node development.
+
+activation_trigger:
+  required_always: false
+  load_when_any:
+    - task_involves: ["spec.yaml authoring", "policy tile creation or modification"]
+    - task_involves: ["YAML Spec Generator runs", "tile lifecycle management", "GDS configuration"]
+  load_order: 4
+  prerequisite_kernels: [K01, K02, K03]
+  test: "K01, K02, and K03 are loaded before K04 is activated."
+
+authority_order:
+  inherits: K01 -> K02 -> K03
+  1: "K02 — contract IDs for regulatory_mapping"
+  2: "K03 — node topology for spec node section"
+  3: "K04 (this kernel)"
+
+# ─── TILE YAML SCHEMA ────────────────────────────────────────────────────────
+tile_yaml_schema:
+  description: "Every file in tiles/active/ MUST conform to this schema. Gate-8 validates."
+  enforcement_gate: Gate-8
+  enforcement_command: "python tools/tile_validator.py tiles/active"
+
+  required_fields:
+    tile_id:                 {type: str,             rule: "MUST be globally unique across all tiles."}
+    version:                 {type: "semver string",  rule: "MUST follow X.Y.Z semver format."}
+    status:                  {type: "enum",           values: [proposed, active, deprecated]}
+    contract_id:             {type: str,              rule: "MUST reference a known contract C-NN or INV-NN."}
+    contract_description:    {type: str,              rule: "MUST describe the contract being evaluated."}
+    severity:                {type: "enum",           values: [CRITICAL, HIGH, MEDIUM, LOW]}
+    evaluator_type:          {type: "enum",           values: [ast, regex, callgraph, custom]}
+    evaluator_module:        {type: str,              rule: "MUST be a valid dotted Python module path."}
+    evaluator_function:      {type: str,              rule: "MUST be a callable function name within the module."}
+    applies_to_patterns:     {type: "list[str]",      rule: "MUST contain at least one valid glob pattern."}
+    confidence_model:        {type: "enum",           values: [deterministic, probabilistic]}
+    auto_activate_threshold: {type: "null | float",   rule: "MUST be null for CRITICAL and HIGH severity tiles."}
+    remediation_guidance:    {type: str,              rule: "MUST contain actionable fix instructions."}
+    regulatory_mapping:      {type: "list[str]",      rule: "MUST list all applicable contract IDs."}
+    created_at:              {type: date}
+    last_modified:           {type: date}
+    activation_history:      {type: "list[ActivationEntry]", rule: "MUST be append-only. MUST NOT be empty on active tiles."}
+
+  optional_fields:
+    excludes:            {type: "list[str]", enforcement: "Validated by Gate-8 schema check if present."}
+    autofix_safe:        {type: bool,        enforcement: "Gate-8 requires autofix_description if autofix_safe=true."}
+    autofix_description: {type: str,         enforcement: "Required when autofix_safe=true. Gate-8 enforced."}
+
+  tile_lifecycle:
+    states: [proposed, active, deprecated]
+    permitted_transitions:
+      - "proposed -> active: H-3 human approval required"
+      - "active -> deprecated: H-3 human approval required"
+    forbidden_transitions:
+      - "proposed -> deprecated: C-26 violation. Gate-8 blocks."
+    deletion_rule: "MUST NOT delete any tile record. Deprecated tiles are append-only historical record."
+    test: "python tools/tile_validator.py tiles/"
+
+  severity_gate_behavior:
+    CRITICAL: {merge_behavior: "Blocks merge unconditionally.", waiver: none}
+    HIGH:     {merge_behavior: "Blocks merge. Requires explicit T4 waiver.", waiver: "T4 required"}
+    MEDIUM:   {merge_behavior: "Warning only. Does not block merge.", waiver: none}
+    LOW:      {merge_behavior: "Advisory. Logged. Does not block.", waiver: none}
+
+  autofix_eligible:   [C-05, C-04, C-09, C-20]
+  autofix_ineligible:
+    C-03: "Requires domain knowledge for tenant scoping context."
+    C-07: "Too high risk — Cypher injection. Human review required."
+    C-10: "Too high risk — credential exposure. Human review required."
+
+# ─── SPEC.YAML STRUCTURE ─────────────────────────────────────────────────────
+spec_yaml_structure:
+  required_sections: [node, transport, contracts, database, gds_jobs, ci, autonomy_tiers]
+  authoring_rules:
+    - "MUST NOT hardcode any value derivable from spec.yaml. (C-19)"
+    - "MUST include all required sections. Missing sections cause spec validation failure."
+    - "MUST use L9_ prefix for all environment variable names. (C-09)"
+    - "MUST reference contract IDs in every rule definition."
+    - "Transport section changes require T4 review and H-2. (C-13)"
+    - "MUST include L9META header as first line. (C-20)"
+  validation_command: "python tools/tile_validator.py spec.yaml"
+
+# ─── YAML SPEC GENERATOR V2.0 ────────────────────────────────────────────────
+yaml_spec_generator:
+  version: "2.0.0"
+  operating_rules:
+    - "MUST generate spec.yaml from source contracts. MUST NOT generate from assumptions."
+    - "MUST validate generated spec against tile schema before output."
+    - "MUST NOT generate tiles with status=active without H-3 human approval."
+    - "MUST set auto_activate_threshold=null for CRITICAL and HIGH severity tiles."
+    - "MUST include L9META header in all generated files. (C-20)"
+    - "Generated files MUST pass Gate-8 without modification."
+    - "MUST NOT introduce camelCase keys. (C-17)"
+    - "MUST use yaml.safe_load() for all input parsing. (C-08)"
+  validation_command: "python tools/tile_validator.py tiles/active"
+
+# ─── PACKET TYPE REGISTRY ────────────────────────────────────────────────────
+packet_type_registry:
+  description: "All action names in create_transport_packet(action=...) MUST be registered here and in orchestration_layer.py."
+  scanner: "Unknown — verify if a dedicated packet action registration scanner exists."
+  registration_rule: "MUST register all actions in app/engines/orchestration_layer.py via canonical SDK handler registration."
+  known_actions:
+    graph.write_compliance_evidence: {handler: "app/engines/graph_sync_client.py", tier: T4}
+    governance.report:               {handler: "app/services/governance/reporter.py", tier: T3}
+    node.register:                   {handler: "app/engines/node_registry/registry.py", tier: T3}
+    node.deregister:                 {handler: "app/engines/node_registry/registry.py", tier: T3, h_gate: H-7}
+    bundle.ship:                     {handler: "app/engines/tile_engine/bundle_shipper.py", tier: T3}
+    evidence.post:                   {handler: "app/engines/evidence/store.py", tier: T3}
+    discovery.run:                   {handler: "app/engines/discovery/engine.py", tier: T3}
+
+# ─── SCHEMA DEFINITIONS ──────────────────────────────────────────────────────
+policy_decision_schema:
+  model: PolicyDecision
+  immutability_rule: "Immutable after construction."
+  immutability_test: "pytest tests/unit/test_policy_decision_immutability.py"
+  fields:
+    decision_id:       {type: str}
+    node_name:         {type: str}
+    tile_id:           {type: str}
+    tile_version:      {type: str}
+    target_file:       {type: str}
+    result:            {type: "enum: PASS | FAIL | SKIP"}
+    violations:        {type: "list[dict[str, Any]]"}
+    repo_sha:          {type: str}
+    tenant_id:         {type: str}
+    evaluated_at:      {type: datetime}
+    confidence:        {type: "float | None"}
+    evaluator_version: {type: str}
+    regulatory_mapping: {type: "list[str]"}
+    graph_community_id: {type: "str | None"}
+    remediation_signal: {type: "str | None", values: [fixed, false_positive, accepted_risk, None]}
+    tile_confidence:   {type: "float | None"}
+
+evidence_record_schema:
+  model: EvidenceRecord
+  append_only_rule: "MUST NOT UPDATE or DELETE. (C-23, INV-21)"
+  append_only_test: "python tools/evidence_integrity.py --depth 100"
+  fields:
+    record_id:        {type: str}
+    sequence_number:  {type: int}
+    decision:         {type: PolicyDecision}
+    prev_hash:        {type: str, rule: "SHA256 of previous record canonical JSON."}
+    this_hash:        {type: str, rule: "SHA256 of this record canonical JSON (excluding this_hash field)."}
+    recorded_at:      {type: datetime}
+
+dependency_graph:
+  upstream_inputs:
+    - K02 (contract IDs C-01–C-26 for regulatory_mapping)
+    - K03 (node topology for spec node section)
+    - AGENTS.md (autonomy tier assignments)
+  downstream_outputs:
+    - K05 (references spec-generated directory structure)
+    - CI Gate-8 (validates all active tiles)
+  prerequisites: [K01 loaded, K02 loaded, K03 loaded, tiles/active/ directory exists]
+  blast_radius: {severity: MEDIUM, scope: "Tile generation and spec authoring. Gate-8 failures if schema drifts."}
+
+invariants:
+  - id: INV-K04-1
+    rule: "Tile registry is SSOT. No tile evaluated outside registry.py. (INV-22)"
+    severity: CRITICAL
+    test: "python tools/audit_engine.py --strict --contracts C-22"
+  - id: INV-K04-2
+    rule: "All active tiles pass Gate-8. Malformed YAML blocks merge."
+    severity: CRITICAL
+    test: "python tools/tile_validator.py tiles/active"
+  - id: INV-K04-3
+    rule: "Evidence hash chain maintained. (INV-21)"
+    severity: CRITICAL
+    test: "python tools/evidence_integrity.py --depth 100"
+  - id: INV-K04-4
+    rule: "All GDS jobs derive from spec.yaml. No hardcoded parameters. (C-19)"
+    severity: MEDIUM
+    test: "python tools/audit_engine.py --contracts C-19"
+
+edge_cases:
+  - scenario: "New tile added to tiles/active/ without H-3 approval"
+    recovery: "C-26 violation. Move to tiles/proposed/. Obtain H-3 before activation."
+    test: "python tools/tile_validator.py tiles/active"
+  - scenario: "Evidence schema migration risks hash chain integrity"
+    recovery: "H-6 required (T5, 2 reviewers, CI green). New fields MUST default to None."
+    test: "python tools/evidence_integrity.py --depth 100 (post-migration)"
+  - scenario: "spec.yaml missing required section"
+    recovery: "Spec validation fails. Generator refuses output. Author adds missing section."
+    test: "python tools/tile_validator.py spec.yaml"
+  - scenario: "autofix_safe=true set on C-03 tile"
+    recovery: "C-03 is autofix_ineligible. Remove autofix_safe. Gate-8 fails until corrected."
+    test: "python tools/tile_validator.py tiles/active"
+
+validation_checks:
+  - id: VC-K04-1
+    command: "python tools/tile_validator.py tiles/active"
+    passes_when: "exit 0 (Gate-8)"
+  - id: VC-K04-2
+    command: "python tools/evidence_integrity.py --depth 100"
+    passes_when: "exit 0 (Gate-9)"
+  - id: VC-K04-3
+    command: "python tools/audit_engine.py --contracts C-19,C-20"
+    passes_when: "exit 0 (no CRITICAL or HIGH violations)"
+
+acceptance_criteria:
+  - "Every active tile conforms to canonical tile YAML schema. Gate-8 passes."
+  - "Tile lifecycle enforced: no skip transitions, no deletions."
+  - "All spec.yaml files pass spec validation."
+  - "YAML Spec Generator V2.0 produces Gate-8-passing output without modification."
+
+regression_guards:
+  - "Tile schema required fields MUST NOT be reduced without T4 review."
+  - "Evidence append-only constraint MUST NOT be relaxed in schema migrations."
+  - "auto_activate_threshold=null MUST remain enforced for CRITICAL and HIGH severity tiles."
+
+stop_conditions:
+  - "Gate-8 failure. Stop. Fix YAML before proceeding."
+  - "Spec validation failure. Stop. Correct spec first."
+  - "H-3 reached for tile activation. Stop. Await human reviewer."
+
+output_requirements:
+  - "All tile YAML files include L9META header and pass Gate-8."
+  - "All spec.yaml files include all required sections."
+  - "YAML Spec Generator V2.0 outputs validate without modification."
+
+unknowns:
+  - "Full GDS job parameter schema: verify complete field list against L9_YAML_SPEC_V2.md source."
+  - "packet_type_registry scanner: verify if a dedicated packet action registration tile exists in tiles/active/."

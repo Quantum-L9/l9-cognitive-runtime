@@ -1,0 +1,15 @@
+duplicate_kernel_policy:
+  objective: "Prevent multiple active kernels from governing the same decision surface."
+  rules:
+    - If two kernels both validate gaps, keep validate_eliminate_stubs.md as authority.
+    - If two kernels both improve artifacts, keep recursive_improvement.md as authority.
+    - If two kernels both compress strategy into next action, keep recursive_leverage.md as authority.
+    - If a profile-like kernel governs user/persona behavior, exclude it from this kernel-only pack unless explicitly promoted later.
+    - If a blueprint or contract is source material rather than active runtime law, archive it in source mapping, not runtime/kernels.
+  resolution_order:
+    - exact constitutional law
+    - active task kernel
+    - architecture SSOT
+    - improvement gate
+    - terminal execution contract
+    - archived source material

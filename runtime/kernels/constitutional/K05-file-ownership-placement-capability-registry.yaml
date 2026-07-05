@@ -1,0 +1,355 @@
+kernel_id: K05-file-ownership-placement-capability-registry
+canonical_name: File Ownership, Placement & Capability Registry
+version: "2.1.0"
+status: ACTIVE
+category: repo_alignment_and_remediation
+activation_order: 5
+
+source_files:
+  - What-Lives-Where.md
+  - L9_AGENT_CODING_GUIDE.md (ownership and placement sections)
+  - Boundaries-Defined.md (placement rules)
+
+purpose: >
+  Define the canonical file placement rules, directory ownership map,
+  capability registry, import boundary enforcement, dormant system locks,
+  and the complete what-lives-where reference for all L9 constellation nodes.
+
+activation_trigger:
+  required_always: false
+  load_when_any:
+    - task_involves: ["file creation", "directory navigation", "import structure review"]
+    - task_involves: ["capability registration", "new module scaffolding"]
+  load_order: 5
+  prerequisite_kernels: [K01]
+  test: "K01 is loaded before K05 is activated."
+
+authority_order:
+  inherits: K01 -> K02 -> K03 -> K04
+  1: "AGENTS.md — tier assignments, ownership"
+  2: "INVARIANTS.md — INV-16 directory structure stability"
+  3: "K01 — active transport bundle file locations, H-gates"
+  4: "K03 — module ownership authority model"
+  5: "K05 (this kernel)"
+
+directory_map:
+  "app/main.py":
+    tier: T4
+    owner: "SDK Runtime"
+    contains: "create_app() bootstrap. Handler registration. Nothing else."
+    MUST_NOT: ["business logic", "route definitions other than bootstrap", "database queries"]
+    h_gate: H-1
+
+  "app/api/":
+    tier: T4
+    owner: "Gate (SDK)"
+    contains: "FastAPI routes. Transport ingress. Tenant header extraction."
+    MUST_NOT: ["business logic", "engine imports", "database calls"]
+
+  "app/api/v1/chassis_endpoint.py":
+    tier: T4
+    owner: "Gate (SDK)"
+    contains: "v1/execute ingress route. Routes to SDK handler dispatch."
+
+  "app/engines/":
+    tier: T3
+    owner: "Engineering Team"
+    contains: "Business logic. Engine modules. NO FastAPI imports. (C-01)"
+    MUST_NOT: ["from fastapi import ...", "HTTP framework calls"]
+
+  "app/engines/orchestration_layer.py":
+    tier: T4
+    owner: Orchestrator
+    contains: "Canonical SDK handler registration. Action routing."
+
+  "app/engines/handlers.py":
+    tier: T4
+    owner: Orchestrator
+    contains: "SDK action handlers. Routes to engine modules."
+
+  "app/engines/graph_sync_client.py":
+    tier: T4
+    owner: Orchestrator
+    contains: "GRAPH node transport via TransportPacket."
+
+  "app/engines/tile_engine/":
+    tier: T3
+    owner: "GCE Core"
+    files:
+      "evaluator.py": "Pure-function tile evaluation. No side effects. (C-22)"
+      "registry.py": "Tile SSOT registry loader. (INV-22)"
+      "loader.py": "YAML tile loader and validator."
+      "runner.py": "Evaluation runner (batch)."
+      "bundle_shipper.py": "Hub-spoke source bundle generation. Ships source only. (C-24)"
+
+  "app/engines/evidence/":
+    tier: T3
+    owner: "GCE Core"
+    files:
+      "store.py": "Append-only evidence writer. INSERT only. (C-23)"
+      "hasher.py": "SHA256 hash chain logic. (INV-21)"
+      "query.py": "Evidence read/query — no writes."
+
+  "app/engines/discovery/":
+    tier: T3
+    owner: "GCE Core"
+    files:
+      "engine.py": "Gap detection and pattern analysis."
+      "proposer.py": "Tile proposal generator. Confidence >= 0.70 required. (INV-23)"
+      "scorer.py": "Confidence scoring for proposals."
+
+  "app/engines/node_registry/":
+    tier: T3
+    owner: "GCE Core"
+    files:
+      "registry.py": "Spoke node CRUD."
+      "health.py": "Per-node compliance scoring."
+
+  "app/engines/health_engine/":
+    tier: T3
+    owner: "GCE Core"
+    contains: "Cross-node health aggregation."
+
+  "app/models/":
+    tier: T5
+    owner: "Platform Team"
+    contains: "Pydantic v2 schemas. 2 reviewers required."
+    files:
+      "tile_models.py": "Tile schema definitions."
+      "evidence_models.py": "PolicyDecision, EvidenceRecord."
+      "node_models.py": "NodeRegistration, NodeHealth."
+      "discovery_models.py": "TileProposal, DiscoveryResult."
+      "transport_models.py": "Node-specific TransportPacket payloads."
+
+  "app/services/":
+    tier: T4
+    owner: "SDK Runtime"
+    files:
+      "chassis_handlers.py": "SDK handler registration bridge."
+
+  "app/services/governance/":
+    tier: T3
+    owner: "GCE Core"
+    files:
+      "orchestrator.py": "Governance workflow coordinator."
+      "reporter.py": "Compliance report generation."
+
+  "tiles/active/":
+    owner: "GCE Constitutional Layer"
+    tier: T3
+    rule: "Production tiles YAML. All files MUST pass Gate-8. Human-approved (H-3)."
+    test: "python tools/tile_validator.py tiles/active"
+
+  "tiles/proposed/":
+    owner: "Discovery Engine (generation) + Human Reviewer (approval)"
+    tier: T3
+    rule: "Draft tiles awaiting H-3 approval. Not evaluated in production CI."
+
+  "tiles/deprecated/":
+    owner: Governance
+    tier: T2
+    rule: "Retired tiles. Append-only. MUST NOT be deleted. MUST NOT be re-activated."
+
+  "tools/":
+    purpose: "Audit, validation, and CI enforcement tools"
+    tier: T2
+    owner: "Platform Team"
+    files:
+      "audit_engine.py": "27-rule audit. Gate-6."
+      "verify_contracts.py": "Contract manifest integrity. Gate-7."
+      "tile_validator.py": "YAML tile syntax/schema check. Gate-8."
+      "evidence_integrity.py": "Hash chain verification. Gate-9."
+      "transport_clean.py": "PacketEnvelope AST scanner. Gate-10."
+
+  "tests/unit/":         {purpose: "Unit tests for engine modules"}
+  "tests/compliance/":   {purpose: "Programmatic contract enforcement tests"}
+  "tests/ci/":           {purpose: "CI integration tests"}
+  "tests/integration/":  {purpose: "End-to-end integration tests"}
+  "tests/compatibility/": {purpose: "Deprecated symbol compatibility tests — Gate-10 exemption applies"}
+
+  "docs/migrations/":
+    rule: "Migration records. engine_main_deletion.md MUST exist after engine_main.py is deleted."
+
+  "migrations/":
+    rule: "Database schema migrations. MUST NOT break evidence hash chain integrity. H-6 for evidence schema changes."
+
+  "reports/governance/":
+    tier: T0
+    rule: "Auto-generated compliance reports. Read-only artifacts. No review gate."
+
+  "reports/policy_decisions/":
+    tier: T0
+    rule: "JSONL evidence records. Read-only. Append-only source of truth."
+
+  "infra/":
+    rule: "Infrastructure configuration. Changes require infra-review PR label + 2 reviewers. (INV-5)"
+
+allowed_top_level_dirs:
+  production: [app, engine, tools, tests, migrations, docs, infra, reports, scripts]
+  vcs_and_tooling: [.github, .vscode, .git]
+  cache_dirs: [__pycache__, .mypy_cache, .pytest_cache, .ruff_cache, node_modules, htmlcov]
+  rule: "Any new top-level directory NOT in this list triggers TILE-INV-016 FAIL. T4 approval + REPOMAP.md update required."
+  test: "python tools/audit_engine.py --strict (TILE-INV-016)"
+
+import_boundary:
+  operating_rules:
+    - "app/api/** MUST NOT import from app/engines/** directly. Route through SDK handlers."
+    - "app/engines/** MUST NOT import from app/api/**."
+    - "app/models/** MUST NOT import from app/engines/** (prevents circular imports)."
+    - "tools/** MUST NOT import from app/engines/** in production paths."
+    - "MUST import TransportPacket from constellation_node_sdk.transport only."
+    - "MUST NOT import from app/deprecated/** in any production path."
+  enforcement:
+    tiles: [TILE-C-01, TILE-C-11]
+    gate: Gate-6
+    test: "python tools/audit_engine.py --strict --contracts C-01,C-11"
+
+capability_registry:
+  description: "All SDK registered actions mapped to handlers. All capabilities MUST be registered here and in orchestration_layer.py."
+  governance.report:
+    handler: "app/services/governance/reporter.py"
+    tier: T3
+    h_gate: none
+  node.register:
+    handler: "app/engines/node_registry/registry.py"
+    tier: T3
+    h_gate: none
+  node.deregister:
+    handler: "app/engines/node_registry/registry.py"
+    tier: T3
+    h_gate: H-7
+    note: "Irreversible. Human confirmation required before execution."
+  bundle.ship:
+    handler: "app/engines/tile_engine/bundle_shipper.py"
+    tier: T3
+    h_gate: none
+  evidence.post:
+    handler: "app/engines/evidence/store.py"
+    tier: T3
+    h_gate: none
+  graph.write_compliance_evidence:
+    handler: "app/engines/graph_sync_client.py"
+    tier: T4
+    h_gate: none
+  discovery.run:
+    handler: "app/engines/discovery/engine.py"
+    tier: T3
+    h_gate: none
+    schedule: "L9_DISCOVERY_INTERVAL_SECONDS env var"
+
+dormant_system_locks:
+  description: "Files or systems that MUST remain absent or dormant in production. MUST NOT create, restore, or activate without explicit human authorization."
+  scan_rule: "MUST scan for locked files on every CI run via Gate-10 and Gate-6."
+  locked_files:
+    engine_main_py:       {rule: "MUST NOT exist. Delete on discovery. Document deletion.", test: "INV-K01-4", gate: Gate-10}
+    chassis_envelope_py:  {rule: "MUST NOT exist in production paths.", test: "python tools/transport_clean.py --strict", gate: Gate-10}
+    chassis_router_py:    {rule: "MUST NOT exist in production paths.", test: "python tools/transport_clean.py --strict", gate: Gate-10}
+    chassis_registry_py:  {rule: "MUST NOT exist in production paths.", test: "python tools/transport_clean.py --strict", gate: Gate-10}
+    deprecated_imports:   {rule: "MUST NOT be imported in production paths. Gate-10 exemption for tests/compatibility/ only.", test: "python tools/transport_clean.py --strict"}
+  locked_behaviors:
+    - "Direct database calls in API layer — forbidden. (C-03)"
+    - "FastAPI imports in engine modules — forbidden. (C-01)"
+    - "PacketEnvelope construction — forbidden. (C-11)"
+
+env_var_placement:
+  contract: C-09
+  invariant: INV-20
+  enforcement:
+    tile: TILE-C-09
+    gate: Gate-6
+    test: "python tools/audit_engine.py --contracts C-09"
+  operating_rules:
+    - "All environment variables MUST use L9_ prefix. (C-09)"
+    - "All env vars MUST be defined in CONFIG_ENV_CONTRACT.md."
+    - "MUST NOT hardcode default values for secrets in any source file. (C-10)"
+    - ".env.example MUST list all required L9_ variables with type and required/optional status."
+    - "Secrets MUST be injected at runtime only. MUST NOT appear in committed code."
+
+dependency_graph:
+  upstream_inputs:
+    - K01 (active transport bundle file locations, H-gates)
+    - K02 (tier assignments, forbidden patterns, gate commands)
+    - K03 (module ownership authority model)
+    - K04 (spec-generated directory structure)
+    - AGENTS.md (autonomy tier file mappings)
+  downstream_consumers: [All kernels — K05 is the canonical placement reference]
+  prerequisites: [K01 loaded, AGENTS.md present, REPOMAP.md present]
+  blast_radius: {severity: MEDIUM, scope: "File placement drift. Import boundary violations. Directory structure instability."}
+
+invariants:
+  - id: INV-K05-1
+    rule: "Top-level directories MUST match the allowed list. (INV-16)"
+    severity: HIGH
+    test: "python tools/audit_engine.py --strict (TILE-INV-016)"
+  - id: INV-K05-2
+    rule: "engine_main.py MUST NOT exist in production tree."
+    severity: CRITICAL
+    test: "find . -name engine_main.py -not -path '*/deprecated/*' | grep -q . && exit 1 || exit 0"
+  - id: INV-K05-3
+    rule: "app/engines/** MUST NOT contain FastAPI imports. (C-01)"
+    severity: CRITICAL
+    test: "python tools/audit_engine.py --strict --contracts C-01"
+  - id: INV-K05-4
+    rule: "All environment variables MUST use L9_ prefix. (C-09)"
+    severity: MEDIUM
+    test: "python tools/audit_engine.py --contracts C-09"
+  - id: INV-K05-5
+    rule: "deprecated/ directory contents MUST NOT be imported in production paths."
+    severity: HIGH
+    test: "python tools/transport_clean.py --strict (with deprecated/ in exempt list)"
+
+edge_cases:
+  - scenario: "Developer creates a new top-level directory"
+    recovery: "TILE-INV-016 FAIL. Add to allowed list via T4 review and update REPOMAP.md."
+    test: "INV-K05-1"
+  - scenario: "Engine module imports FastAPI for a utility"
+    recovery: "TILE-C-01 FAIL. Merge blocked. Move HTTP logic to app/api/ layer."
+    test: "INV-K05-3"
+  - scenario: "New env var created without L9_ prefix"
+    recovery: "TILE-C-09 FAIL. Rename to L9_<VAR>. Update CONFIG_ENV_CONTRACT.md."
+    test: "INV-K05-4"
+  - scenario: "chassis_router.py found in production path after refactor"
+    recovery: "Gate-10 FAIL. Delete file. Document in docs/migrations/. Re-verify Gate-10."
+    test: "python tools/transport_clean.py --strict"
+
+validation_checks:
+  - id: VC-K05-1
+    command: "python tools/audit_engine.py --strict (TILE-INV-016)"
+    passes_when: "top-level dirs match allowed list"
+  - id: VC-K05-2
+    command: "python tools/audit_engine.py --strict --contracts C-01"
+    passes_when: "no FastAPI imports in app/engines/**"
+  - id: VC-K05-3
+    command: "python tools/audit_engine.py --contracts C-09"
+    passes_when: "all env vars use L9_ prefix"
+  - id: VC-K05-4
+    command: "python tools/transport_clean.py --strict"
+    passes_when: "no deprecated transport symbols in production paths"
+  - id: VC-K05-5
+    command: "find . -name engine_main.py -not -path '*/deprecated/*' | wc -l"
+    passes_when: "output is 0"
+
+acceptance_criteria:
+  - "Every file resides in its canonical directory per this map."
+  - "Import boundaries enforced by tiles and gate pipeline."
+  - "All capabilities registered in capability_registry and orchestration_layer.py."
+  - "All dormant system locks respected — locked files absent."
+  - "Environment variable contract fully documented in CONFIG_ENV_CONTRACT.md."
+
+regression_guards:
+  - "Allowed top-level dir list MUST NOT grow without T4 review and REPOMAP.md update."
+  - "Import boundary rules MUST NOT be softened."
+  - "Dormant system locks MUST NOT be lifted without explicit human authorization."
+
+stop_conditions:
+  - "engine_main.py detected. Stop. Delete immediately. Do not proceed."
+  - "FastAPI import found in engine module. Stop. Restructure before merge."
+  - "TILE-INV-016 FAIL. Stop. Resolve directory structure before proceeding."
+
+output_requirements:
+  - "All new files placed in canonical directory per directory_map."
+  - "All new capabilities registered in capability_registry and orchestration_layer.py."
+  - "All new env vars use L9_ prefix and appear in CONFIG_ENV_CONTRACT.md."
+  - "All locked files absent from production paths."
+
+unknowns: []

@@ -1,0 +1,48 @@
+# DORA META | component: Prompt Compiler Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
+---
+file: PROMPT_COMPILER_KERNEL.yaml
+version: "1.0.0"
+ring: R5
+category: primary_task
+kernel_id: prompt_compiler_kernel.v1
+requires: [MASTER_SOVEREIGNTY_KERNEL, CONVERGENCE_KERNEL, VALIDATION_AND_ERRORS_KERNEL, IO_CONTRACT_KERNEL]
+
+init:
+  on_load: activate
+  verify: [compiler_pipeline_ready, directive_hardener_loaded]
+  announce: false
+
+description: >
+  Transforms natural language, partial spec, or draft YAML into deterministic
+  agent-ready execution prompts. Hardens directives, injects schema, produces
+  dual output: primary prompt + next_step_prompt.
+
+compiler_pipeline:
+  phases: [parse_input, classify_and_decompose, directive_hardening, schema_injection, convergence_loop, gate_evaluation, emit]
+
+directive_hardening:
+  replacements:
+    - {detect: should, replace: MUST}
+    - {detect: could, replace: "MUST or MUST NOT"}
+    - {detect: ensure, replace: "MUST verify that [condition]"}
+    - {detect: improve, replace: "specify measurable delta"}
+
+dual_output_protocol:
+  primary_prompt: "Deterministic execution prompt for current task."
+  next_step_prompt: "Single highest-leverage follow-on prompt."
+  default: "Produce both unless single output explicitly requested."
+
+use_for: [prompt_improvement, agent_config_generation, kernel_authoring]
+do_not_use_for: [repo_audit, code_generation, casual_chat]
+
+hard_bans:
+  - "MUST NOT retain soft language after hardening pass."
+  - "MUST NOT emit without convergence_footer."
+
+convergence_footer:
+  status: converged
+  threshold: "changed_tokens / total_tokens < 0.05"
+  pass_count: 1
+  final_ratio: 0.021
+  artifact_type: yaml_kernel
+  naming_compliance: snake_case_verified

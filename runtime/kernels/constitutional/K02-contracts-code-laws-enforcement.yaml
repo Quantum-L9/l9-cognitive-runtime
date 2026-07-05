@@ -1,0 +1,202 @@
+kernel_id: K02-contracts-code-laws-enforcement
+canonical_name: Contracts, Code Laws & Enforcement Pipeline
+version: "2.1.0"
+status: ACTIVE
+category: ci_validation_and_governance
+activation_order: 2
+
+source_files:
+  - L9_AGENT_CODING_GUIDE.md
+  - repo-rules.md
+  - L9_CONTRACT_SPECIFICATIONS.md
+
+purpose: >
+  Define all 26 immutable CEG contracts (C-01–C-26), canonical field naming,
+  fixed method signatures, forbidden patterns with scanner IDs, the 10-gate CI
+  pipeline, PR validation rules, and the branch protection model for all
+  L9 constellation nodes.
+
+activation_trigger:
+  required_always: false
+  load_when_any:
+    - task_involves: [".py file authoring", "PR review", "CI triage", "contract validation"]
+    - task_involves: ["audit runs", "Pydantic model development"]
+  load_order: 2
+  prerequisite_kernels: [K01]
+  test: "K01 is loaded before K02 is activated."
+
+authority_order:
+  inherits: K01
+  1: "AGENTS.md — C-01–C-26 source of truth"
+  2: "INVARIANTS.md"
+  3: "K01 — platform chassis, H-gates"
+  4: "K02 (this kernel)"
+
+contracts:
+  by_severity:
+    CRITICAL: [C-01, C-03, C-06, C-07, C-10, C-11, C-13, C-21, C-22, C-23, C-24]
+    HIGH:     [C-02, C-04, C-05, C-08, C-12, C-14, C-15, C-16, C-20, C-25, C-26]
+    MEDIUM:   [C-09, C-17, C-18, C-19]
+
+  C-01: {description: "FastAPI import boundary", severity: CRITICAL, rule: "MUST NOT import fastapi in any app/engines/** file.", tile: TILE-C-01, gate: Gate-6, scanners: [ARCH-001, ARCH-002], test: "python tools/audit_engine.py --strict --contracts C-01"}
+  C-02: {description: "Handler signature contract", severity: HIGH, rule: "async def handle(tenant: str, payload: dict[str, Any]) -> dict[str, Any] — exact signature MUST be used.", tiles: [TILE-C-02, TILE-C-03], gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-02"}
+  C-03: {description: "Tenant isolation in Neo4j", severity: CRITICAL, rule: "MUST include WHERE n.tenant_id = $tenant_id in all MATCH/MERGE/CREATE queries.", tile: TILE-C-03, gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-03"}
+  C-04: {description: "structlog only — print() forbidden", severity: HIGH, rule: "MUST use structlog exclusively. MUST NOT use print() in any production module.", tile: TILE-C-04, gate: Gate-6, scanners: [OBS-001], test: "python tools/audit_engine.py --strict --contracts C-04"}
+  C-05: {description: "Modern type hints — Optional/List/Dict forbidden", severity: HIGH, rule: "MUST use list[T], dict[K,V], T | None. MUST NOT use Optional, List, Dict from typing.", tile: TILE-C-05, gate: Gate-3, scanners: [TYPE-001, TYPE-002, TYPE-003], autofix: "ruff --fix", test: "mypy app --ignore-missing-imports"}
+  C-06: {description: "eval/exec/compile/pickle forbidden", severity: CRITICAL, rule: "MUST NOT use eval(), exec(), compile(), or pickle.loads() in any production file.", tile: TILE-C-06, gate: Gate-6, scanners: [SEC-002, SEC-003, SEC-004, SEC-006], test: "python tools/audit_engine.py --strict --contracts C-06"}
+  C-07: {description: "Cypher injection prevention", severity: CRITICAL, rule: "MUST NOT use f-strings or .format() for Cypher labels. MUST use sanitize_label().", tile: TILE-C-07, gate: Gate-6, scanners: [SEC-001], test: "python tools/audit_engine.py --strict --contracts C-07"}
+  C-08: {description: "yaml.safe_load only", severity: HIGH, rule: "MUST use yaml.safe_load(). MUST NOT use yaml.load() without SafeLoader argument.", tile: TILE-C-08, gate: Gate-6, scanners: [SEC-007], test: "python tools/audit_engine.py --strict --contracts C-08"}
+  C-09: {description: "L9 environment variable prefix", severity: MEDIUM, rule: "All environment variables MUST be prefixed L9_. MUST be defined in CONFIG_ENV_CONTRACT.md.", tile: TILE-C-09, gate: Gate-6, test: "python tools/audit_engine.py --contracts C-09"}
+  C-10: {description: "Zero hardcoded credentials", severity: CRITICAL, rule: "MUST NOT hardcode any credential, API key, password, or secret in any committed file.", tile: TILE-C-10, gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-10"}
+  C-11: {description: "TransportPacket immutability — PacketEnvelope forbidden", severity: CRITICAL, rule: "MUST NOT use PacketEnvelope. MUST NOT mutate TransportPacket after construction.", tile: TILE-C-11, gate: Gate-10, test: "python tools/transport_clean.py --strict"}
+  C-12: {description: "No Field(alias=...) in Pydantic", severity: HIGH, rule: "MUST NOT use Field(alias=...) in any Pydantic model.", tile: TILE-C-12, gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-12"}
+  C-13: {description: "Transport bundle lockstep", severity: CRITICAL, rule: "MUST NOT modify a subset of active transport bundle files. All 6 MUST change together.", tile: TILE-C-13, gate: Gate-6, h_gate: H-2, test: "python tools/audit_engine.py --strict --contracts C-13"}
+  C-14: {description: "Handler test parity", severity: HIGH, rule: "MUST include tests/unit/test_<handler_name>.py in the same PR as any new handler.", tile: TILE-C-14, gate: Gate-4, test: "pytest tests/unit -q"}
+  C-15: {description: "Coverage threshold >= 60%", severity: HIGH, rule: "pytest --cov-fail-under=60 MUST pass.", tile: TILE-C-15, gate: Gate-4, test: "pytest tests/unit tests/compliance --cov=app --cov-fail-under=60 -q"}
+  C-16: {description: "Python 3.12 only", severity: HIGH, rule: "MUST target Python 3.12. MUST NOT use any py_version < 3.12 backport.", tile: TILE-C-16, gate: Gate-1, test: "python --version | grep '3.12' || exit 1"}
+  C-17: {description: "No camelCase Python field names", severity: MEDIUM, rule: "MUST use snake_case for all Python identifiers.", tile: TILE-C-17, gate: Gate-1, test: "ruff check . | grep N806 && exit 1 || exit 0"}
+  C-18: {description: "Ruff ignore list frozen", severity: MEDIUM, rule: "MUST NOT modify ruff lint ignore list without T4 review and SHA baseline update.", tile: TILE-INV-017, gate: Gate-1, test: "sha256sum pyproject.toml | diff - .ruff_baseline_sha && exit 0 || exit 1"}
+  C-19: {description: "GDS jobs are spec-driven", severity: MEDIUM, rule: "MUST NOT hardcode GDS job configuration. All parameters MUST derive from spec.yaml.", tile: TILE-C-19, gate: Gate-6, test: "python tools/audit_engine.py --contracts C-19"}
+  C-20: {description: "L9META header required", severity: HIGH, rule: "Every template-managed production .py file MUST begin with L9META header.", tile: TILE-C-20, gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-20"}
+  C-21: {description: "v1/execute route ownership", severity: CRITICAL, rule: "MUST NOT define v1/execute route outside app/main.py.", tile: TILE-INV-001, gate: Gate-10, test: "python tools/transport_clean.py --strict"}
+  C-22: {description: "Pure tile evaluators — no side effects", severity: CRITICAL, rule: "MUST NOT perform filesystem writes, network calls, or state mutation in tile evaluators.", tile: TILE-C-22, gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-22"}
+  C-23: {description: "Append-only evidence — no UPDATE or DELETE", severity: CRITICAL, rule: "MUST NOT issue UPDATE or DELETE on policy_decisions table. INSERT only.", tile: TILE-C-23, gate: Gate-9, test: "python tools/evidence_integrity.py --depth 100"}
+  C-24: {description: "No spoke execution — hub MUST NOT execute spoke-side code", severity: CRITICAL, rule: "Tile bundles MUST be shipped as source. Evaluation MUST happen spoke-side.", tile: TILE-C-24, gate: Gate-6, test: "python tools/audit_engine.py --strict --contracts C-24"}
+  C-25: {description: "TransportPacket constructor — create_transport_packet() only", severity: HIGH, rule: "MUST NOT instantiate TransportPacket() directly. MUST use create_transport_packet().", tile: TILE-C-25, gate: Gate-10, test: "python tools/transport_clean.py --strict"}
+  C-26: {description: "Tile status transitions: proposed -> active -> deprecated only", severity: HIGH, rule: "MUST follow tile lifecycle. proposed -> deprecated direct transition is forbidden.", tile: TILE-C-26, gate: Gate-8, test: "python tools/tile_validator.py tiles/active"}
+
+ci_gates:
+  rule: "All 10 gates MUST pass before any merge. Removing any gate is a CRITICAL violation."
+  Gate-1:  {name: lint,              command: "ruff check .",                                                    blocks_on: "any lint violation",                          waiver: none}
+  Gate-2:  {name: format,            command: "ruff format --check .",                                           blocks_on: "any format violation",                        waiver: none}
+  Gate-3:  {name: types,             command: "mypy app",                                                        blocks_on: "type errors",                                 waiver: "WAIVER-001: mypy non-blocking status — Unknown. Verify against current AGENTS.md."}
+  Gate-4:  {name: unit-tests,        command: "pytest tests/unit tests/compliance --cov=app --cov-fail-under=60 -q", blocks_on: "test failure or coverage < 60%",         waiver: none}
+  Gate-5:  {name: ci-tests,          command: "pytest tests/ci -q",                                              blocks_on: "CI integration test failure",                  waiver: none}
+  Gate-6:  {name: audit,             command: "python tools/audit_engine.py --strict",                           blocks_on: "any CRITICAL or HIGH violation",               waiver: none}
+  Gate-7:  {name: contracts,         command: "python tools/verify_contracts.py",                                blocks_on: "manifest integrity failure",                   waiver: none}
+  Gate-8:  {name: tile-syntax,       command: "python tools/tile_validator.py tiles/active",                     blocks_on: "malformed YAML, missing fields, invalid status", waiver: none}
+  Gate-9:  {name: evidence-integrity, command: "python tools/evidence_integrity.py --depth 100",                 blocks_on: "broken prev_hash chain or missing evidence fields", waiver: none}
+  Gate-10: {name: transport-clean,   command: "python tools/transport_clean.py --strict",                        blocks_on: "PacketEnvelope, chassis_router, chassis_registry, chassis_envelope in production paths", waiver: none, note: "The architectural firewall. MUST NOT be removed or bypassed."}
+
+forbidden_patterns:
+  SEC-001: {pattern: "Cypher f-string injection",          tile: TILE-C-07,    gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-07"}
+  SEC-002: {pattern: "eval() usage",                       tile: TILE-C-06,    gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-06"}
+  SEC-003: {pattern: "exec() usage",                       tile: TILE-C-06,    gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-06"}
+  SEC-004: {pattern: "pickle.loads() usage",               tile: TILE-C-06,    gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-06"}
+  SEC-005: {pattern: "subprocess(shell=True)",             tile: Unknown,       gate: Gate-6,  test: "python tools/audit_engine.py --strict"}
+  SEC-006: {pattern: "compile() usage",                    tile: TILE-C-06,    gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-06"}
+  SEC-007: {pattern: "yaml.load() without SafeLoader",     tile: TILE-C-08,    gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-08"}
+  ARCH-001: {pattern: "from fastapi import ... in engines", tile: TILE-C-01,   gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-01"}
+  ARCH-002: {pattern: "import fastapi in engines",          tile: TILE-C-01,   gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-01"}
+  ARCH-003: {pattern: "chassis_router.py in production",    tile: TILE-C-11,   gate: Gate-10, test: "python tools/transport_clean.py --strict"}
+  ERR-001:  {pattern: "bare except clause",                 tile: Unknown,       gate: Gate-1,  test: "ruff check . --select E722"}
+  OBS-001:  {pattern: "structlog.configure() in engine",    tile: TILE-C-04,   gate: Gate-6,  test: "python tools/audit_engine.py --contracts C-04"}
+  STUB-001: {pattern: "pass in production function",        tile: TILE-STUB-001, gate: Gate-6, test: "python tools/audit_engine.py --strict"}
+  STUB-002: {pattern: "... as production function body",    tile: TILE-STUB-002, gate: Gate-6, test: "python tools/audit_engine.py --strict"}
+  STUB-003: {pattern: "TODO/FIXME without ticket",          tile: TILE-STUB-003, gate: Gate-6, test: "python tools/audit_engine.py --strict"}
+  TYPE-001: {pattern: "Optional from typing",               tile: TILE-C-05,   gate: Gate-3,  test: "mypy app", autofix: "ruff --fix"}
+  TYPE-002: {pattern: "List from typing",                   tile: TILE-C-05,   gate: Gate-3,  test: "mypy app", autofix: "ruff --fix"}
+  TYPE-003: {pattern: "Dict from typing",                   tile: TILE-C-05,   gate: Gate-3,  test: "mypy app", autofix: "ruff --fix"}
+
+pydantic_v2_canonical_pattern:
+  contracts: [C-05, C-12, C-16, C-17]
+  tier: T5
+  operating_rules:
+    - "MUST use Pydantic v2. MUST use model_validator, not validator."
+    - "MUST use T | None instead of Optional[T]."
+    - "MUST use list[T] instead of List[T]."
+    - "MUST use dict[K, V] instead of Dict[K, V]."
+    - "MUST NOT use Field(alias=...)."
+    - "MUST NOT use camelCase field names."
+    - "T5 models require 2 reviewers + CI green before merge."
+
+branch_protection:
+  protected_branches: [main, staging]
+  operating_rules:
+    - "MUST NOT push directly to main or staging."
+    - "MUST require CI green (all 10 gates) before merge."
+    - "MUST require minimum 1 reviewer (T3+). T4/T5 require 2 reviewers."
+    - "MUST NOT merge with unresolved review comments."
+    - "MUST NOT force-push to protected branches."
+    - "PR title MUST reference affected contract: [C-11] Fix transport layer"
+    - "PR description MUST include: scope, contract impact, test evidence, rollback plan."
+
+dependency_graph:
+  upstream_inputs: [K01, AGENTS.md, INVARIANTS.md]
+  downstream_consumers: [K03, K04, K05]
+  prerequisites: [K01 loaded, tools/ directory present, AGENTS.md present]
+  blast_radius: {severity: HIGH, scope: "CI enforcement across all nodes. Merge blocking."}
+
+invariants:
+  - id: INV-K02-1
+    rule: "All 10 CI gates MUST remain in Makefile and CI pipeline."
+    severity: CRITICAL
+    test: "grep -c 'Gate-' Makefile | grep -q '^10$' || exit 1"
+  - id: INV-K02-2
+    rule: "C-01 through C-26 are immutable. No contract may be silently downgraded."
+    severity: CRITICAL
+    test: "python tools/verify_contracts.py"
+  - id: INV-K02-3
+    rule: "Evidence records are append-only. Gate-9 enforces hash chain integrity."
+    severity: CRITICAL
+    test: "python tools/evidence_integrity.py --depth 100"
+  - id: INV-K02-4
+    rule: "Coverage MUST NOT drop below 60%."
+    severity: HIGH
+    test: "pytest tests/unit tests/compliance --cov=app --cov-fail-under=60 -q"
+
+edge_cases:
+  - scenario: "Tile evaluator performs database write during evaluation"
+    recovery: "C-22 FAIL. Evaluator quarantined. Rewrite as pure function."
+    test: "python tools/audit_engine.py --strict --contracts C-22"
+  - scenario: "Coverage drops below 60% due to new untested handler"
+    recovery: "Gate-4 FAILS. Add handler test in same PR per C-14."
+    test: "Gate-4"
+  - scenario: "Developer adds new ruff ignore entry"
+    recovery: "TILE-INV-017 FAIL. SHA drift detected. T4 review required before merge."
+    test: "C-18"
+  - scenario: "PR missing contract impact in description"
+    recovery: "Reviewer MUST block PR. Do not merge. PR template enforces format."
+    test: "Branch protection rules"
+
+validation_checks:
+  - id: VC-K02-1
+    command: "make agent-check"
+    passes_when: "exit 0"
+  - id: VC-K02-2
+    command: "python tools/verify_contracts.py"
+    passes_when: "exit 0, no integrity failures"
+  - id: VC-K02-3
+    command: "python tools/audit_engine.py --strict"
+    passes_when: "exit 0, zero CRITICAL or HIGH violations"
+  - id: VC-K02-4
+    command: "python tools/transport_clean.py --strict"
+    passes_when: "exit 0, zero PacketEnvelope occurrences"
+
+acceptance_criteria:
+  - "All 26 contracts enforced programmatically or by tile. None are comment-only."
+  - "All 10 CI gates pass on clean repository state."
+  - "All Pydantic models use modern type hints. Zero Optional, List, Dict."
+  - "Zero print() statements in any production file."
+  - "Branch protection enforced. No direct push to main or staging."
+
+regression_guards:
+  - "Gate count MUST remain 10. Removing any gate is a CRITICAL violation."
+  - "Contract severity MUST NOT be reduced without T4 review and AGENTS.md update."
+  - "Pydantic v2 requirement is invariant. MUST NOT downgrade to v1 patterns."
+
+stop_conditions:
+  - "Any gate 1–10 failure. Stop. Fix before proceeding."
+  - "Contract violation detected during authoring. Stop. Correct before submitting PR."
+  - "python tools/verify_contracts.py fails. Stop. Investigate manifest integrity."
+
+output_requirements:
+  - "Every .py file passes all 10 gates independently."
+  - "Every new model follows canonical Pydantic v2 pattern."
+  - "Every PR includes contract impact, test evidence, and rollback plan."
+  - "Every handler has a corresponding test in the same PR. (C-14)"
+
+unknowns:
+  - "Gate-3 WAIVER-001 (mypy non-blocking): verify current enforcement stance against AGENTS.md."
+  - "SEC-005 tile ID: subprocess(shell=True) scanner — verify tile exists in tiles/active/."
+  - "ERR-001 tile ID: bare except scanner — verify tile exists in tiles/active/."

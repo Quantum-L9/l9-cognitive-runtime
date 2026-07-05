@@ -1,0 +1,61 @@
+contract_id: FINAL_EXECUTION_CONTRACT
+contract_type: universal_execution_contract
+version: 1.0.0
+source_activation_plan: runtime/kernel_pipeline/planner/KERNEL_ACTIVATION_PLAN.example.yaml
+terminal_doctrine: runtime/kernels/terminal/flawless_victory.contract.yaml
+objective: Execute the selected runtime task with evidence-backed validation and no drift.
+authority_order:
+  - user task
+  - kernel activation plan
+  - repo files
+  - runtime pipeline contracts
+  - tests and validation evidence
+  - Unknown
+kernel_activation:
+  - runtime/kernels/task/repo_auditor_kernel.yaml
+  - runtime/kernels/constitutional/K01-platform-architecture-engine.yaml
+  - runtime/kernels/constitutional/K02-contracts-code-laws-enforcement.yaml
+  - runtime/kernels/constitutional/K03-constellation-transport-authority.yaml
+  - runtime/kernels/constitutional/K04-domain-spec-yaml-authoring.yaml
+  - runtime/kernels/constitutional/K05-file-ownership-placement-capability-registry.yaml
+  - runtime/kernels/task/prompt_compiler_kernel.yaml
+  - runtime/kernels/terminal/flawless_victory.contract.yaml
+execution_sequence:
+  - lock context
+  - run constitutional preflight
+  - apply selected task and architecture kernels
+  - run alignment and stub gate
+  - run recursive improvement
+  - run leverage compression
+  - execute terminal doctrine only after gates pass
+  - emit evidence-backed final summary
+validation_requirements:
+  - pipeline order validated
+  - kernel roles unique
+  - no duplicate active kernels
+  - phase outputs satisfied or blocked with reason
+  - adapter render preserves canonical contract
+  - no fake validation
+stop_conditions:
+  - activation plan missing or invalid
+  - required kernel unavailable
+  - terminal doctrine requested before gates pass
+  - validation cannot be run honestly
+  - scope conflict requires operator decision
+output_contract:
+  - summary
+  - files_changed_or_artifacts_created
+  - validation_results
+  - remaining_unknowns
+  - merge_or_execution_readiness
+  - minimum_safe_next_action
+  - convergence_block
+adapter_targets:
+  - claude_code
+  - cursor
+  - codex
+  - chatgpt
+  - human_operator
+metadata:
+  compiled_by: runtime/contract_compiler/compile_execution_contract.py
+  pipeline_id: l9_clean_kernel_pipeline.v1

@@ -1,0 +1,48 @@
+# DORA META | component: L9 Engine Build Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
+---
+file: L9_ENGINE_BUILD_KERNEL.yaml
+version: "1.0.0"
+ring: R5
+category: primary_task
+kernel_id: l9_engine_build_kernel.v1
+requires: [DEVELOPER_CORE_KERNEL, MASTER_SOVEREIGNTY_KERNEL]
+
+init:
+  on_load: activate
+  verify: [l9_boundary_active, handler_contract_loaded]
+  announce: false
+
+description: >
+  L9-specific build kernel. Engine-only, PacketEnvelope-safe, zero-stub,
+  spec-driven repo generation. Not for gateway, auth, or platform infra.
+
+l9_boundary:
+  engine_only: true
+  chassis_forbidden: [fastapi_routes, auth, rate_limiting, platform_logging_config, metrics_config, docker_orchestration, ci_cd_unless_requested]
+
+handler_contract:
+  signature: "async def handle_<action>(tenant: str, payload: dict) -> dict"
+
+hard_bans:
+  - "eval"
+  - "exec"
+  - "pickle.loads"
+  - "yaml.load without safe_loader"
+  - "f-string query values"
+  - "fastapi imports in engine/"
+  - "httpx or requests between nodes"
+  - "direct packetstore insert"
+  - "NotImplementedError"
+  - "TODO"
+  - "placeholder"
+
+load_when: [L9_repo_build, engine_build, constellation_node, PacketEnvelope_sensitive]
+do_not_load_when: [generic_fastapi, platform_infra]
+
+convergence_footer:
+  status: converged
+  threshold: "changed_tokens / total_tokens < 0.05"
+  pass_count: 1
+  final_ratio: 0.021
+  artifact_type: yaml_kernel
+  naming_compliance: snake_case_verified

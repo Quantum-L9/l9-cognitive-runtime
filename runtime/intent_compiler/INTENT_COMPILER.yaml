@@ -1,0 +1,15 @@
+compiler_id: l9_intent_compiler.v1
+status: active
+purpose: Normalize human intent into a canonical intent contract before kernel planning.
+authority_order:
+  - user_latest_instruction
+  - uploaded_artifacts
+  - existing_pack_contracts
+  - unknown
+outputs:
+  - INTENT_CONTRACT.yaml
+hard_rules:
+  - do_not_render_adapter_output
+  - do_not_skip_kernel_planner
+  - preserve_unknowns
+  - keep_contract_model_agnostic

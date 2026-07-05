@@ -1,0 +1,236 @@
+kernel_id: K01-platform-architecture-engine
+canonical_name: Platform Architecture & Engine Boundary
+version: "2.1.0"
+status: ACTIVE
+category: execution_and_no_drift
+activation_order: 1
+
+source_files:
+  - L9_Platform_Architecture.md
+  - L9_Platform_Infrastructure.md
+  - L9_Platform_Architecture-Constellation.md
+
+purpose: >
+  Define the immutable chassis topology, single-ingress law, SDK transport
+  authority, active transport bundle, bootstrap path, engine/API boundary,
+  and multi-tenant isolation model for all L9 constellation nodes.
+
+activation_trigger:
+  required_always: true
+  load_when_any:
+    - task_involves: [".py file authoring", "SDK transport usage", "engine module development"]
+    - task_involves: ["infrastructure changes", "constellation node work", "PR review"]
+  load_order: 1
+  prerequisite_kernels: none
+  test: "K01 is present in session context before any other kernel is loaded."
+
+authority_order:
+  1: "AGENTS.md — C-01 through C-26, autonomy tiers T0–T5"
+  2: "INVARIANTS.md — INV-1 through INV-20+"
+  3: "GUARDRAILS.md — runtime transport + tenant safety"
+  4: "ARCHITECTURE.md — SDK topology, active bundle definition"
+  5: "K01 (this kernel)"
+  6: "K02 through K05"
+
+transport_law:
+  canonical_transport_object: TransportPacket
+  canonical_import: "from constellation_node_sdk.transport import TransportPacket, create_transport_packet"
+  canonical_constructor: "create_transport_packet(action=..., tenant_id=..., payload=...)"
+  deprecated_symbols:
+    PacketEnvelope:       {status: DEPRECATED, violation: "C-11, C-21, INV-1, INV-15", severity: CRITICAL}
+    chassis_envelope_py:  {status: DEPRECATED, rule: "MUST NOT exist in production paths"}
+    chassis_router_py:    {status: DEPRECATED, rule: "MUST NOT exist in production paths"}
+    chassis_registry_py:  {status: DEPRECATED, rule: "MUST NOT exist in production paths"}
+    engine_main_py:       {status: TRAP, rule: "Delete on discovery. Use create_app() instead."}
+  operating_rules:
+    - "MUST use TransportPacket for all inter-node and hub-spoke transport."
+    - "MUST import from constellation_node_sdk.transport only."
+    - "MUST construct via create_transport_packet() only. MUST NOT instantiate TransportPacket() directly."
+    - "MUST NOT mutate TransportPacket after construction. (C-11, INV-15)"
+    - "MUST NOT re-route v1/execute. Owned by SDK runtime. (C-21)"
+    - "MUST NOT dispatch through chassis_router.py or chassis_registry.py."
+  enforcement:
+    gate: "Gate-10"
+    ci_command: "python tools/transport_clean.py --strict"
+    blocks_merge: true
+
+bootstrap_law:
+  correct_path: "create_app() from the SDK runtime"
+  forbidden_path: "engine_main.py"
+  rule: "MUST bootstrap all L9 nodes via create_app(). Delete engine_main.py on discovery."
+  deletion_record: "docs/migrations/engine_main_deletion.md MUST exist after deletion."
+  test: "find . -name engine_main.py -not -path '*/deprecated/*' | grep -q . && exit 1 || exit 0"
+
+active_transport_bundle:
+  description: "Six canonical T4 files. MUST all move together. H-2 required for any modification."
+  modification_contract: C-13
+  h_gate: H-2
+  files:
+    - app/main.py
+    - app/api/v1/chassis_endpoint.py
+    - app/services/chassis_handlers.py
+    - app/engines/orchestration_layer.py
+    - app/engines/handlers.py
+    - app/engines/graph_sync_client.py
+
+engine_api_boundary:
+  operating_rules:
+    - "MUST NOT import FastAPI or any HTTP framework inside engine modules. (C-01, INV-2)"
+    - "MUST NOT place business logic in API layer files."
+    - "Engine modules MUST be pure business logic with no HTTP awareness."
+    - "FastAPI imports permitted only in app/api/** and app/main.py."
+  enforcement:
+    tile: TILE-C-01
+    gate: Gate-6
+    test: "python tools/audit_engine.py --strict --contracts C-01"
+
+tenant_isolation_law:
+  contracts: [C-03, INV-3]
+  severity: CRITICAL
+  operating_rules:
+    - "EVERY Neo4j query MUST include WHERE n.tenant_id = $tenant_id scoping."
+    - "MUST use sanitize_label() for all dynamic Cypher labels. (C-07)"
+    - "MUST NOT execute any Cypher query without tenant_id parameter binding."
+  enforcement:
+    tile: TILE-C-03
+    gate: Gate-6
+    test: "python tools/audit_engine.py --strict --contracts C-03"
+
+observability_law:
+  contract: C-04
+  severity: HIGH
+  operating_rules:
+    - "EVERY engine module MUST use structlog. MUST NOT use print()."
+    - "MUST log tile_id, node_name, result, tenant_id on every evaluation entry."
+    - "MUST log record_id, sequence_number on every evidence write."
+    - "MUST log proposal_id, confidence, contract_id on every discovery event."
+    - "MUST NOT log api_keys, partner_data, or raw_llm_responses at INFO or above."
+  enforcement:
+    tile: TILE-C-04
+    gate: Gate-6
+    test: "python tools/audit_engine.py --strict --contracts C-04"
+
+l9meta_header_law:
+  contracts: [C-20, INV-10]
+  rule: "Every template-managed production file MUST begin with: # L9META version=X.Y.Z, owner=<module>, contract=<C-N>"
+  enforcement:
+    tile: TILE-C-20
+    gate: Gate-6
+    test: "python tools/audit_engine.py --strict --contracts C-20"
+
+zero_stub_law:
+  invariant: INV-14
+  severity: HIGH
+  operating_rules:
+    - "MUST NOT use pass in any production function body."
+    - "MUST NOT use ... as a production function body."
+    - "MUST NOT commit TODO or FIXME without a linked ticket."
+    - "Every production function MUST have a docstring and full type annotations."
+  enforcement:
+    tiles: [TILE-STUB-001, TILE-STUB-002, TILE-STUB-003]
+    gate: Gate-6
+
+autonomy_tiers:
+  T0: {role: "Generated reports", review: "None — read-only artifacts"}
+  T1: {role: "Monitoring and telemetry read paths", review: "Single reviewer"}
+  T2: {role: "Tools, audit scripts", review: "Reduced review"}
+  T3: {role: "Engine logic, tile engine, evidence, node registry", review: "Standard review"}
+  T4: {role: "Active transport bundle, app/main.py", review: "H-1 or H-2 required"}
+  T5: {role: "Core Pydantic v2 models", review: "2 reviewers + CI green"}
+
+human_gates:
+  authority: "K01 is canonical. K02 and K03 reference H-gates but do not redefine them."
+  H-1: {scope: "app/main.py modification", tier: T4, requires: "human required"}
+  H-2: {scope: "Active transport bundle modification", tier: T4, requires: "2 reviewers"}
+  H-3: {scope: "Tile proposal approval or rejection", tier: T3, requires: "governance endpoint human action"}
+  H-4: {scope: "AGENTS.md, INVARIANTS.md, GUARDRAILS.md modification", tier: T4, requires: "human required"}
+  H-5: {scope: "Contract proposal approval", tier: T4, requires: "always H-gate, no fast-track"}
+  H-6: {scope: "Evidence schema migration", tier: T5, requires: "2 reviewers + CI green"}
+  H-7: {scope: "Node deregistration (irreversible)", tier: T4, requires: "human confirmation"}
+  H-8: {scope: "Hash chain verification logic modification", severity: CRITICAL, requires: "human required"}
+  bypass_rule: "MUST NOT allow any agent to bypass, auto-approve, or rationalize around any H-gate."
+
+dependency_graph:
+  upstream_inputs: [AGENTS.md, INVARIANTS.md, GUARDRAILS.md, constellation_node_sdk]
+  downstream_consumers: [K02, K03, K04, K05]
+  blast_radius: {severity: CRITICAL, scope: "Violation cascades to ALL constellation nodes and all kernels."}
+
+invariants:
+  - id: INV-K01-1
+    rule: "TransportPacket is the ONLY canonical transport object. PacketEnvelope does not exist."
+    severity: CRITICAL
+    test: "python tools/transport_clean.py --strict"
+  - id: INV-K01-2
+    rule: "v1/execute is owned by SDK runtime. No file outside app/main.py may define this route."
+    severity: CRITICAL
+    test: "grep -r 'post.*v1/execute' app/ --include='*.py' | grep -v app/main.py | grep -q . && exit 1 || exit 0"
+  - id: INV-K01-3
+    rule: "Every Neo4j query includes tenant_id scoping."
+    severity: CRITICAL
+    test: "python tools/audit_engine.py --strict --contracts C-03"
+  - id: INV-K01-4
+    rule: "engine_main.py MUST NOT exist in any production repository."
+    severity: CRITICAL
+    test: "find . -name engine_main.py -not -path '*/deprecated/*' | grep -q . && exit 1 || exit 0"
+  - id: INV-K01-5
+    rule: "No FastAPI import in any engine module."
+    severity: CRITICAL
+    test: "python tools/audit_engine.py --strict --contracts C-01"
+
+edge_cases:
+  - scenario: "engine_main.py exists in new repo clone"
+    recovery: "Delete immediately. Document in docs/migrations/engine_main_deletion.md. Block merge."
+    test: "INV-K01-4"
+  - scenario: "PacketEnvelope found in production path"
+    recovery: "Gate-10 FAILS. Block merge. Replace all PacketEnvelope usage with TransportPacket."
+    test: "INV-K01-1"
+  - scenario: "Developer imports Optional from typing"
+    recovery: "Gate-3 or TILE-TYPE-001 catches. Auto-fixable via ruff --fix."
+    test: "Gate-3"
+  - scenario: "Tenant scoping omitted in query refactor"
+    recovery: "TILE-C-03 FAIL. Merge blocked. Add WHERE n.tenant_id = $tenant_id."
+    test: "INV-K01-3"
+  - scenario: "Active transport bundle file modified in isolation"
+    recovery: "C-13 FAIL. Merge blocked. All 6 bundle files MUST move together with H-2."
+    test: "TILE-C-13"
+
+validation_checks:
+  - id: VC-K01-1
+    command: "make agent-check"
+    passes_when: "exit 0 (all 10 gates)"
+  - id: VC-K01-2
+    command: "python tools/transport_clean.py --strict"
+    passes_when: "exit 0 — zero deprecated symbol occurrences"
+  - id: VC-K01-3
+    command: "find . -name engine_main.py -not -path '*/deprecated/*' | wc -l | grep -q '^0$'"
+    passes_when: "engine_main.py absent from production tree"
+  - id: VC-K01-4
+    command: "python tools/audit_engine.py --strict --contracts C-01,C-03,C-04,C-20"
+    passes_when: "exit 0 — zero CRITICAL or HIGH violations"
+
+acceptance_criteria:
+  - "TransportPacket used everywhere. Gate-10 exits 0."
+  - "Bootstrap path is create_app() only. engine_main.py absent."
+  - "API layer has no business logic. Engine layer has no FastAPI imports."
+  - "All Cypher queries include tenant_id. TILE-C-03 passes."
+  - "All H-gates H-1 through H-8 are enumerated and enforced. No agent bypass possible."
+
+regression_guards:
+  - "Gate-10 transport_clean.py MUST remain in Makefile and CI. Removal is a CRITICAL violation."
+  - "Tenant isolation tile MUST NOT be downgraded from CRITICAL severity without H-4 + H-5."
+  - "H-gate definitions MUST NOT be modified without H-4 review."
+
+stop_conditions:
+  - "Any Gate 1–10 failure. Stop. Do not proceed to next phase."
+  - "PacketEnvelope detected in production path. Stop. Await human resolution."
+  - "H-gate reached. Stop. Do not auto-approve."
+  - "engine_main.py detected in production tree. Stop. Delete and re-verify Gate-10."
+
+output_requirements:
+  - "All production files use TransportPacket from canonical SDK import."
+  - "All production files include L9META header. (C-20)"
+  - "All engine modules use structlog exclusively. No print(). (C-04)"
+  - "All Pydantic models use modern type hints. (C-05)"
+  - "All Cypher queries include tenant_id scoping. (C-03)"
+
+unknowns: []

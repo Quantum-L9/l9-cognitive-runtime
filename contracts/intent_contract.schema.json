@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "L9 Intent Contract",
+  "type": "object",
+  "required": [
+    "intent_id",
+    "mission",
+    "task_type",
+    "constraints",
+    "desired_outputs"
+  ],
+  "properties": {
+    "intent_id": {
+      "type": "string"
+    },
+    "mission": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_type": {
+      "type": "string"
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "desired_outputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source_context": {
+      "type": "object"
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,172 @@
+planner_id: l9_kernel_activation_planner.v1
+status: ACTIVE
+purpose: >
+  Select the smallest valid kernel set for a task while preserving constitutional
+  law, phase order, role uniqueness, and terminal-only Flawless Victory activation.
+
+selection_principles:
+  - Always include P0_UNPACK for unknown, repo, archive, pack, or file-based work.
+  - Include P1_CONSTITUTIONAL_PREFLIGHT for any L9, TransportPacket, Gate, kernel, constellation, node, dependency, codegen, CI, or architecture work.
+  - Include P2_TASK_ROUTING for every planned execution path.
+  - Include architecture kernels only when repo taxonomy, dependency birth, bundle boundaries, node extras, or package classification are in scope.
+  - Include improvement kernels only after architecture decisions or when the user asks to clean, harden, dedupe, validate, streamline, or improve.
+  - Include Flawless Victory only when the requested output is a final execution/build contract or an execution-ready terminal handoff.
+  - Prefer fewer task kernels; never activate all task kernels by default.
+
+task_routes:
+  pack_review:
+    match_any:
+      - pack
+      - archive
+      - zip
+      - unpack
+      - inspect
+      - audit
+      - review
+    phases:
+      - P0_UNPACK
+      - P1_CONSTITUTIONAL_PREFLIGHT
+      - P2_TASK_ROUTING
+    task_kernels:
+      - runtime/kernels/task/repo_auditor_kernel.yaml
+    optional_phases:
+      - P4_ALIGNMENT_AND_STUB_GATE
+      - P5_RECURSIVE_IMPROVEMENT
+
+  prompt_or_kernel_compilation:
+    match_any:
+      - prompt
+      - kernel
+      - compiler
+      - compile
+      - contract
+      - handoff
+    phases:
+      - P0_UNPACK
+      - P1_CONSTITUTIONAL_PREFLIGHT
+      - P2_TASK_ROUTING
+    task_kernels:
+      - runtime/kernels/task/prompt_compiler_kernel.yaml
+    optional_phases:
+      - P4_ALIGNMENT_AND_STUB_GATE
+      - P5_RECURSIVE_IMPROVEMENT
+      - P6_LEVERAGE_COMPRESSION
+
+  l9_engine_build:
+    match_any:
+      - l9 engine
+      - TransportPacket
+      - Gate
+      - SDK
+      - chassis
+      - runtime
+      - build
+      - implementation
+    phases:
+      - P0_UNPACK
+      - P1_CONSTITUTIONAL_PREFLIGHT
+      - P2_TASK_ROUTING
+      - P3_ARCHITECTURE_DECISION
+    task_kernels:
+      - runtime/kernels/task/developer_core_kernel.yaml
+      - runtime/kernels/task/l9_engine_build_kernel.yaml
+    optional_phases:
+      - P4_ALIGNMENT_AND_STUB_GATE
+      - P5_RECURSIVE_IMPROVEMENT
+      - P6_LEVERAGE_COMPRESSION
+      - P7_FLAWLESS_VICTORY
+
+  code_review_ci:
+    match_any:
+      - ci
+      - test
+      - lint
+      - typecheck
+      - review
+      - pull request
+      - pr
+      - regression
+    phases:
+      - P0_UNPACK
+      - P1_CONSTITUTIONAL_PREFLIGHT
+      - P2_TASK_ROUTING
+    task_kernels:
+      - runtime/kernels/task/code_review_ci_kernel.yaml
+    optional_phases:
+      - P4_ALIGNMENT_AND_STUB_GATE
+      - P5_RECURSIVE_IMPROVEMENT
+
+  architecture_boundary:
+    match_any:
+      - architecture
+      - taxonomy
+      - dependency
+      - birth
+      - bundle
+      - node extras
+      - package
+      - repo classification
+    phases:
+      - P0_UNPACK
+      - P1_CONSTITUTIONAL_PREFLIGHT
+      - P2_TASK_ROUTING
+      - P3_ARCHITECTURE_DECISION
+    task_kernels:
+      - runtime/kernels/task/repo_auditor_kernel.yaml
+      - runtime/kernels/task/developer_core_kernel.yaml
+    optional_phases:
+      - P4_ALIGNMENT_AND_STUB_GATE
+      - P6_LEVERAGE_COMPRESSION
+
+  cleanup_streamline:
+    match_any:
+      - clean
+      - dedupe
+      - streamline
+      - overlap
+      - improve
+      - harden
+      - leverage
+      - stubs
+      - gaps
+    phases:
+      - P0_UNPACK
+      - P1_CONSTITUTIONAL_PREFLIGHT
+      - P2_TASK_ROUTING
+      - P4_ALIGNMENT_AND_STUB_GATE
+      - P5_RECURSIVE_IMPROVEMENT
+      - P6_LEVERAGE_COMPRESSION
+    task_kernels:
+      - runtime/kernels/task/repo_auditor_kernel.yaml
+      - runtime/kernels/task/prompt_compiler_kernel.yaml
+    optional_phases:
+      - P7_FLAWLESS_VICTORY
+
+terminal_activation:
+  allowed_when_any:
+    - final execution contract
+    - build contract
+    - execution-ready handoff
+    - flawless victory
+    - terminal contract
+  forbidden_before:
+    - P0_UNPACK
+    - P1_CONSTITUTIONAL_PREFLIGHT
+    - P2_TASK_ROUTING
+  requires_outputs:
+    - FINAL_BUILD_CONTRACT.md
+    - VALIDATION_EVIDENCE.md
+    - CONVERGENCE_BLOCK.md
+
+output_contract:
+  file: KERNEL_ACTIVATION_PLAN.yaml
+  required_fields:
+    - task_summary
+    - matched_route
+    - phase_sequence
+    - active_kernels
+    - skipped_kernels
+    - terminal_allowed
+    - required_outputs
+    - blockers
+    - unknowns

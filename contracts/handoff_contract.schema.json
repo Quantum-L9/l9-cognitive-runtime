@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "adapter_notes": {
+      "type": "object"
+    },
+    "contract_id": {
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "handoff_contract"
+    },
+    "decisions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "handoff_summary": {
+      "type": "string"
+    },
+    "loaded_context": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "unknowns": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "contract_id",
+    "contract_type",
+    "handoff_summary",
+    "loaded_context",
+    "next_action",
+    "unknowns"
+  ],
+  "title": "L9 Handoff Contract",
+  "type": "object"
+}

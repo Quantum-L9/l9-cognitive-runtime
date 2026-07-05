@@ -1,0 +1,41 @@
+task_summary: clean and dedupe this L9 kernel pack, then prepare a build contract
+matched_route: prompt_or_kernel_compilation
+confidence: high
+phase_sequence:
+- P0_UNPACK
+- P1_CONSTITUTIONAL_PREFLIGHT
+- P2_TASK_ROUTING
+- P7_FLAWLESS_VICTORY
+active_kernels:
+- runtime/kernels/task/repo_auditor_kernel.yaml
+- runtime/kernels/constitutional/K01-platform-architecture-engine.yaml
+- runtime/kernels/constitutional/K02-contracts-code-laws-enforcement.yaml
+- runtime/kernels/constitutional/K03-constellation-transport-authority.yaml
+- runtime/kernels/constitutional/K04-domain-spec-yaml-authoring.yaml
+- runtime/kernels/constitutional/K05-file-ownership-placement-capability-registry.yaml
+- runtime/kernels/task/prompt_compiler_kernel.yaml
+- runtime/kernels/terminal/flawless_victory.contract.yaml
+skipped_kernels:
+- runtime/kernels/task/developer_core_kernel.yaml
+- runtime/kernels/task/l9_engine_build_kernel.yaml
+- runtime/kernels/task/code_review_ci_kernel.yaml
+- runtime/kernels/architecture/repo_taxonomy_and_dependency_architecture.md
+- runtime/kernels/architecture/dependency_birth_and_mirror_codegen.md
+- runtime/kernels/architecture/bundle_and_node_extras.md
+- runtime/kernels/improvement/recursive_alignment.md
+- runtime/kernels/improvement/validate_eliminate_stubs.md
+- runtime/kernels/improvement/recursive_improvement.md
+- runtime/kernels/improvement/recursive_leverage.md
+terminal_allowed: true
+required_outputs:
+- SYSTEM_MAP.md
+- KERNEL_INVENTORY.json
+- UNKNOWN_QUEUE.md
+- CONSTITUTIONAL_PREFLIGHT_REPORT.md
+- KERNEL_ACTIVATION_PLAN.yaml
+- FINAL_BUILD_CONTRACT.md
+- VALIDATION_EVIDENCE.md
+- CONVERGENCE_BLOCK.md
+blockers: []
+unknowns: []
+next_phase: P0_UNPACK

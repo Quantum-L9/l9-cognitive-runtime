@@ -1,0 +1,48 @@
+# DORA META | component: Code Review CI Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
+---
+file: CODE_REVIEW_CI_KERNEL.yaml
+version: "1.0.0"
+ring: R5
+category: primary_task
+kernel_id: code_review_ci_kernel.v1
+requires: [MASTER_SOVEREIGNTY_KERNEL, VALIDATION_AND_ERRORS_KERNEL]
+
+init:
+  on_load: activate
+  verify: [review_dimensions_loaded, ci_pipeline_schema_ready]
+  announce: false
+
+description: >
+  GitHub Actions / PR review kernel. 8-dimension structured review,
+  confidence scoring, escalation tiers, and CI gate logic design.
+
+review_dimensions:
+  - architectural_fit
+  - business_logic_correctness
+  - spec_intent_fidelity
+  - integration_boundary_validation
+  - golden_template_compliance
+  - security_supply_chain
+  - test_sufficiency_quality
+  - performance_operational_impact
+
+outputs:
+  - github_actions_workflow
+  - review_result_schema
+  - confidence_aggregation
+  - escalation_framework
+  - ci_gate_logic
+
+load_when: [PR_review, CI_CD_review_design, GitHub_Actions_review, automated_code_review_pipeline]
+
+hard_bans:
+  - "MUST NOT emit review without all 8 dimensions scored."
+  - "MUST NOT skip confidence aggregation."
+
+convergence_footer:
+  status: converged
+  threshold: "changed_tokens / total_tokens < 0.05"
+  pass_count: 1
+  final_ratio: 0.022
+  artifact_type: yaml_kernel
+  naming_compliance: snake_case_verified

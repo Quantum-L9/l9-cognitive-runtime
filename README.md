@@ -25,6 +25,19 @@ python -m build
 
 Build artifacts (`dist/`, `*.egg-info/`, caches) must not be committed.
 
+## MCP client configuration (Claude Code / Cursor)
+
+Project-scoped configs (OAuth discovery; no static credentials):
+
+- Claude Code: `.mcp.json`
+- Cursor: `.cursor/mcp.json`
+
+Setup, sanitized OAuth transcript, and secret-scanner usage: [`docs/ops/mcp-client-setup.md`](docs/ops/mcp-client-setup.md).
+
+```bash
+python scripts/scan_mcp_secrets.py .mcp.json .cursor/mcp.json
+```
+
 ## Canonical Tree
 
 ```text

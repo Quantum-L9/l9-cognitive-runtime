@@ -23,7 +23,8 @@ venv/
 
 # Local Cursor-Governance wiring (not package source)
 .claude/
-.cursor/
+.cursor/*
+!.cursor/mcp.json
 .cursor-commands
 .vscode/
 .l9-pr-remediation/

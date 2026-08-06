@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "l9-cognitive-runtime": {
+      "url": "https://runtime.example/v1/mcp"
+    }
+  }
+}

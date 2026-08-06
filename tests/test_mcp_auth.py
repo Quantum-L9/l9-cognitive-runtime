@@ -16,6 +16,9 @@ from l9_cognitive_runtime.mcp.auth import (
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
 
+SECRET = "test-hmac-key-not-for-production-use-32b"
+
+
 def _token(**claims: object) -> str:
     payload = {
         "sub": "user-1",
@@ -24,7 +27,7 @@ def _token(**claims: object) -> str:
         "scope": "runtime:compile runtime:read runtime:capabilities",
         **claims,
     }
-    return jwt.encode(payload, "secret", algorithm="HS256")
+    return jwt.encode(payload, SECRET, algorithm="HS256")
 
 
 def test_protected_resource_metadata() -> None:
@@ -35,7 +38,7 @@ def test_valid_token_and_scope() -> None:
     principal = validate_bearer_jwt(
         _token(),
         audience="https://runtime.example/v1/mcp",
-        secret="secret",
+        secret=SECRET,
     )
     audit = AuditLog()
     require_scope(principal, "compile_runtime", audit)
@@ -47,7 +50,7 @@ def test_wrong_audience_rejected() -> None:
         validate_bearer_jwt(
             _token(aud="https://other.example"),
             audience="https://runtime.example/v1/mcp",
-            secret="secret",
+            secret=SECRET,
         )
 
 
@@ -55,7 +58,7 @@ def test_insufficient_scope() -> None:
     principal = validate_bearer_jwt(
         _token(scope="runtime:read"),
         audience="https://runtime.example/v1/mcp",
-        secret="secret",
+        secret=SECRET,
     )
     audit = AuditLog()
     with pytest.raises(InvalidValueError):

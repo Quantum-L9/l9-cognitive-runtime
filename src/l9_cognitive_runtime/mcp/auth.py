@@ -17,6 +17,7 @@ PROTECTED_RESOURCE_METADATA = {
         "runtime:compile",
         "runtime:read",
         "runtime:capabilities",
+        "runtime:render",
     ],
 }
 
@@ -52,6 +53,7 @@ SCOPE_BY_TOOL = {
     "list_pack_manifest": "runtime:read",
     "validate_pack_path": "runtime:read",
     "get_run": "runtime:read",
+    "runtime_render": "runtime:render",
 }
 
 

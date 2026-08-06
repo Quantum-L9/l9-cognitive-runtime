@@ -12,7 +12,8 @@
     "get_bundle_digests",
     "list_pack_manifest",
     "validate_pack_path",
-    "get_run"
+    "get_run",
+    "runtime_render"
   ],
   "client_certifications": {
     "claude_code": {

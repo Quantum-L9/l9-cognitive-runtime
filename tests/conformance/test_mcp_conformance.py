@@ -108,4 +108,9 @@ def test_cross_principal_run_isolation() -> None:
 
 def test_protected_resource_metadata_lists_scopes() -> None:
     scopes = set(PROTECTED_RESOURCE_METADATA["scopes_supported"])
-    assert {"runtime:compile", "runtime:read", "runtime:capabilities"} <= scopes
+    assert {
+        "runtime:compile",
+        "runtime:read",
+        "runtime:capabilities",
+        "runtime:render",
+    } <= scopes

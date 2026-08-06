@@ -9,6 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from l9_cognitive_runtime import __version__
+from l9_cognitive_runtime.adapters import RENDERERS, render_bundle
 from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore
 from l9_cognitive_runtime.pack import PackLoader
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
@@ -21,6 +22,7 @@ READ_ONLY_TOOLS = (
     "list_pack_manifest",
     "validate_pack_path",
     "get_run",
+    "runtime_render",
 )
 
 
@@ -109,6 +111,17 @@ def build_server(pack_root: Path | None = None) -> MCPServer:
         pack = PackLoader().load(root)
         resolved = pack.resolve(relative_path)
         return {"path": relative_path, "resolved": str(resolved), "exists": resolved.exists()}
+
+    @mcp.tool()
+    def runtime_render(mission: str, target: str = "generic_mcp") -> dict[str, Any]:
+        """Render a compiled bundle for an agent adapter (serialize-only; no execution)."""
+        bundle = service.compile_runtime(CompileRequest(mission=mission, pack_root=root))
+        rendered = render_bundle(bundle, target, RENDERERS)
+        return {
+            "target": rendered.target,
+            "render_digest": rendered.digest(),
+            "payload": rendered.payload,
+        }
 
     @mcp.resource("runtime://capabilities")
     def capabilities_resource() -> str:

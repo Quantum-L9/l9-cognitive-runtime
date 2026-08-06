@@ -14,6 +14,7 @@ REQUIRED_TOOLS = {
     "list_pack_manifest",
     "validate_pack_path",
     "get_run",
+    "runtime_render",
 }
 
 REQUIRED_FIELDS = (

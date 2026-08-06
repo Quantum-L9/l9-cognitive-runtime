@@ -49,6 +49,15 @@ pythonpath = ["src"]
 target-version = "py311"
 line-length = 100
 src = ["src", "tests"]
+# Pack tree on main is not part of the installable package; keep lint scoped.
+exclude = [
+  ".git",
+  ".venv",
+  "dist",
+  "build",
+  "runtime",
+  "reports",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

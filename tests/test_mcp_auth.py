@@ -15,7 +15,6 @@ from l9_cognitive_runtime.mcp.auth import (
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
-
 SECRET = "test-hmac-key-not-for-production-use-32b"
 
 

@@ -54,19 +54,37 @@ def build_server(pack_root: Path | None = None) -> MCPServer:
 
     @mcp.tool()
     def compile_runtime(
-        mission: str, task_type: str = "kernel_runtime_convergence"
+        mission: str,
+        task_type: str = "kernel_runtime_convergence",
+        principal: str = "anonymous",
     ) -> dict[str, Any]:
         """Compile a runtime bundle in memory for the given mission."""
         bundle = service.compile_runtime(
             CompileRequest(mission=mission, task_type=task_type, pack_root=root)
         )
-        return {
+        payload = {
             "digests": bundle.digests(),
             "intent": bundle.intent.to_canonical_dict(),
             "execution_contract_id": bundle.execution.contract_id,
             "graph_id": bundle.graph.graph_id,
             "terminal_node": bundle.graph.terminal_node,
             "provenance": None if bundle.provenance is None else bundle.provenance.to_dict(),
+        }
+        record = runs.create(principal=principal, payload=payload)
+        return {**payload, "run_id": record.run_id, "resource_uri": record.resource_uri}
+
+    @mcp.tool()
+    def get_run(run_id: str, principal: str = "anonymous") -> dict[str, Any]:
+        """Fetch an isolated run record for the calling principal."""
+        record = runs.get(run_id, principal)
+        if record is None:
+            return {"found": False, "run_id": run_id}
+        return {
+            "found": True,
+            "run_id": record.run_id,
+            "resource_uri": record.resource_uri,
+            "payload": record.payload,
+            "expires_at": record.expires_at,
         }
 
     @mcp.tool()

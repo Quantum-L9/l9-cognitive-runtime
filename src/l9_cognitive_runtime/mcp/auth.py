@@ -71,7 +71,9 @@ def validate_bearer_jwt(
             options={"require": ["exp", "sub", "aud", "scope"]},
         )
     except jwt.PyJWTError as exc:
-        raise InvalidValueError("jwt validation failed", path="authorization", details=str(exc)) from exc
+        raise InvalidValueError(
+            "jwt validation failed", path="authorization", details=str(exc)
+        ) from exc
     exp = float(payload["exp"])
     if exp <= (now or time.time()):
         raise InvalidValueError("token expired", path="exp")

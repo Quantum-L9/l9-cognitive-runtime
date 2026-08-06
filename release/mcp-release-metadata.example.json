@@ -1,0 +1,35 @@
+{
+  "release_id": "l9cr-mcp-YYYYMMDD-N",
+  "git_sha": "REPLACE_WITH_FULL_SHA",
+  "image_digest": "sha256:REPLACE_WITH_CURRENT_DIGEST",
+  "rollback": {
+    "image_digest": "sha256:REPLACE_WITH_PREVIOUS_GOOD_DIGEST",
+    "identifier": "prev-good-l9cr-mcp"
+  },
+  "tool_registry": [
+    "runtime_capabilities",
+    "compile_runtime",
+    "get_bundle_digests",
+    "list_pack_manifest",
+    "validate_pack_path",
+    "get_run"
+  ],
+  "client_certifications": {
+    "claude_code": {
+      "status": "pass",
+      "operator": "cryptoxdog",
+      "certified_at": "2026-01-01T00:00:00Z",
+      "notes": "runtime_capabilities + compile_runtime"
+    },
+    "cursor": {
+      "status": "pass",
+      "operator": "cryptoxdog",
+      "certified_at": "2026-01-01T00:00:00Z",
+      "notes": "runtime_capabilities + isolation check"
+    }
+  },
+  "conformance_ci": {
+    "workflow": "mcp-release-gate",
+    "status": "pass"
+  }
+}

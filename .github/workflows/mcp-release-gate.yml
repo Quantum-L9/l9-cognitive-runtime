@@ -1,0 +1,26 @@
+name: mcp-release-gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sync
+        run: uv sync --extra dev
+      - name: MCP conformance
+        run: uv run --no-build pytest tests/conformance -q
+      - name: Secret scan configs
+        run: uv run --no-build python scripts/scan_mcp_secrets.py .mcp.json .cursor/mcp.json
+      - name: Release metadata schema (example must pass)
+        run: |
+          uv run --no-build python scripts/check_mcp_release_gate.py \
+            release/mcp-release-metadata.example.json

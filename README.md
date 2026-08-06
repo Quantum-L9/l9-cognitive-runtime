@@ -38,6 +38,8 @@ Setup, sanitized OAuth transcript, and secret-scanner usage: [`docs/ops/mcp-clie
 python scripts/scan_mcp_secrets.py .mcp.json .cursor/mcp.json
 ```
 
+Production conformance + release gates: [`docs/ops/mcp-release-gates.md`](docs/ops/mcp-release-gates.md).
+
 ## Canonical Tree
 
 ```text

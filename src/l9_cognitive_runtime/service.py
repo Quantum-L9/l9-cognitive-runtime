@@ -1,12 +1,10 @@
-"""In-memory cognitive runtime application service (L9CR-MCP-003)."""
+"""In-memory cognitive runtime application service (L9CR-MCP-003/005)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
-
-import yaml
 
 from l9_cognitive_runtime.models import (
     ExecutionContract,
@@ -15,8 +13,13 @@ from l9_cognitive_runtime.models import (
     IntentContract,
     ValidationContract,
 )
-from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
+from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.pack import PackLoader, PackProvenance
+from l9_cognitive_runtime.parsing import (
+    load_yaml_file,
+    require_known_kernels,
+    require_non_empty_plan,
+)
 
 
 @dataclass(frozen=True)
@@ -56,7 +59,7 @@ class RuntimeBundle:
     provenance: PackProvenance
 
     def digests(self) -> dict[str, str]:
-        payload = {
+        return {
             "intent": self.intent.sha256(),
             "execution": self.execution.sha256(),
             "validation": self.validation.sha256(),
@@ -64,7 +67,6 @@ class RuntimeBundle:
             "graph": self.graph.sha256(),
             "manifest": self.provenance.manifest_digest,
         }
-        return payload
 
 
 class BundleRepository(Protocol):
@@ -109,9 +111,10 @@ class CognitiveRuntimeService:
                 "unknowns": list(request.unknowns),
             }
         )
-        execution = self._load_or_build_execution(pack_root, intent)
-        validation = self._load_or_build_validation(pack_root)
-        handoff = self._load_or_build_handoff(pack_root, intent)
+        execution = self._load_execution(pack_root)
+        validation = self._load_validation(pack_root)
+        handoff = self._load_handoff(pack_root)
+        self._enforce_strict_activation(pack_root, execution)
         graph = self._build_graph(execution)
         return RuntimeBundle(
             intent=intent,
@@ -122,104 +125,50 @@ class CognitiveRuntimeService:
             provenance=provenance,
         )
 
-    def _load_yaml(self, path: Path) -> dict[str, Any]:
-        if not path.is_file():
-            raise InvalidValueError("required YAML missing", path=str(path))
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            raise InvalidValueError("YAML root must be a mapping", path=str(path))
-        return data
-
-    def _load_or_build_execution(
-        self, pack_root: Path, intent: IntentContract
-    ) -> ExecutionContract:
+    def _load_execution(self, pack_root: Path) -> ExecutionContract:
         path = pack_root / "FINAL_EXECUTION_CONTRACT.yaml"
-        if path.is_file():
-            try:
-                return ExecutionContract.from_mapping(self._load_yaml(path))
-            except ModelValidationError:
-                raise
-        # In-memory equivalent of the pack's universal execution contract shape.
-        return ExecutionContract.from_mapping(
-            {
-                "contract_id": "FINAL_EXECUTION_CONTRACT",
-                "contract_type": "universal_execution_contract",
-                "source_activation_plan": (
-                    "runtime/kernel_pipeline/planner/KERNEL_ACTIVATION_PLAN.example.yaml"
-                ),
-                "terminal_doctrine": "runtime/kernels/terminal/flawless_victory.contract.yaml",
-                "objective": intent.mission,
-                "authority_order": [
-                    "user task",
-                    "kernel activation plan",
-                    "repo files",
-                    "runtime pipeline contracts",
-                    "tests and validation evidence",
-                    "Unknown",
-                ],
-                "kernel_activation": [
-                    "runtime/kernels/task/repo_auditor_kernel.yaml",
-                    "runtime/kernels/terminal/flawless_victory.contract.yaml",
-                ],
-                "execution_sequence": [
-                    "lock context",
-                    "run constitutional preflight",
-                    "execute terminal doctrine only after gates pass",
-                ],
-                "validation_requirements": [
-                    "pipeline order validated",
-                    "no fake validation",
-                ],
-                "output_contract": list(intent.desired_outputs),
-                "adapter_targets": [
-                    "claude_code",
-                    "cursor",
-                    "codex",
-                    "chatgpt",
-                    "human_operator",
-                ],
-                "version": "1.0.0",
-                "metadata": {"compiled_by": "CognitiveRuntimeService"},
-            }
-        )
+        return ExecutionContract.from_mapping(load_yaml_file(path))
 
-    def _load_or_build_validation(self, pack_root: Path) -> ValidationContract:
+    def _load_validation(self, pack_root: Path) -> ValidationContract:
         path = pack_root / "VALIDATION_CONTRACT.yaml"
-        if path.is_file():
-            return ValidationContract.from_mapping(self._load_yaml(path))
-        return ValidationContract.from_mapping(
-            {
-                "contract_id": "VALIDATION_CONTRACT",
-                "contract_type": "validation_contract",
-                "validation_ladder": ["format", "schema", "pipeline_order"],
-                "evidence_required": ["status", "findings"],
-                "allowed_statuses": [
-                    "passed",
-                    "failed",
-                    "blocked",
-                    "not_run",
-                    "unknown",
-                    "not_applicable_with_reason",
-                ],
-            }
-        )
+        return ValidationContract.from_mapping(load_yaml_file(path))
 
-    def _load_or_build_handoff(self, pack_root: Path, intent: IntentContract) -> HandoffContract:
+    def _load_handoff(self, pack_root: Path) -> HandoffContract:
         path = pack_root / "HANDOFF_CONTRACT.yaml"
-        if path.is_file():
-            return HandoffContract.from_mapping(self._load_yaml(path))
-        return HandoffContract.from_mapping(
-            {
-                "contract_id": "HANDOFF_CONTRACT",
-                "contract_type": "handoff_contract",
-                "handoff_summary": intent.mission,
-                "loaded_context": ["runtime/kernels", "contracts"],
-                "next_action": (
-                    "Render the universal execution contract through the target adapter."
-                ),
-                "unknowns": list(intent.unknowns or []),
-            }
-        )
+        return HandoffContract.from_mapping(load_yaml_file(path))
+
+    def _enforce_strict_activation(self, pack_root: Path, execution: ExecutionContract) -> None:
+        source = str(pack_root / "FINAL_EXECUTION_CONTRACT.yaml")
+        if not execution.execution_sequence:
+            require_non_empty_plan({}, source=source)
+        if not execution.kernel_activation:
+            require_non_empty_plan({}, source=source)
+        available = self._discover_kernel_ids(pack_root)
+        requested: list[str] = []
+        for item in execution.kernel_activation:
+            rel = item.strip().replace("\\", "/")
+            candidate = (pack_root / rel).resolve()
+            try:
+                candidate.relative_to(pack_root.resolve())
+            except ValueError as exc:
+                raise InvalidValueError("kernel path escapes pack root", path=rel) from exc
+            if candidate.is_file():
+                available.add(rel)
+                available.add(_kernel_id(rel))
+            requested.append(rel if rel in available else _kernel_id(rel))
+        require_known_kernels(requested, available, source="kernel_activation")
+
+    def _discover_kernel_ids(self, pack_root: Path) -> set[str]:
+        kernels_root = pack_root / "runtime" / "kernels"
+        found: set[str] = set()
+        if not kernels_root.is_dir():
+            return found
+        for path in kernels_root.rglob("*"):
+            if path.suffix in {".yaml", ".yml"} and path.is_file():
+                found.add(path.stem)
+                found.add(path.name)
+                found.add(str(path.relative_to(pack_root)).replace("\\", "/"))
+        return found
 
     def _build_graph(self, execution: ExecutionContract) -> ExecutionGraph:
         # Mirror runtime/execution_graph/build_execution_graph.DEFAULT_PHASES in memory.
@@ -282,3 +231,11 @@ class CognitiveRuntimeService:
                 ],
             }
         )
+
+
+def _kernel_id(item: str) -> str:
+    text = item.strip().replace("\\", "/")
+    name = Path(text).name
+    if name.endswith((".yaml", ".yml")):
+        return Path(name).stem
+    return name

@@ -63,7 +63,9 @@ def test_explicit_pack_ref_required() -> None:
 
 def test_bundle_contains_provenance(tmp_path: Path) -> None:
     root = _tiny_pack(tmp_path)
-    # Seed minimal contracts so service can compile against the tiny pack.
+    kernel = root / "runtime" / "kernels" / "task" / "k1.yaml"
+    kernel.parent.mkdir(parents=True)
+    kernel.write_text("id: k1\n", encoding="utf-8")
     (root / "FINAL_EXECUTION_CONTRACT.yaml").write_text(
         "\n".join(
             [
@@ -75,7 +77,7 @@ def test_bundle_contains_provenance(tmp_path: Path) -> None:
                 "authority_order:",
                 "  - user task",
                 "kernel_activation:",
-                "  - k1",
+                "  - runtime/kernels/task/k1.yaml",
                 "execution_sequence:",
                 "  - step",
                 "validation_requirements:",
@@ -89,8 +91,39 @@ def test_bundle_contains_provenance(tmp_path: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
+    (root / "VALIDATION_CONTRACT.yaml").write_text(
+        "\n".join(
+            [
+                "contract_id: VALIDATION_CONTRACT",
+                "contract_type: validation_contract",
+                "validation_ladder:",
+                "  - format",
+                "evidence_required:",
+                "  - status",
+                "allowed_statuses:",
+                "  - passed",
+                "  - failed",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (root / "HANDOFF_CONTRACT.yaml").write_text(
+        "\n".join(
+            [
+                "contract_id: HANDOFF_CONTRACT",
+                "contract_type: handoff_contract",
+                "handoff_summary: test",
+                "loaded_context:",
+                "  - runtime/kernels",
+                "next_action: continue",
+                "unknowns: []",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     service = CognitiveRuntimeService()
     bundle = service.compile_runtime(CompileRequest(mission="with pack", pack_root=root))
     assert isinstance(bundle, RuntimeBundle)
-    assert bundle.provenance is not None
     assert bundle.provenance.pack_ref == str(root.resolve())

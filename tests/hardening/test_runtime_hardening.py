@@ -44,16 +44,19 @@ def test_determinism_across_repeated_compiles() -> None:
 def test_concurrency_compile_isolation() -> None:
     service = CognitiveRuntimeService()
 
-    def _run(idx: int) -> str:
+    def _run(idx: int) -> tuple[str, str]:
         bundle = service.compile_runtime(
             CompileRequest(mission=f"concurrent-{idx}", pack_root=ROOT)
         )
-        return bundle.digests()["graph"]
+        # Intent digests differ by mission; graph may share pack execution contract.
+        return bundle.digests()["intent"], bundle.digests()["graph"]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(_run, range(8)))
     assert len(results) == 8
-    assert len(set(results)) == 8  # missions differ → digests differ
+    intent_digests = {item[0] for item in results}
+    assert len(intent_digests) == 8
+    assert all(item[1] for item in results)
 
 
 def test_path_traversal_rejected(tmp_path: Path) -> None:

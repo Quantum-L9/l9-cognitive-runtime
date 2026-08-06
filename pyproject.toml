@@ -20,13 +20,17 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+  "pydantic>=2.8",
+  "PyYAML>=6.0",
+]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
   "ruff>=0.6",
   "mypy>=1.11",
+  "types-PyYAML>=6.0",
   "build>=1.2",
 ]
 

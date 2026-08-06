@@ -2,6 +2,29 @@
 
 This pack supersedes the uploaded `L9 Cognitive Runtime (kernels).zip` by deduping overlapping kernel material into a smaller kernel-first runtime layout.
 
+## Development Setup (Python package baseline)
+
+The repository is an installable Python project. The `src/l9_cognitive_runtime` package is a baseline namespace only; existing `runtime/` semantics are unchanged and are not relocated by this baseline.
+
+```bash
+# Isolated install (editable + dev tools)
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -e ".[dev]"
+
+# Verify import
+python -c "import l9_cognitive_runtime; print(l9_cognitive_runtime.__version__)"
+
+# Tests, lint, types, build
+pytest
+ruff check src tests
+mypy
+python -m build
+```
+
+Build artifacts (`dist/`, `*.egg-info/`, caches) must not be committed.
+
 ## Canonical Tree
 
 ```text

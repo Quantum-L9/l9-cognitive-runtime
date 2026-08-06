@@ -71,8 +71,7 @@ class BundleRepository(Protocol):
 class LocalBundleRepository:
     def resolve_pack_root(self, pack_root: Path | None) -> Path:
         if pack_root is None:
-            # Default: repository root containing runtime/ and contracts/
-            return Path.cwd()
+            raise InvalidValueError("pack_root is required", path="pack_root")
         root = pack_root.resolve()
         if not root.exists():
             raise InvalidValueError("pack_root does not exist", path=str(root))

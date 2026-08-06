@@ -7,19 +7,35 @@ import json
 import sys
 from pathlib import Path
 
+from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
+
+
+def _confined_write_dir(write_dir: Path, *, allow_root: Path | None = None) -> Path:
+    """Resolve write_dir and require it to stay beneath allow_root (default: cwd)."""
+    root = (allow_root or Path.cwd()).resolve()
+    target = write_dir.expanduser().resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise InvalidValueError(
+            "write_dir escapes allow_root",
+            path=str(write_dir),
+            details={"allow_root": str(root), "resolved": str(target)},
+        ) from exc
+    return target
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compile cognitive runtime artifacts in memory")
     parser.add_argument("--mission", required=True)
     parser.add_argument("--task-type", default="kernel_runtime_convergence")
-    parser.add_argument("--pack-root", type=Path, default=None)
+    parser.add_argument("--pack-root", type=Path, required=True)
     parser.add_argument(
         "--write-dir",
         type=Path,
         default=None,
-        help="Optional directory to materialize artifacts; omitted keeps results in memory only",
+        help="Optional directory under cwd to materialize artifacts; omitted keeps results in memory",
     )
     args = parser.parse_args(argv)
 
@@ -40,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
         "graph": bundle.graph.to_canonical_dict(),
     }
     if args.write_dir is not None:
-        out = args.write_dir
+        out = _confined_write_dir(args.write_dir)
         out.mkdir(parents=True, exist_ok=True)
         text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
         (out / "bundle.json").write_text(text, encoding="utf-8")

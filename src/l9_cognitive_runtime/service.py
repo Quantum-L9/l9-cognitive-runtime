@@ -134,8 +134,7 @@ class CognitiveRuntimeService:
                 "contract_id": "FINAL_EXECUTION_CONTRACT",
                 "contract_type": "universal_execution_contract",
                 "source_activation_plan": (
-                    "runtime/kernel_pipeline/planner/"
-                    "KERNEL_ACTIVATION_PLAN.example.yaml"
+                    "runtime/kernel_pipeline/planner/KERNEL_ACTIVATION_PLAN.example.yaml"
                 ),
                 "terminal_doctrine": "runtime/kernels/terminal/flawless_victory.contract.yaml",
                 "objective": intent.mission,

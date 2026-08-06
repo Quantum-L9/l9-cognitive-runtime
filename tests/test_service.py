@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from l9_cognitive_runtime.cli import _confined_write_dir, main as cli_main
+from l9_cognitive_runtime.cli import _confined_write_dir
+from l9_cognitive_runtime.cli import main as cli_main
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 

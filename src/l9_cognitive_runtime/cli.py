@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
         "--write-dir",
         type=Path,
         default=None,
-        help="Optional directory under cwd to materialize artifacts; omitted keeps results in memory",
+        help="Optional directory under cwd for artifacts; omit for memory-only",
     )
     args = parser.parse_args(argv)
 

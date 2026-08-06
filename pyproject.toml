@@ -21,12 +21,14 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
+  "mcp>=2.0.0",
   "pydantic>=2.8",
   "PyYAML>=6.0",
 ]
 
 [project.scripts]
 l9-cognitive-runtime = "l9_cognitive_runtime.cli:main"
+l9-cognitive-runtime-mcp = "l9_cognitive_runtime.mcp:main"
 
 [project.optional-dependencies]
 dev = [

@@ -223,3 +223,15 @@ runtime/contract_compiler/renderers/
 
 Rule: renderers serialize canonical plans only. They do not choose kernels, rewrite graph order, invent validation, or own execution logic.
 
+
+
+## MCP stdio (read-only)
+
+Local stdio MCP server for Claude Code / Cursor (no HTTP, no writes):
+
+```bash
+export L9_PACK_ROOT="$(pwd)"
+uv run --no-build l9-cognitive-runtime-mcp
+```
+
+Tools: `runtime_capabilities`, `compile_runtime`, `get_bundle_digests`, `list_pack_manifest`, `validate_pack_path`.

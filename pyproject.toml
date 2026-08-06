@@ -65,3 +65,8 @@ python_version = "3.11"
 strict = true
 mypy_path = "src"
 files = ["src", "tests"]
+
+[tool.uv]
+# Allow Cursor-Governance `uv run --no-build` PR gates without building the editable.
+package = false
+

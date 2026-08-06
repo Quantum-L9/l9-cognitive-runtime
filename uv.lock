@@ -114,7 +114,7 @@ wheels = [
 [[package]]
 name = "l9-cognitive-runtime"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },

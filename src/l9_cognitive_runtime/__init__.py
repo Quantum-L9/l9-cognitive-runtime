@@ -15,14 +15,18 @@ from l9_cognitive_runtime.models import (
     IntentContract,
     ValidationContract,
 )
+from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest, RuntimeBundle
 
 __all__ = [
     "__version__",
     "AdapterRender",
+    "CognitiveRuntimeService",
+    "CompileRequest",
     "ExecutionContract",
     "ExecutionGraph",
     "HandoffContract",
     "IntentContract",
+    "RuntimeBundle",
     "ValidationContract",
 ]
 

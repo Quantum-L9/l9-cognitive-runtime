@@ -21,6 +21,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
+  "httpx>=0.28.1",
   "mcp>=2.0.0",
   "pydantic>=2.8",
   "PyYAML>=6.0",
@@ -29,6 +30,7 @@ dependencies = [
 [project.scripts]
 l9-cognitive-runtime = "l9_cognitive_runtime.cli:main"
 l9-cognitive-runtime-mcp = "l9_cognitive_runtime.mcp:main"
+l9-cognitive-runtime-mcp-http = "l9_cognitive_runtime.mcp.http:main"
 
 [project.optional-dependencies]
 dev = [

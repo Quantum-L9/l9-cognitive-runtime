@@ -19,3 +19,15 @@ python -m build
 | 4,8,13,14,15 | FAILURE | SUCCESS |
 
 Sonar SUCCESS alone is insufficient evidence per contract.
+
+
+## rem/mcp-002..005 (2026-08-06)
+
+| Branch | pytest | ruff | mypy |
+|--------|--------|------|------|
+| rem/mcp-002 | 11 passed | pass | pass |
+| rem/mcp-003 | 16 passed | pass | pass |
+| rem/mcp-004 | 23 passed | pass | pass |
+| rem/mcp-005 | 31 passed | pass | pass |
+
+Commands: `uv run python -m pytest -q`, `uv run ruff check .`, `uv run mypy src`

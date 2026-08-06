@@ -1,5 +1,5 @@
 contract_id: L9CR-MCP-PR-REMEDIATION-001
-generated_at: '2026-08-06T19:30:10.950336+00:00'
+generated_at: '2026-08-06T22:37:54.624953+00:00'
 policy: one at a time onto main; rebase successor after each merge
 core_sequence:
 - order: 1
@@ -99,3 +99,32 @@ optional_paused:
   logical_contract: MCP-016
   source_pr: 17
   status: paused
+tracking_pr: 18
+replacement_prs_opened:
+- logical: MCP-001
+  source_pr: 2
+  replacement_pr: 19
+  branch: rem/mcp-001
+  base: main
+- logical: MCP-002
+  source_pr: 3
+  replacement_pr: 20
+  branch: rem/mcp-002
+  base: rem/mcp-001
+- logical: MCP-003
+  source_pr: 4
+  replacement_pr: 21
+  branch: rem/mcp-003
+  base: rem/mcp-002
+- logical: MCP-004
+  source_pr: 5
+  replacement_pr: 22
+  branch: rem/mcp-004
+  base: rem/mcp-003
+- logical: MCP-005
+  source_pr: 6
+  replacement_pr: 23
+  branch: rem/mcp-005
+  base: rem/mcp-004
+status_note: Foundation rem stack through MCP-005 opened. OAuth/staging blocked on human decisions. Source
+  PRs 13-17 on HOLD. Optional 16-17 paused.

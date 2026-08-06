@@ -1,0 +1,128 @@
+"""Shared test fixtures.
+
+``build_pack`` / ``valid_pack`` construct a MANIFEST.json-verified pack from
+the repository's real validation/handoff/graph files plus a self-consistent,
+constructed execution contract whose activated kernels exist as verified files
+in the pack. The fail-closed service requires a verified pack, non-null
+provenance, required contract documents (no synthesis), a non-empty activation
+plan, and known kernels — so tests cannot depend on the mutable repository
+root, whose committed manifest no longer matches the tree edited by the stack.
+"""
+
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import shutil
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# Files copied verbatim from the repository pack (they validate against their models).
+COPIED_FILES = (
+    "VALIDATION_CONTRACT.yaml",
+    "HANDOFF_CONTRACT.yaml",
+    "EXECUTION_GRAPH.json",
+)
+
+# Kernel files the constructed execution contract activates; created in every pack.
+DEFAULT_KERNELS = ("kernels/repo_auditor.yaml", "kernels/flawless_victory.yaml")
+
+MINIMAL_EXECUTION: dict[str, Any] = {
+    "contract_id": "FINAL_EXECUTION_CONTRACT",
+    "contract_type": "universal_execution_contract",
+    "source_activation_plan": "kernels/plan.yaml",
+    "terminal_doctrine": "kernels/flawless_victory.yaml",
+    "objective": "compile the representative pack",
+    "authority_order": ["user task", "kernel activation plan", "Unknown"],
+    "kernel_activation": list(DEFAULT_KERNELS),
+    "execution_sequence": [
+        "lock context",
+        "run constitutional preflight",
+        "execute terminal doctrine only after gates pass",
+    ],
+    "validation_requirements": ["pipeline order validated", "no fake validation"],
+    "output_contract": ["execution_graph", "validation_evidence"],
+    "adapter_targets": ["claude_code", "cursor"],
+    "version": "1.0.0",
+}
+
+
+def write_manifest(pack: Path) -> None:
+    """Write a MANIFEST.json whose digests match the pack's content files."""
+    files = []
+    for path in sorted(pack.rglob("*")):
+        if path.is_file() and path.name != "MANIFEST.json":
+            data = path.read_bytes()
+            files.append(
+                {
+                    "path": path.relative_to(pack).as_posix(),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                    "bytes": len(data),
+                }
+            )
+    manifest = {"pack_name": "test-pack", "files": files}
+    (pack / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def build_pack(
+    pack: Path,
+    *,
+    execution: dict[str, Any] | None = None,
+    execution_text: str | None = None,
+    kernels: tuple[str, ...] = DEFAULT_KERNELS,
+) -> Path:
+    """Construct a verified pack.
+
+    - ``execution`` overrides the execution-contract mapping (defaults to a
+      valid minimal contract). Set it to ``None`` with ``omit_execution`` behavior
+      by passing ``execution={}`` is NOT allowed; use ``execution_text``/omission.
+    - ``execution_text`` writes raw text (for malformed-YAML tests).
+    - Passing ``execution=None`` AND ``execution_text=None`` omits the execution
+      file entirely (for missing-required tests).
+    """
+    pack.mkdir(parents=True, exist_ok=True)
+    for kernel in kernels:
+        kpath = pack / kernel
+        kpath.parent.mkdir(parents=True, exist_ok=True)
+        kpath.write_text(f"kernel_id: {Path(kernel).stem}\n", encoding="utf-8")
+    if execution_text is not None:
+        (pack / "FINAL_EXECUTION_CONTRACT.yaml").write_text(execution_text, encoding="utf-8")
+    elif execution is not None:
+        (pack / "FINAL_EXECUTION_CONTRACT.yaml").write_text(
+            yaml.safe_dump(execution), encoding="utf-8"
+        )
+    for name in COPIED_FILES:
+        shutil.copyfile(ROOT / name, pack / name)
+    write_manifest(pack)
+    return pack
+
+
+def execution_mapping(**overrides: Any) -> dict[str, Any]:
+    """Return a copy of the minimal execution contract with overrides applied."""
+    mapping = copy.deepcopy(MINIMAL_EXECUTION)
+    mapping.update(overrides)
+    return mapping
+
+
+@pytest.fixture
+def valid_pack(tmp_path: Path) -> Path:
+    return build_pack(tmp_path / "pack", execution=MINIMAL_EXECUTION)
+
+
+@pytest.fixture
+def pack_builder() -> Callable[..., Path]:
+    """Return the ``build_pack`` factory for tests that need pack variants."""
+    return build_pack
+
+
+@pytest.fixture
+def make_execution() -> Callable[..., dict[str, Any]]:
+    """Return the ``execution_mapping`` factory for overriding the contract."""
+    return execution_mapping

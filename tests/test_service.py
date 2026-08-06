@@ -114,13 +114,17 @@ def test_unknown_kernel_fails_compile(tmp_path: Path) -> None:
         service.compile_runtime(CompileRequest(mission="bad kernel", pack_ref=pack))
 
 
-def test_compile_matches_pack_graph_topology(tmp_path: Path) -> None:
+def test_graph_is_contract_derived(tmp_path: Path) -> None:
+    # Graph is derived from the execution contract (MCP-006), not the static
+    # pack EXECUTION_GRAPH.json.
     pack = _verified_pack(tmp_path)
     service = CognitiveRuntimeService()
     bundle = service.compile_runtime(CompileRequest(mission="topology", pack_ref=pack))
-    pack_graph = json.loads((pack / "EXECUTION_GRAPH.json").read_text(encoding="utf-8"))
-    assert [n.id for n in bundle.graph.nodes] == [n["id"] for n in pack_graph["nodes"]]
-    assert bundle.graph.terminal_node == pack_graph["terminal_node"]
+    node_ids = [n.id for n in bundle.graph.nodes]
+    assert bundle.graph.source_contract == "FINAL_EXECUTION_CONTRACT"
+    assert node_ids[0] == "front_end_intake"
+    assert "semantic_preflight" in node_ids
+    assert bundle.graph.terminal_node == "emission"
 
 
 def test_cli_memory_only(tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]

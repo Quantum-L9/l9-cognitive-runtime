@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
+from l9_cognitive_runtime.graph import derive_execution_graph
 from l9_cognitive_runtime.models import (
     ExecutionContract,
     ExecutionGraph,
@@ -115,7 +116,8 @@ class CognitiveRuntimeService:
         validation = self._load_validation(pack_root)
         handoff = self._load_handoff(pack_root)
         self._enforce_strict_activation(pack_root, execution)
-        graph = self._build_graph(execution)
+        # Graph derives deterministically from the execution contract (MCP-006).
+        graph = derive_execution_graph(execution)
         return RuntimeBundle(
             intent=intent,
             execution=execution,
@@ -169,68 +171,6 @@ class CognitiveRuntimeService:
                 found.add(path.name)
                 found.add(str(path.relative_to(pack_root)).replace("\\", "/"))
         return found
-
-    def _build_graph(self, execution: ExecutionContract) -> ExecutionGraph:
-        # Mirror runtime/execution_graph/build_execution_graph.DEFAULT_PHASES in memory.
-        phases = [
-            ("front_end_intake", "Phase 0 Front-End / Intent Intake", ["repo_auditor_kernel"]),
-            (
-                "semantic_preflight",
-                "Phase 1 Semantic Analysis / Constitutional Preflight",
-                ["K01", "K02", "K03", "K04", "K05"],
-            ),
-            ("strategic_expansion", "Phase 2 Strategic Expansion", ["prompt_compiler_kernel"]),
-            (
-                "architecture_synthesis",
-                "Phase 3 Architecture Synthesis",
-                ["l9_engine_build_kernel"],
-            ),
-            (
-                "structural_validation",
-                "Phase 4 Structural Validation",
-                ["validate_eliminate_stubs"],
-            ),
-            ("optimization", "Phase 5 Optimization", ["recursive_improvement"]),
-            ("global_optimization", "Phase 6 Global Optimization", ["recursive_leverage"]),
-            ("emission", "Phase 7 Emission", ["flawless_victory"]),
-        ]
-        nodes = []
-        edges = []
-        for idx, (node_id, phase, kernels) in enumerate(phases):
-            nodes.append(
-                {
-                    "id": node_id,
-                    "phase": phase,
-                    "kernel_refs": kernels,
-                    "outputs": [f"{node_id.upper()}.md"],
-                    "status": "planned",
-                }
-            )
-            if idx > 0:
-                edges.append(
-                    {
-                        "from": phases[idx - 1][0],
-                        "to": node_id,
-                        "reason": "phase_order",
-                    }
-                )
-        return ExecutionGraph.from_mapping(
-            {
-                "graph_id": "l9_execution_graph.v1",
-                "source_contract": execution.contract_id,
-                "nodes": nodes,
-                "edges": edges,
-                "terminal_node": "emission",
-                "validation_gates": [
-                    "pipeline_order",
-                    "kernel_roles",
-                    "no_duplicate_active_kernels",
-                    "phase_outputs",
-                    "contract_compiler",
-                    "execution_graph",
-                ],
-            }
-        )
 
 
 def _kernel_id(item: str) -> str:

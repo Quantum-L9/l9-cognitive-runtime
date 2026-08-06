@@ -1,5 +1,5 @@
 contract_id: L9CR-MCP-PR-REMEDIATION-001
-generated_at: '2026-08-06T22:37:54.624953+00:00'
+generated_at: '2026-08-06T22:38:33.375061+00:00'
 policy: one at a time onto main; rebase successor after each merge
 core_sequence:
 - order: 1
@@ -105,26 +105,50 @@ replacement_prs_opened:
   source_pr: 2
   replacement_pr: 19
   branch: rem/mcp-001
-  base: main
 - logical: MCP-002
   source_pr: 3
   replacement_pr: 20
   branch: rem/mcp-002
-  base: rem/mcp-001
 - logical: MCP-003
   source_pr: 4
   replacement_pr: 21
   branch: rem/mcp-003
-  base: rem/mcp-002
 - logical: MCP-004
   source_pr: 5
   replacement_pr: 22
   branch: rem/mcp-004
-  base: rem/mcp-003
 - logical: MCP-005
   source_pr: 6
   replacement_pr: 23
   branch: rem/mcp-005
-  base: rem/mcp-004
-status_note: Foundation rem stack through MCP-005 opened. OAuth/staging blocked on human decisions. Source
-  PRs 13-17 on HOLD. Optional 16-17 paused.
+  head: 24840e3
+- logical: MCP-006
+  source_pr: 7
+  replacement_pr: 24
+  branch: rem/mcp-006
+  warning: parent is parallel a5a4883; rebase onto 24840e3
+- logical: MCP-007
+  source_pr: 8
+  replacement_pr: 25
+  branch: rem/mcp-007
+- logical: MCP-008A
+  source_pr: 9
+  replacement_pr: 26
+  branch: rem/mcp-008a
+- logical: MCP-008B
+  source_pr: 9
+  replacement_pr: 27
+  branch: rem/mcp-008b
+- logical: MCP-009
+  source_pr: 10
+  replacement_pr: 28
+  branch: rem/mcp-009
+- logical: MCP-010
+  source_pr: 11
+  replacement_pr: 29
+  branch: rem/mcp-010
+status_note: "Clean rem stack PRs #19-#29 exist. Rebase #24+ onto #23 tip before merge. OAuth 011A/B/C\
+  \ not opened \u2014 blocked on issuer ADR. Source 13-17 HOLD; 16-17 paused."
+stack_drift:
+  issue: rem/mcp-006..010 were built on parallel MCP-005 a5a4883 while rem/mcp-005 tip is 24840e3
+  action: rebase rem/mcp-006 onto origin/rem/mcp-005 (24840e3) then cascade

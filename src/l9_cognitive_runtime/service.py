@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import yaml
 
@@ -16,6 +16,9 @@ from l9_cognitive_runtime.models import (
     ValidationContract,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
+
+if TYPE_CHECKING:
+    from l9_cognitive_runtime.pack import PackProvenance
 
 
 @dataclass(frozen=True)
@@ -51,15 +54,17 @@ class RuntimeBundle:
     validation: ValidationContract
     handoff: HandoffContract
     graph: ExecutionGraph
+    provenance: PackProvenance | None = None
 
     def digests(self) -> dict[str, str]:
-        return {
+        payload = {
             "intent": self.intent.sha256(),
             "execution": self.execution.sha256(),
             "validation": self.validation.sha256(),
             "handoff": self.handoff.sha256(),
             "graph": self.graph.sha256(),
         }
+        return payload
 
 
 class BundleRepository(Protocol):
@@ -89,6 +94,14 @@ class CognitiveRuntimeService:
         if not request.mission.strip():
             raise InvalidValueError("mission must be non-empty", path="mission")
         pack_root = self._repository.resolve_pack_root(request.pack_root)
+        provenance = None
+        try:
+            from l9_cognitive_runtime.pack import PackLoader
+
+            provenance = PackLoader().load(pack_root).provenance
+        except (InvalidValueError, ModelValidationError, OSError, ValueError):
+            # Pack verification is optional until an explicit pack_ref contract requires it.
+            provenance = None
         intent = IntentContract.from_mapping(
             {
                 "intent_id": "intent.runtime_convergence.v1",
@@ -110,6 +123,7 @@ class CognitiveRuntimeService:
             validation=validation,
             handoff=handoff,
             graph=graph,
+            provenance=provenance,
         )
 
     def _load_yaml(self, path: Path) -> dict[str, Any]:
@@ -135,8 +149,7 @@ class CognitiveRuntimeService:
                 "contract_id": "FINAL_EXECUTION_CONTRACT",
                 "contract_type": "universal_execution_contract",
                 "source_activation_plan": (
-                    "runtime/kernel_pipeline/planner/"
-                    "KERNEL_ACTIVATION_PLAN.example.yaml"
+                    "runtime/kernel_pipeline/planner/KERNEL_ACTIVATION_PLAN.example.yaml"
                 ),
                 "terminal_doctrine": "runtime/kernels/terminal/flawless_victory.contract.yaml",
                 "objective": intent.mission,

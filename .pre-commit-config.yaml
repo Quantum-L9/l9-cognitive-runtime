@@ -1,0 +1,17 @@
+# Minimal consumer pre-commit for Cursor-Governance `make pr` gates.
+# Young repo has no full governance SSOT hooks; keep ruff + conflict checks only.
+exclude: '(^|/)(reports/|\.venv|\.venv-)'
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Pin aligned with Cursor-Governance / l9-ci-sdk ruff==0.16.x
+    rev: v0.16.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

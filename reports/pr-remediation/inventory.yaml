@@ -1,0 +1,755 @@
+contract_id: L9CR-MCP-PR-REMEDIATION-001
+phase: phase_0_freeze_and_inventory
+generated_at: '2026-08-06T19:26:05.640294Z'
+repository: https://github.com/Quantum-L9/l9-cognitive-runtime
+canonical_branch: main
+main_sha: e6139fcf60b8e675f912685bc14eef4742948c77
+stack_dag:
+  type: linear_stack
+  edges:
+  - from: 2
+    to: 3
+    via_base: feat/mcp-001
+  - from: 3
+    to: 4
+    via_base: feat/mcp-002
+  - from: 4
+    to: 5
+    via_base: feat/mcp-003
+  - from: 5
+    to: 6
+    via_base: feat/mcp-004
+  - from: 6
+    to: 7
+    via_base: fix/mcp-005
+  - from: 7
+    to: 8
+    via_base: feat/mcp-006
+  - from: 8
+    to: 9
+    via_base: test/mcp-007
+  - from: 9
+    to: 10
+    via_base: feat/mcp-008
+  - from: 10
+    to: 11
+    via_base: feat/mcp-009
+  - from: 11
+    to: 12
+    via_base: feat/mcp-010
+  - from: 12
+    to: 13
+    via_base: feat/mcp-011
+  - from: 13
+    to: 14
+    via_base: feat/mcp-012
+  - from: 14
+    to: 15
+    via_base: docs/mcp-013
+  - from: 15
+    to: 16
+    via_base: test/mcp-014
+  - from: 16
+    to: 17
+    via_base: feat/mcp-015
+  root: 2
+  tip: 17
+files_touched_by_multiple_prs:
+  .gitignore:
+  - 2
+  - 5
+  - 14
+  README.md:
+  - 2
+  - 9
+  - 14
+  - 15
+  pyproject.toml:
+  - 2
+  - 3
+  - 4
+  - 5
+  - 9
+  - 11
+  src/l9_cognitive_runtime/__init__.py:
+  - 2
+  - 3
+  - 4
+  uv.lock:
+  - 2
+  - 5
+  - 9
+  - 11
+  src/l9_cognitive_runtime/service.py:
+  - 4
+  - 5
+  - 6
+  - 7
+  tests/test_service.py:
+  - 4
+  - 7
+  commands/COMMANDS_MANIFEST.yaml:
+  - 5
+  - 9
+  environment/claude-code/generated/skill-registry.json:
+  - 5
+  - 9
+  environment/claude-code/settings.template.json:
+  - 5
+  - 9
+  rules/RULES-MANIFEST.json:
+  - 5
+  - 9
+  rules/RULES-MANIFEST.md:
+  - 5
+  - 9
+  rules/RULES-MANIFEST.yaml:
+  - 5
+  - 9
+  skills/AUTONOMY_MANIFEST.yaml:
+  - 5
+  - 9
+  .github/workflows/pr-check.yml:
+  - 8
+  - 14
+  src/l9_cognitive_runtime/mcp/__init__.py:
+  - 9
+  - 10
+  - 17
+  tests/test_mcp_stdio.py:
+  - 9
+  - 10
+  src/l9_cognitive_runtime/mcp/auth.py:
+  - 12
+  - 17
+  release/mcp-release-metadata.example.json:
+  - 15
+  - 17
+  scripts/check_mcp_release_gate.py:
+  - 15
+  - 17
+  tests/conformance/test_mcp_conformance.py:
+  - 15
+  - 17
+duplicate_commit_shas_across_pr_listings: {}
+leaked_or_unrelated_commits_observed:
+- pr: 5
+  sha: f6f22e31
+  reason: governance uv --no-build PR gates unrelated to pack loader
+- pr: 5
+  sha: 4a134f02
+  reason: "seed manifests for make pr \u2014 governance, not pack loader"
+- pr: 8
+  sha: ac57425a
+  reason: "restore make pr consumer manifests \u2014 belongs in 008A not hardening"
+- pr: 9
+  reason: "mixed governance restore + MCP stdio \u2014 must split 008A/008B"
+- pr: 12
+  reason: "monolithic OAuth+audit \u2014 must split 011A/011B/011C"
+safety_tags:
+- backup/pr-2-fe4cca71
+- backup/pr-3-64702130
+- backup/pr-4-71423934
+- backup/pr-5-4a134f02
+- backup/pr-6-fcd271ab
+- backup/pr-7-3bb1073c
+- backup/pr-8-ac57425a
+- backup/pr-9-5ce7192c
+- backup/pr-10-9b57b10c
+- backup/pr-11-e2a7f374
+- backup/pr-12-b1e02ffe
+- backup/pr-13-4b44b2ea
+- backup/pr-14-e708e327
+- backup/pr-15-2ecce94f
+- backup/pr-16-5e6d20ff
+- backup/pr-17-a0020b03
+pull_requests:
+- pr: 2
+  contract_id: MCP-001
+  title: 'build: establish Python package baseline'
+  base: main
+  head: feat/mcp-001
+  head_sha: fe4cca71a5b71a68d6a8ff60133d54f73799fcd7
+  safety_tag: backup/pr-2-fe4cca71
+  commit_shas:
+  - d3065896fb736cac4fbf765e32a1cea9f414a0b8
+  - fe4cca71a5b71a68d6a8ff60133d54f73799fcd7
+  commit_messages:
+  - 'build: establish installable cognitive runtime package'
+  - 'fix(security): add uv.lock for Sonar S8565 reproducibility'
+  files_changed:
+  - .gitignore
+  - README.md
+  - pyproject.toml
+  - reports/GMP-Report-001-mcp-001-package-baseline.md
+  - src/l9_cognitive_runtime/__init__.py
+  - tests/test_package_import.py
+  - uv.lock
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: null
+  scope_classification: mostly_valid
+  recommended_action: preserve_and_validate
+  notes: Package baseline + uv.lock; verify no dist artifacts committed.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/2
+  hold_comment: false
+- pr: 3
+  contract_id: MCP-002
+  title: 'feat: add canonical typed runtime models'
+  base: feat/mcp-001
+  head: feat/mcp-002
+  head_sha: 647021307354d71aa53081067fbc9d47f157cfdc
+  safety_tag: backup/pr-3-64702130
+  commit_shas:
+  - 647021307354d71aa53081067fbc9d47f157cfdc
+  commit_messages:
+  - 'feat: add canonical cognitive runtime models'
+  files_changed:
+  - pyproject.toml
+  - reports/COMPATIBILITY-L9CR-MCP-002.md
+  - reports/GMP-Report-002-mcp-002-typed-models.md
+  - src/l9_cognitive_runtime/__init__.py
+  - src/l9_cognitive_runtime/models/__init__.py
+  - src/l9_cognitive_runtime/models/artifacts.py
+  - src/l9_cognitive_runtime/models/base.py
+  - src/l9_cognitive_runtime/models/canonical.py
+  - src/l9_cognitive_runtime/models/errors.py
+  - src/l9_cognitive_runtime/models/yaml_codec.py
+  - tests/fixtures/models/intent_canonical.json
+  - tests/fixtures/models/intent_digest.txt
+  - tests/test_models.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 2
+  scope_classification: mostly_valid
+  recommended_action: preserve_and_validate
+  notes: Typed models; verify unknown-field rejection and canonical digests.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/3
+  hold_comment: false
+- pr: 4
+  contract_id: MCP-003
+  title: 'refactor: introduce in-memory runtime service'
+  base: feat/mcp-002
+  head: feat/mcp-003
+  head_sha: 71423934b6640a1c62b31004bc298aca68594346
+  safety_tag: backup/pr-4-71423934
+  commit_shas:
+  - 71423934b6640a1c62b31004bc298aca68594346
+  commit_messages:
+  - 'refactor: add cognitive runtime service facade'
+  files_changed:
+  - pyproject.toml
+  - reports/GMP-Report-003-mcp-003-service-facade.md
+  - src/l9_cognitive_runtime/__init__.py
+  - src/l9_cognitive_runtime/cli.py
+  - src/l9_cognitive_runtime/service.py
+  - tests/test_service.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: FAILURE
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks:
+  - SonarCloud Code Analysis
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 3
+  scope_classification: mostly_valid
+  recommended_action: preserve_and_validate
+  notes: "Service facade; Sonar failed \u2014 repair quality before merge."
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/4
+  hold_comment: false
+- pr: 5
+  contract_id: MCP-004
+  title: 'feat: add immutable runtime pack loader'
+  base: feat/mcp-003
+  head: feat/mcp-004
+  head_sha: 4a134f02ef9eeb18f2337814cb63cda0e789368b
+  safety_tag: backup/pr-5-4a134f02
+  commit_shas:
+  - a73f4e6ce95f5bfd0062db1f83ff2db9ab55bdde
+  - f6f22e31fb9bdbdb23d6cdeeaf29ebf8a5330e4f
+  - 4a134f02ef9eeb18f2337814cb63cda0e789368b
+  commit_messages:
+  - 'feat: add immutable runtime pack loader'
+  - 'build: allow governance uv --no-build PR gates'
+  - 'chore: seed minimal manifests for Cursor-Governance make pr'
+  files_changed:
+  - .gitignore
+  - .pre-commit-config.yaml
+  - Makefile
+  - commands/COMMANDS_MANIFEST.yaml
+  - environment/claude-code/generated/skill-registry.json
+  - environment/claude-code/settings.template.json
+  - pyproject.toml
+  - reports/GMP-Report-004-mcp-004-pack-loader.md
+  - rules/RULES-MANIFEST.json
+  - rules/RULES-MANIFEST.md
+  - rules/RULES-MANIFEST.yaml
+  - skills/AUTONOMY_MANIFEST.yaml
+  - src/l9_cognitive_runtime/pack/__init__.py
+  - src/l9_cognitive_runtime/pack/loader.py
+  - src/l9_cognitive_runtime/service.py
+  - tests/test_pack_loader.py
+  - uv.lock
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 4
+  scope_classification: mixed_scope
+  recommended_action: split_or_rebase
+  notes: Pack loader mixed with governance manifest/uv gate commits; strip unrelated.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/5
+  hold_comment: false
+- pr: 6
+  contract_id: MCP-005
+  title: 'fix: enforce strict cognitive runtime parsing'
+  base: feat/mcp-004
+  head: fix/mcp-005
+  head_sha: fcd271ab7180c57a1e5261e20a6778d333d8877c
+  safety_tag: backup/pr-6-fcd271ab
+  commit_shas:
+  - fcd271ab7180c57a1e5261e20a6778d333d8877c
+  commit_messages:
+  - 'fix: enforce strict cognitive runtime parsing'
+  files_changed:
+  - reports/GMP-Report-005-mcp-005-strict-parsing.md
+  - src/l9_cognitive_runtime/parsing/__init__.py
+  - src/l9_cognitive_runtime/service.py
+  - tests/test_strict_parsing.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 5
+  scope_classification: mostly_valid
+  recommended_action: preserve_and_validate
+  notes: Strict parsing; verify fail-closed behavior and typed errors.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/6
+  hold_comment: false
+- pr: 7
+  contract_id: MCP-006
+  title: 'feat: derive execution graphs from contracts'
+  base: fix/mcp-005
+  head: feat/mcp-006
+  head_sha: 3bb1073c6055e7658e0c5907c5340c5d886b42a8
+  safety_tag: backup/pr-7-3bb1073c
+  commit_shas:
+  - 3bb1073c6055e7658e0c5907c5340c5d886b42a8
+  commit_messages:
+  - 'feat: derive execution graphs from contracts'
+  files_changed:
+  - reports/GMP-Report-006-mcp-006-contract-graph.md
+  - src/l9_cognitive_runtime/graph/__init__.py
+  - src/l9_cognitive_runtime/service.py
+  - tests/test_graph_derive.py
+  - tests/test_service.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 6
+  scope_classification: mostly_valid
+  recommended_action: preserve_and_validate
+  notes: Contract graphs; verify cycle rejection and determinism.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/7
+  hold_comment: false
+- pr: 8
+  contract_id: MCP-007
+  title: 'test: add cognitive runtime hardening suites'
+  base: feat/mcp-006
+  head: test/mcp-007
+  head_sha: ac57425a7a67e368003e6ac5c3dfde89731e6045
+  safety_tag: backup/pr-8-ac57425a
+  commit_shas:
+  - 2b9d45ffac5c661677c595532f2e6d5c28bf038b
+  - 1b829d68df02020a335da2e064ef717b3585d460
+  - ac57425a7a67e368003e6ac5c3dfde89731e6045
+  commit_messages:
+  - 'test: add cognitive runtime hardening suites'
+  - 'test: fix concurrency isolation assertion'
+  - 'chore: restore make pr consumer manifests'
+  files_changed:
+  - .github/workflows/pr-check.yml
+  - reports/GMP-Report-007-mcp-007-hardening-suites.md
+  - tests/hardening/test_runtime_hardening.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: FAILURE
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks:
+  - SonarCloud Code Analysis
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 7
+  scope_classification: mixed_scope
+  recommended_action: replace
+  notes: Hardening tests + leaked governance restore commit; Sonar failed.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/8
+  hold_comment: false
+- pr: 9
+  contract_id: MCP-008
+  title: 'chore: restore make pr consumer manifests'
+  base: test/mcp-007
+  head: feat/mcp-008
+  head_sha: 5ce7192c0ed8eea2c548d01094da2b704ce376eb
+  safety_tag: backup/pr-9-5ce7192c
+  commit_shas:
+  - a6aabac5554a12d0b5e62ea16e26c7965ea89315
+  - 5ce7192c0ed8eea2c548d01094da2b704ce376eb
+  commit_messages:
+  - 'chore: restore make pr consumer manifests'
+  - 'feat: expose cognitive runtime over MCP stdio'
+  files_changed:
+  - README.md
+  - commands/COMMANDS_MANIFEST.yaml
+  - environment/claude-code/generated/skill-registry.json
+  - environment/claude-code/settings.template.json
+  - pyproject.toml
+  - reports/GMP-Report-008-mcp-008-stdio.md
+  - rules/RULES-MANIFEST.json
+  - rules/RULES-MANIFEST.md
+  - rules/RULES-MANIFEST.yaml
+  - skills/AUTONOMY_MANIFEST.yaml
+  - src/l9_cognitive_runtime/mcp/__init__.py
+  - tests/test_mcp_stdio.py
+  - uv.lock
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 8
+  scope_classification: mixed_scope
+  recommended_action: split_replace
+  notes: 'Must split: governance manifests (008A) vs MCP stdio (008B).'
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/9
+  hold_comment: false
+- pr: 10
+  contract_id: MCP-009
+  title: 'feat: add isolated MCP run result store'
+  base: feat/mcp-008
+  head: feat/mcp-009
+  head_sha: 9b57b10c7977eedce87da39f984e14cfc7c117c9
+  safety_tag: backup/pr-10-9b57b10c
+  commit_shas:
+  - 0a93dd01355fc2b471937d8ba387a27fc179b8f4
+  - 9b57b10c7977eedce87da39f984e14cfc7c117c9
+  commit_messages:
+  - 'feat: add isolated MCP run result store'
+  - 'feat: wire RunStore into MCP compile_runtime and get_run'
+  files_changed:
+  - reports/GMP-Report-009-mcp-009-run-store.md
+  - src/l9_cognitive_runtime/mcp/__init__.py
+  - src/l9_cognitive_runtime/mcp/run_store.py
+  - tests/test_mcp_stdio.py
+  - tests/test_run_store.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 9
+  scope_classification: mostly_valid
+  recommended_action: preserve_and_validate
+  notes: Run store; verify TTL/bounds/isolation tests.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/10
+  hold_comment: false
+- pr: 11
+  contract_id: MCP-010
+  title: 'feat: add MCP Streamable HTTP transport'
+  base: feat/mcp-009
+  head: feat/mcp-010
+  head_sha: e2a7f37486b746c7f8c9c675fd433fd20556d546
+  safety_tag: backup/pr-11-e2a7f374
+  commit_shas:
+  - e2a7f37486b746c7f8c9c675fd433fd20556d546
+  commit_messages:
+  - 'feat: add MCP Streamable HTTP transport'
+  files_changed:
+  - pyproject.toml
+  - reports/GMP-Report-010-mcp-010-http.md
+  - src/l9_cognitive_runtime/mcp/http.py
+  - tests/test_mcp_http.py
+  - uv.lock
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 10
+  scope_classification: mostly_valid
+  recommended_action: preserve_and_validate
+  notes: Streamable HTTP; verify no auth-completion claims and controls.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/11
+  hold_comment: false
+- pr: 12
+  contract_id: MCP-011
+  title: 'feat: secure hosted MCP with OAuth and audit'
+  base: feat/mcp-010
+  head: feat/mcp-011
+  head_sha: b1e02ffe04ae8c89b2228fbc86d05424febfec70
+  safety_tag: backup/pr-12-b1e02ffe
+  commit_shas:
+  - b7c11036aac0e3a31d4cb8b9a8963e441033d0c5
+  - 738cf919db776ca7ced0793c8025721b3a68ba6b
+  - 38e63b22bd360df7a4ef83a2f9ca61439c66c639
+  - 739eae8b4e0158a6696aebea3d89dec87f7867e2
+  - b1e02ffe04ae8c89b2228fbc86d05424febfec70
+  commit_messages:
+  - 'feat: secure hosted MCP with OAuth and audit'
+  - 'fix: wrap long JWT error line for ruff'
+  - 'test: use non-literal test HMAC key for JWT fixtures'
+  - 'style: apply ruff autofix on auth tests'
+  - 'test: source JWT HMAC from env to satisfy semgrep'
+  files_changed:
+  - reports/GMP-Report-011-mcp-011-oauth.md
+  - src/l9_cognitive_runtime/mcp/auth.py
+  - tests/test_mcp_auth.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 11
+  scope_classification: incomplete_unsafe
+  recommended_action: replace_split
+  notes: "Monolithic OAuth; incomplete helper-level auth \u2014 split to 011A/B/C and replace."
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/12
+  hold_comment: false
+- pr: 13
+  contract_id: MCP-012
+  title: 'build: add production MCP container baseline'
+  base: feat/mcp-011
+  head: feat/mcp-012
+  head_sha: 4b44b2eac95803c8d94f0e8e34347c64927864b6
+  safety_tag: backup/pr-13-4b44b2ea
+  commit_shas:
+  - 4b44b2eac95803c8d94f0e8e34347c64927864b6
+  commit_messages:
+  - 'build: add production MCP container baseline'
+  files_changed:
+  - .dockerignore
+  - .github/workflows/container-scan.yml
+  - Dockerfile
+  - docs/ops/container-deploy.md
+  - reports/GMP-Report-012-mcp-012-container.md
+  - tests/test_container_baseline.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: FAILURE
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks:
+  - SonarCloud Code Analysis
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 12
+  scope_classification: incomplete
+  recommended_action: hold_then_replace
+  notes: Container baseline; Sonar failed; no staging proof. HOLD.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/13
+  hold_comment: true
+- pr: 14
+  contract_id: MCP-013
+  title: 'docs: add Claude Code and Cursor MCP configuration'
+  base: feat/mcp-012
+  head: docs/mcp-013
+  head_sha: e708e327d6e23fa38a1051fc6bfbf544cc259a9a
+  safety_tag: backup/pr-14-e708e327
+  commit_shas:
+  - e708e327d6e23fa38a1051fc6bfbf544cc259a9a
+  commit_messages:
+  - 'docs: add Claude Code and Cursor MCP configuration'
+  files_changed:
+  - .cursor/mcp.json
+  - .github/workflows/pr-check.yml
+  - .gitignore
+  - .mcp.json
+  - README.md
+  - docs/ops/mcp-client-setup.md
+  - reports/GMP-Report-013-mcp-013-clients.md
+  - scripts/scan_mcp_secrets.py
+  - tests/test_mcp_secret_scanner.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: FAILURE
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks:
+  - SonarCloud Code Analysis
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 13
+  scope_classification: incomplete
+  recommended_action: hold_then_replace
+  notes: Client config likely placeholders; HOLD until real staging URL.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/14
+  hold_comment: true
+- pr: 15
+  contract_id: MCP-014
+  title: 'test: add MCP conformance and release gates'
+  base: docs/mcp-013
+  head: test/mcp-014
+  head_sha: 2ecce94f782158ccdb29a9ce008153b319247302
+  safety_tag: backup/pr-15-2ecce94f
+  commit_shas:
+  - 2ecce94f782158ccdb29a9ce008153b319247302
+  commit_messages:
+  - 'test: add MCP conformance and release gates'
+  files_changed:
+  - .github/workflows/mcp-release-gate.yml
+  - README.md
+  - docs/ops/mcp-client-certification.md
+  - docs/ops/mcp-release-gates.md
+  - release/mcp-release-metadata.example.json
+  - reports/GMP-Report-014-mcp-014-conformance.md
+  - scripts/check_mcp_release_gate.py
+  - tests/conformance/__init__.py
+  - tests/conformance/test_mcp_conformance.py
+  - tests/test_mcp_release_gate.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: FAILURE
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks:
+  - SonarCloud Code Analysis
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 14
+  scope_classification: incomplete
+  recommended_action: hold_then_replace
+  notes: Conformance gates; Sonar failed; HOLD until core stack certified.
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/15
+  hold_comment: true
+- pr: 16
+  contract_id: MCP-015
+  title: 'feat: add GitHub-derived MCP trust policy'
+  base: test/mcp-014
+  head: feat/mcp-015
+  head_sha: 5e6d20ff73aa3b714ec36867268b575a7589cbb7
+  safety_tag: backup/pr-16-5e6d20ff
+  commit_shas:
+  - 3419c2bc362dd7ff9a04b9a8d5d61aa056dbfe1b
+  - 5e6d20ff73aa3b714ec36867268b575a7589cbb7
+  commit_messages:
+  - 'feat: add GitHub-derived MCP trust policy'
+  - 'style: ruff format github trust module'
+  files_changed:
+  - reports/GMP-Report-015-mcp-015-github-trust.md
+  - src/l9_cognitive_runtime/mcp/github_trust.py
+  - tests/test_github_trust.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 15
+  scope_classification: optional_paused
+  recommended_action: pause
+  notes: "Optional GitHub trust \u2014 paused until core certified."
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/16
+  hold_comment: true
+- pr: 17
+  contract_id: MCP-016
+  title: 'feat: add governed agent adapter rendering'
+  base: feat/mcp-015
+  head: feat/mcp-016
+  head_sha: a0020b0308726317f3c5745773217ac91d4fec10
+  safety_tag: backup/pr-17-a0020b03
+  commit_shas:
+  - a0020b0308726317f3c5745773217ac91d4fec10
+  commit_messages:
+  - 'feat: add governed agent adapter rendering'
+  files_changed:
+  - ADAPTER_RENDER.md
+  - release/mcp-release-metadata.example.json
+  - reports/GMP-Report-016-mcp-016-adapter-render.md
+  - scripts/check_mcp_release_gate.py
+  - src/l9_cognitive_runtime/adapters/__init__.py
+  - src/l9_cognitive_runtime/adapters/base.py
+  - src/l9_cognitive_runtime/adapters/claude_code.py
+  - src/l9_cognitive_runtime/adapters/cursor.py
+  - src/l9_cognitive_runtime/adapters/generic_mcp.py
+  - src/l9_cognitive_runtime/mcp/__init__.py
+  - src/l9_cognitive_runtime/mcp/auth.py
+  - tests/conformance/test_mcp_conformance.py
+  - tests/test_adapter_render.py
+  checks:
+  - name: SonarCloud Code Analysis
+    conclusion: SUCCESS
+  - name: semgrep-cloud-platform/scan
+    conclusion: SUCCESS
+  failed_checks: []
+  reviews: []
+  review_decision: ''
+  mergeable: MERGEABLE
+  depends_on: 16
+  scope_classification: optional_paused
+  recommended_action: pause
+  notes: "Optional adapter rendering \u2014 paused until core certified."
+  url: https://github.com/Quantum-L9/l9-cognitive-runtime/pull/17
+  hold_comment: true
+phase_0_acceptance:
+  every_open_pr_represented: true
+  every_head_has_safety_tag: true
+  stack_dag_machine_readable: true
+  no_implementation_change_before_inventory: true
+  hold_comments_on_prs_13_through_17: true

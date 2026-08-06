@@ -1,0 +1,92 @@
+contract_id: L9CR-MCP-PR-REMEDIATION-001
+generated_at: '2026-08-06T19:30:10.950336+00:00'
+mapping:
+- pr: 2
+  keep:
+  - d3065896
+  - fe4cca71
+  drop: []
+  action: preserve
+- pr: 3
+  keep:
+  - '64702130'
+  drop: []
+  action: repair_in_place
+- pr: 4
+  keep:
+  - '71423934'
+  drop: []
+  action: repair_in_place
+- pr: 5
+  keep:
+  - a73f4e6c
+  drop:
+  - f6f22e31
+  - 4a134f02
+  action: split_reapply
+- pr: 6
+  keep:
+  - fcd271ab
+  drop: []
+  action: replace_rewrite
+- pr: 7
+  keep:
+  - 3bb1073c
+  drop: []
+  action: repair_in_place
+- pr: 8
+  keep:
+  - 2b9d45ff
+  - 1b829d68(test-only)
+  drop:
+  - ac57425a
+  action: split_replace
+- pr: 9
+  keep:
+  - "5ce7192c\u2192008B"
+  - "a6aabac5\u2192008A"
+  drop: []
+  action: split_replace
+- pr: 10
+  keep:
+  - 0a93dd01
+  - 9b57b10c
+  drop: []
+  action: preserve_and_validate
+- pr: 11
+  keep:
+  - e2a7f374
+  drop: []
+  action: repair_in_place
+- pr: 12
+  keep:
+  - b7c11036 as reference only
+  drop:
+  - 738cf919
+  - 38e63b22
+  - 739eae8b
+  - b1e02ffe
+  action: replace_split_011ABC
+- pr: 13
+  keep:
+  - 4b44b2ea skeleton
+  drop: []
+  action: hold_then_replace
+- pr: 14
+  keep:
+  - e708e327 scanner+shape
+  drop: []
+  action: hold_then_replace
+- pr: 15
+  keep:
+  - 2ecce94f skeleton
+  drop: []
+  action: hold_then_replace
+- pr: 16
+  keep: []
+  drop: []
+  action: pause
+- pr: 17
+  keep: []
+  drop: []
+  action: pause

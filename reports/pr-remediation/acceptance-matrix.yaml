@@ -1,0 +1,180 @@
+contract_id: L9CR-MCP-PR-REMEDIATION-001
+generated_at: '2026-08-06T19:30:10.950336+00:00'
+entries:
+- pr: 2
+  contract_id: MCP-001
+  criterion: isolated install / import / build / no artifacts
+  status: pass
+  evidence:
+    files:
+    - pyproject.toml
+    - tests/test_package_import.py
+    - uv.lock
+    tests:
+    - pytest tests/test_package_import.py
+    commands: []
+  remediation: keep
+- pr: 3
+  contract_id: MCP-002
+  criterion: unknown fields rejected; canonical digest stable; YAML serializer
+  status: partial
+  evidence:
+    files:
+    - src/l9_cognitive_runtime/models/
+    - tests/test_models.py
+    tests: []
+    commands: []
+  remediation: narrow yaml_codec exceptions; fail empty YAML
+- pr: 4
+  contract_id: MCP-003
+  criterion: in-memory compile; no fixed outputs; typed API; no MCP
+  status: partial
+  evidence:
+    files:
+    - src/l9_cognitive_runtime/service.py
+    - cli.py
+    tests: []
+    commands: []
+  remediation: fix write_dir confinement; require pack_root; fix tautology test
+- pr: 5
+  contract_id: MCP-004
+  criterion: explicit pack_ref; path escape; provenance; immutable
+  status: fail
+  evidence:
+    files:
+    - src/l9_cognitive_runtime/pack/loader.py
+    - service.py
+    tests:
+    - tests/test_pack_loader.py
+    commands: []
+  remediation: remove silent fallback; drop governance commits; require pack_ref
+- pr: 6
+  contract_id: MCP-005
+  criterion: malformed cannot succeed; unknown kernels; empty plans; typed errors
+  status: fail
+  evidence:
+    files:
+    - src/l9_cognitive_runtime/parsing/
+    - service.py
+    tests:
+    - tests/test_strict_parsing.py
+    commands: []
+  remediation: delete synthesis; wire require_*; service integration tests
+- pr: 7
+  contract_id: MCP-006
+  criterion: "contract-derived graph; cycles rejected; identical\u2192identical; scheduler"
+  status: partial
+  evidence:
+    files:
+    - src/l9_cognitive_runtime/graph/
+    tests:
+    - tests/test_graph_derive.py
+    commands: []
+  remediation: golden fixtures; remove validation_gates default; clarify scheduler AC
+- pr: 8
+  contract_id: MCP-007
+  criterion: golden bundles; determinism/concurrency; CI; offline
+  status: fail
+  evidence:
+    files:
+    - tests/hardening/
+    - .github/workflows/pr-check.yml
+    tests: []
+    commands: []
+  remediation: commit goldens; pin GHA; drop ac57425a; add mypy
+- pr: 9
+  contract_id: MCP-008
+  criterion: stdio MCP five tools; compile; no writes; non-stdio refused
+  status: partial
+  evidence:
+    files:
+    - src/l9_cognitive_runtime/mcp/
+    tests:
+    - tests/test_mcp_stdio.py
+    commands: []
+  remediation: split 008A/008B; add client smoke evidence
+- pr: 10
+  contract_id: MCP-009
+  criterion: run_id; TTL/unknown; concurrent isolation; bounded
+  status: partial
+  evidence:
+    files:
+    - run store modules
+    tests:
+    - tests/test_mcp_stdio.py
+    commands: []
+  remediation: typed not-found; concurrent test; principal bind later
+- pr: 11
+  contract_id: MCP-010
+  criterion: HTTP init; tool parity; size/origin/concurrency; healthz
+  status: fail
+  evidence:
+    files:
+    - src/l9_cognitive_runtime/mcp/http.py
+    tests:
+    - tests/test_mcp_http.py
+    commands: []
+  remediation: add controls + initialize e2e; no auth claim
+- pr: 12
+  contract_id: MCP-011
+  criterion: 401 discovery; scopes; aud/exp; cross-principal; audit
+  status: fail
+  evidence:
+    files:
+    - src/l9_cognitive_runtime/mcp/auth.py
+    tests:
+    - tests/test_mcp_auth.py
+    commands: []
+  remediation: replace_split 011A/B/C; wire middleware; config-derived URLs
+- pr: 13
+  contract_id: MCP-012
+  criterion: non-root container; scans; health; digest deploy
+  status: fail
+  evidence:
+    files:
+    - Dockerfile
+    - deploy docs
+    tests: []
+    commands: []
+  remediation: HOLD; strip false prod claims; staging evidence separate
+- pr: 14
+  contract_id: MCP-013
+  criterion: clients OAuth; no credentials; capabilities
+  status: fail
+  evidence:
+    files:
+    - .mcp.json
+    - .cursor/mcp.json
+    tests:
+    - tests/test_mcp_secret_scanner.py
+    commands: []
+  remediation: HOLD; real staging URL; disable placeholders
+- pr: 15
+  contract_id: MCP-014
+  criterion: CI conformance; release fail-closed; certifications
+  status: fail
+  evidence:
+    files:
+    - tests/conformance/
+    - scripts/check_mcp_release_gate.py
+    tests: []
+    commands: []
+  remediation: HOLD; HTTP middleware tests; human certs
+- pr: 16
+  contract_id: MCP-015
+  criterion: optional GitHub trust
+  status: not_applicable
+  evidence:
+    files: []
+    tests: []
+    commands: []
+  remediation: paused
+- pr: 17
+  contract_id: MCP-016
+  criterion: optional adapter rendering
+  status: not_applicable
+  evidence:
+    files: []
+    tests: []
+    commands: []
+  remediation: paused

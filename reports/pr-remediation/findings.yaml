@@ -1,0 +1,110 @@
+contract_id: L9CR-MCP-PR-REMEDIATION-001
+phase: phase_1_contract_audit
+generated_at: '2026-08-06T19:30:10.950336+00:00'
+security_summary:
+  critical:
+  - 'PR12: OAuth helpers never wired to /v1/mcp; no WWW-Authenticate; false security claim'
+  - 'PR6: silent contract synthesis (_load_or_build_*) still present; require_* helpers unwired'
+  - "PR15: conformance tests call helpers only \u2014 false OAuth confidence"
+  high:
+  - 'PR5: PackLoader failures swallowed; provenance optional; governance commits mixed in'
+  - 'PR4: CLI --write-dir unconfined path write (Sonar S8707)'
+  - 'PR8: unpinned GHA actions + unlocked uv; governance restore leak'
+  - 'PR11: missing request size/origin/timeout/concurrency controls'
+  - 'PR12: hardcoded https://runtime.example and https://auth.example'
+  - 'PR14: placeholder URL committed as enabled client config'
+  - 'PR10: principal is client-supplied string until 011C binds JWT sub'
+  - 'PR13: production/authenticated claims without wired auth or staging'
+  medium:
+  - 'PR3: broad except Exception in yaml_codec'
+  - 'PR7: validation_gates default fallback; no golden graph fixtures'
+  - 'PR9: governance+stdio mixed in one PR'
+  - 'PR14: docs describe WWW-Authenticate flow server does not implement'
+findings:
+- id: F-PR4-WRITE-DIR
+  pr: 4
+  severity: high
+  classification: unsafe
+  file: src/l9_cognitive_runtime/cli.py
+  evidence: "Sonar S8707 OPEN \u2014 --write-dir mkdir/write without confinement"
+  remediation: Confine under allow-root or remove --write-dir from memory-only facade PR
+- id: F-PR5-SILENT-PACK
+  pr: 5
+  severity: high
+  classification: unsafe
+  file: src/l9_cognitive_runtime/service.py
+  evidence: "except on PackLoader \u2192 provenance=None; compile continues"
+  remediation: Require PackLoader success; make provenance required
+- id: F-PR5-GOV-LEAK
+  pr: 5
+  severity: high
+  classification: unrelated
+  file: Makefile, rules/*, skills/*, commands/*, environment/*
+  evidence: commits f6f22e31 and 4a134f02 are governance scaffolding
+  remediation: Drop from MCP-004; move to MCP-008A
+- id: F-PR6-SYNTHESIS
+  pr: 6
+  severity: critical
+  classification: incomplete
+  file: src/l9_cognitive_runtime/service.py
+  evidence: _load_or_build_* still synthesizes contracts when files missing
+  remediation: Delete synthesis; wire require_known_kernels/require_non_empty_plan
+- id: F-PR8-GHA
+  pr: 8
+  severity: high
+  classification: unsafe
+  file: .github/workflows/pr-check.yml
+  evidence: Unpinned actions; uv sync without --frozen/--no-build
+  remediation: Pin SHAs; frozen lock; drop governance restore commit ac57425a
+- id: F-PR9-MIXED
+  pr: 9
+  severity: medium
+  classification: unrelated
+  file: mixed
+  evidence: a6aabac5 governance + 5ce7192c stdio in one PR
+  remediation: Split into 008A and 008B
+- id: F-PR10-PRINCIPAL
+  pr: 10
+  severity: high
+  classification: incomplete
+  file: src/l9_cognitive_runtime/mcp/
+  evidence: principal is client-supplied tool arg defaulting to anonymous
+  remediation: Defer binding to 011C; document as pre-auth limitation
+- id: F-PR11-CONTROLS
+  pr: 11
+  severity: high
+  classification: incomplete
+  file: src/l9_cognitive_runtime/mcp/http.py
+  evidence: No size/origin/timeout/concurrency limits; no MCP initialize HTTP test
+  remediation: Add controls + end-to-end initialize test
+- id: F-PR12-UNWIRED
+  pr: 12
+  severity: critical
+  classification: unsafe
+  file: src/l9_cognitive_runtime/mcp/auth.py
+  evidence: http.py unchanged; helpers unit-tested only; no WWW-Authenticate
+  remediation: Replace+split 011A/B/C; wire middleware onto /v1/mcp
+- id: F-PR12-PLACEHOLDER
+  pr: 12
+  severity: high
+  classification: unsafe
+  file: src/l9_cognitive_runtime/mcp/auth.py
+  evidence: PROTECTED_RESOURCE_METADATA hardcoded runtime.example / auth.example
+  remediation: Derive all URLs from validated config; no placeholder defaults in prod mode
+- id: F-PR14-PLACEHOLDER
+  pr: 14
+  severity: high
+  classification: incomplete
+  file: .mcp.json, .cursor/mcp.json
+  evidence: url https://runtime.example/v1/mcp committed as enabled config
+  remediation: Disable or example-only until real staging URL exists
+- id: F-PR15-HELPER-TESTS
+  pr: 15
+  severity: critical
+  classification: unverifiable
+  file: tests/conformance/test_mcp_conformance.py
+  evidence: OAuth tests call validate_bearer_jwt directly, not HTTP /v1/mcp
+  remediation: Rewrite to exercise middleware; block fake cert pass in example metadata
+prs_16_17:
+  state: paused
+  resume_conditions: core through MCP-014 merged + staging + client certs + no P0/P1 security findings

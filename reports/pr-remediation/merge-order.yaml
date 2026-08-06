@@ -1,0 +1,101 @@
+contract_id: L9CR-MCP-PR-REMEDIATION-001
+generated_at: '2026-08-06T19:30:10.950336+00:00'
+policy: one at a time onto main; rebase successor after each merge
+core_sequence:
+- order: 1
+  logical_contract: MCP-001
+  source_pr: 2
+  title: 'build: establish Python package baseline'
+  status: preserve_candidate
+- order: 2
+  logical_contract: MCP-002
+  source_pr: 3
+  title: 'feat: add canonical typed runtime models'
+  status: repair
+- order: 3
+  logical_contract: MCP-003
+  source_pr: 4
+  title: 'refactor: introduce in-memory runtime service'
+  status: repair
+- order: 4
+  logical_contract: MCP-004
+  source_pr: 5
+  title: 'feat: add immutable runtime pack loader'
+  status: split_reapply
+- order: 5
+  logical_contract: MCP-005
+  source_pr: 6
+  title: 'fix: enforce strict cognitive runtime parsing'
+  status: replace
+- order: 6
+  logical_contract: MCP-006
+  source_pr: 7
+  title: 'feat: derive execution graphs from contracts'
+  status: repair
+- order: 7
+  logical_contract: MCP-007
+  source_pr: 8
+  title: 'test: add cognitive runtime hardening suites'
+  status: replace
+- order: 8
+  logical_contract: MCP-008A
+  source_pr: 9
+  title: 'chore: restore governance consumer manifests'
+  status: split
+- order: 9
+  logical_contract: MCP-008B
+  source_pr: 9
+  title: 'feat: expose cognitive runtime over MCP stdio'
+  status: split
+- order: 10
+  logical_contract: MCP-009
+  source_pr: 10
+  title: 'feat: add isolated MCP run result store'
+  status: preserve_and_validate
+- order: 11
+  logical_contract: MCP-010
+  source_pr: 11
+  title: 'feat: add MCP Streamable HTTP transport'
+  status: repair
+- order: 12
+  logical_contract: MCP-011A
+  source_pr: 12
+  title: 'feat: add OAuth protected-resource discovery'
+  status: replace
+  blocker: authorization server / issuer selection required before claiming complete
+- order: 13
+  logical_contract: MCP-011B
+  source_pr: 12
+  title: 'feat: enforce OAuth bearer authentication and scopes'
+  status: replace
+  blocker: same
+- order: 14
+  logical_contract: MCP-011C
+  source_pr: 12
+  title: 'feat: add principal-owned runs and security auditing'
+  status: replace
+- order: 15
+  logical_contract: MCP-012
+  source_pr: 13
+  title: 'build: add production MCP container baseline'
+  status: hold
+- order: 16
+  logical_contract: MCP-013
+  source_pr: 14
+  title: 'docs: add Claude Code and Cursor MCP configuration'
+  status: hold
+  blocker: real staging hostname required
+- order: 17
+  logical_contract: MCP-014
+  source_pr: 15
+  title: 'test: add MCP conformance and release gates'
+  status: hold
+optional_paused:
+- order: null
+  logical_contract: MCP-015
+  source_pr: 16
+  status: paused
+- order: null
+  logical_contract: MCP-016
+  source_pr: 17
+  status: paused

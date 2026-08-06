@@ -20,6 +20,7 @@ from l9_cognitive_runtime.models import (
     canonical_json,
     dump_yaml,
     load_yaml,
+    load_yaml_mapping,
     sha256_digest,
 )
 
@@ -90,6 +91,13 @@ def test_yaml_uses_serializer_roundtrip() -> None:
     loaded = load_yaml(ValidationContract, text)
     assert loaded.to_canonical_json() == model.to_canonical_json()
     assert "contract_id: VALIDATION_CONTRACT" in text
+
+
+def test_empty_yaml_document_rejected() -> None:
+    with pytest.raises(InvalidValueError, match="empty"):
+        load_yaml_mapping("")
+    with pytest.raises(InvalidValueError, match="empty"):
+        load_yaml(ValidationContract, "null\n")
 
 
 def test_repo_execution_contract_loads() -> None:

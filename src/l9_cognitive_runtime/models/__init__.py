@@ -21,7 +21,7 @@ from l9_cognitive_runtime.models.errors import (
     ModelValidationError,
     UnknownFieldError,
 )
-from l9_cognitive_runtime.models.yaml_codec import dump_yaml, load_yaml
+from l9_cognitive_runtime.models.yaml_codec import dump_yaml, load_yaml, load_yaml_mapping
 
 __all__ = [
     "AdapterName",
@@ -41,5 +41,6 @@ __all__ = [
     "canonical_json",
     "dump_yaml",
     "load_yaml",
+    "load_yaml_mapping",
     "sha256_digest",
 ]

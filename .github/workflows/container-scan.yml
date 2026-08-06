@@ -1,0 +1,68 @@
+name: container-scan
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - pyproject.toml
+      - uv.lock
+      - src/**
+      - .github/workflows/container-scan.yml
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - pyproject.toml
+      - uv.lock
+      - src/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: |
+          echo "tag=l9-cognitive-runtime-mcp:scan-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        run: |
+          docker build -t "${{ steps.meta.outputs.tag }}" .
+          docker image inspect "${{ steps.meta.outputs.tag }}" --format '{{.Id}}' | tee image-digest.txt
+          docker image inspect "${{ steps.meta.outputs.tag }}" --format '{{json .Config.User}}' | tee image-user.txt
+          test "$(cat image-user.txt)" = '"10001:10001"'
+
+      - name: Trivy filesystem (secrets)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          scanners: secret
+
+      - name: Trivy image (vulnerabilities)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ steps.meta.outputs.tag }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-digest
+          path: |
+            image-digest.txt
+            image-user.txt

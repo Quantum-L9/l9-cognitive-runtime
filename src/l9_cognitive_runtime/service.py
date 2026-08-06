@@ -6,8 +6,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
-import yaml
-
 from l9_cognitive_runtime.models import (
     ExecutionContract,
     ExecutionGraph,
@@ -16,6 +14,7 @@ from l9_cognitive_runtime.models import (
     ValidationContract,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
+from l9_cognitive_runtime.parsing import load_yaml_file
 
 if TYPE_CHECKING:
     from l9_cognitive_runtime.pack import PackProvenance
@@ -127,12 +126,7 @@ class CognitiveRuntimeService:
         )
 
     def _load_yaml(self, path: Path) -> dict[str, Any]:
-        if not path.is_file():
-            raise InvalidValueError("required YAML missing", path=str(path))
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            raise InvalidValueError("YAML root must be a mapping", path=str(path))
-        return data
+        return load_yaml_file(path)
 
     def _load_or_build_execution(
         self, pack_root: Path, intent: IntentContract

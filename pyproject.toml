@@ -71,3 +71,8 @@ python_version = "3.11"
 strict = true
 mypy_path = "src"
 files = ["src", "tests"]
+
+[dependency-groups]
+dev = [
+    "types-pyyaml>=6.0.12.20260724",
+]

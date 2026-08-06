@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -13,39 +15,78 @@ from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
 ROOT = Path(__file__).resolve().parents[1]
+CONTRACT_FILES = (
+    "FINAL_EXECUTION_CONTRACT.yaml",
+    "VALIDATION_CONTRACT.yaml",
+    "HANDOFF_CONTRACT.yaml",
+    "EXECUTION_GRAPH.json",
+)
 
 
-def test_compile_runtime_in_memory_against_pack() -> None:
+def _sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _verified_pack(tmp_path: Path) -> Path:
+    """Copy representative contracts into a pack with a matching MANIFEST.json."""
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    files: list[dict[str, object]] = []
+    for name in CONTRACT_FILES:
+        src = ROOT / name
+        dst = pack / name
+        shutil.copy2(src, dst)
+        files.append({"path": name, "sha256": _sha(dst), "bytes": dst.stat().st_size})
+    (pack / "MANIFEST.json").write_text(
+        json.dumps({"pack_name": "test-pack", "files": files}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return pack
+
+
+def test_compile_runtime_in_memory_against_pack(tmp_path: Path) -> None:
+    pack = _verified_pack(tmp_path)
     service = CognitiveRuntimeService()
     bundle = service.compile_runtime(
-        CompileRequest(mission="compile representative pack", pack_root=ROOT)
+        CompileRequest(mission="compile representative pack", pack_ref=pack)
     )
     assert bundle.intent.mission == "compile representative pack"
     assert bundle.execution.contract_id == "FINAL_EXECUTION_CONTRACT"
     assert bundle.graph.terminal_node == "emission"
-    assert bundle.digests()["graph"]
-    # Memory-only compile must not require fixed repository output files.
-    assert not (ROOT / "INTENT_CONTRACT.yaml").exists()
+    assert bundle.provenance.manifest_digest
+    assert bundle.digests()["manifest"] == bundle.provenance.manifest_digest
+    assert not (pack / "INTENT_CONTRACT.yaml").exists()
 
 
-def test_pack_root_required() -> None:
+def test_pack_ref_required() -> None:
     service = CognitiveRuntimeService()
-    with pytest.raises(InvalidValueError, match="pack_root is required"):
+    with pytest.raises(InvalidValueError, match="pack_ref"):
         service.compile_runtime(CompileRequest(mission="missing pack"))
 
 
-def test_compile_matches_pack_graph_topology() -> None:
+def test_compile_fails_closed_on_missing_manifest(tmp_path: Path) -> None:
+    pack = tmp_path / "bare"
+    pack.mkdir()
     service = CognitiveRuntimeService()
-    bundle = service.compile_runtime(CompileRequest(mission="topology", pack_root=ROOT))
-    pack_graph = json.loads((ROOT / "EXECUTION_GRAPH.json").read_text(encoding="utf-8"))
+    with pytest.raises(InvalidValueError, match="MANIFEST"):
+        service.compile_runtime(CompileRequest(mission="no manifest", pack_ref=pack))
+
+
+def test_compile_matches_pack_graph_topology(tmp_path: Path) -> None:
+    pack = _verified_pack(tmp_path)
+    service = CognitiveRuntimeService()
+    bundle = service.compile_runtime(CompileRequest(mission="topology", pack_ref=pack))
+    pack_graph = json.loads((pack / "EXECUTION_GRAPH.json").read_text(encoding="utf-8"))
     assert [n.id for n in bundle.graph.nodes] == [n["id"] for n in pack_graph["nodes"]]
     assert bundle.graph.terminal_node == pack_graph["terminal_node"]
 
 
-def test_cli_memory_only(capsys) -> None:  # type: ignore[no-untyped-def]
-    assert cli_main(["--mission", "cli memory", "--pack-root", str(ROOT)]) == 0
+def test_cli_memory_only(tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]
+    pack = _verified_pack(tmp_path)
+    assert cli_main(["--mission", "cli memory", "--pack-root", str(pack)]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["intent"]["mission"] == "cli memory"
+    assert out["digests"]["manifest"]
 
 
 def test_write_dir_confined(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

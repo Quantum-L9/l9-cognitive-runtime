@@ -100,11 +100,7 @@ class GitHubTrustResolver:
                 return False
 
             allowed = self._evaluate(membership)
-            ttl = (
-                self.policy.cache_ttl_seconds
-                if allowed
-                else self.policy.negative_ttl_seconds
-            )
+            ttl = self.policy.cache_ttl_seconds if allowed else self.policy.negative_ttl_seconds
             self._cache[user_id] = _CacheEntry(
                 allowed=allowed,
                 expires_at=self.now() + ttl,

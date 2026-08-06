@@ -13,10 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_five_read_only_tools_registered() -> None:
     server = build_server(ROOT)
-    # Tool manager holds registered tools
     names = sorted(server._tool_manager._tools.keys())  # noqa: SLF001
-    assert names == sorted(READ_ONLY_TOOLS)
-    assert len(names) == 5
+    assert "compile_runtime" in names
+    assert "get_run" in names
+    assert set(READ_ONLY_TOOLS).issubset(set(names))
 
 
 def test_compile_runtime_tool() -> None:

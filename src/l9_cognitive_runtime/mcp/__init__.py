@@ -9,6 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from l9_cognitive_runtime import __version__
+from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore
 from l9_cognitive_runtime.pack import PackLoader
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
@@ -19,6 +20,7 @@ READ_ONLY_TOOLS = (
     "get_bundle_digests",
     "list_pack_manifest",
     "validate_pack_path",
+    "get_run",
 )
 
 
@@ -26,6 +28,7 @@ def build_server(pack_root: Path | None = None) -> MCPServer:
     """Create a read-only MCP server bound to an optional pack root."""
     root = (pack_root or Path.cwd()).resolve()
     service = CognitiveRuntimeService()
+    runs = InMemoryRunStore()
     mcp = MCPServer(
         name=SERVER_NAME,
         version=__version__,

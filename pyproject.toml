@@ -25,6 +25,9 @@ dependencies = [
   "PyYAML>=6.0",
 ]
 
+[project.scripts]
+l9-cognitive-runtime = "l9_cognitive_runtime.cli:main"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",

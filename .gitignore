@@ -20,3 +20,11 @@ htmlcov/
 .venv/
 .venv*/
 venv/
+
+# Local Cursor-Governance wiring (not package source)
+.claude/
+.cursor/
+.cursor-commands
+.vscode/
+.l9-pr-remediation/
+memory-bank/

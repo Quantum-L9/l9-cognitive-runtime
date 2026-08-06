@@ -1,0 +1,8 @@
+{
+  "routing": {},
+  "schema_version": 1,
+  "skills": [],
+  "source": "skills/AUTONOMY_MANIFEST.yaml",
+  "source_manifest_sha256": "77e45c84c96e972ee2cbd435f4e3d48d4c71e24fd952076c9dde23316fc336e8",
+  "source_skill_corpus_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,55 @@
+name: pr-check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: gates (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      - name: Sync (locked)
+        run: uv sync --extra dev --frozen
+      - name: Ruff lint
+        run: uv run --no-sync ruff check src tests
+      - name: Ruff format check
+        run: uv run --no-sync ruff format --check src tests
+      - name: Mypy (strict)
+        run: uv run --no-sync mypy src tests
+      - name: Pytest
+        run: uv run --no-sync python -m pytest -q
+
+  clean-build:
+    name: build from clean checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          python-version: "3.11"
+      - name: Sync (locked)
+        run: uv sync --extra dev --frozen
+      - name: Build sdist + wheel
+        run: uv run --no-sync python -m build
+      - name: Assert working tree stayed clean (no committed dist artifacts)
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::working tree dirty after build"
+            git status --porcelain
+            exit 1
+          fi

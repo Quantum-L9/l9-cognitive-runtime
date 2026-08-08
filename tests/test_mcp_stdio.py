@@ -99,6 +99,31 @@ def test_resource_kernel_read(valid_pack: Path) -> None:
     assert "kernel_id" in contents[0].content
 
 
+def test_compile_stores_isolated_run(valid_pack: Path) -> None:
+    server = build_server(valid_pack)
+    data = _tool_data(_run(server.call_tool("compile_runtime", {"mission": "run store"})))
+    assert data["run_id"]
+    assert data["resource_uri"] == f"l9://runs/{data['run_id']}"
+    # No raw request/intent/kernel bodies are stored in the returned payload.
+    assert "mission" not in data
+    assert "intent" not in data
+
+
+def test_run_resource_retrieval(valid_pack: Path) -> None:
+    server = build_server(valid_pack)
+    data = _tool_data(_run(server.call_tool("compile_runtime", {"mission": "retrieve"})))
+    contents = list(_run(server.read_resource(data["resource_uri"])))
+    stored = json.loads(contents[0].content)
+    assert stored["execution_contract_id"] == "FINAL_EXECUTION_CONTRACT"
+    assert stored["digests"] == data["digests"]
+
+
+def test_unknown_run_resource_rejected(valid_pack: Path) -> None:
+    server = build_server(valid_pack)
+    with pytest.raises(Exception):  # noqa: B017 - typed RunNotFoundError wrapped by SDK
+        list(_run(server.read_resource("l9://runs/nonexistent-run-id")))
+
+
 def test_unknown_pack_ref_rejected(valid_pack: Path) -> None:
     server = build_server(valid_pack)
     with pytest.raises(Exception):  # noqa: B017 - SDK wraps as an MCP error

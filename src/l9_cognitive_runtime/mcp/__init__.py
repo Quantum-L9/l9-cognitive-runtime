@@ -21,12 +21,16 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from l9_cognitive_runtime import __version__
+from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.pack import PackLoader, RuntimePack
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
 SERVER_NAME = "l9-cognitive-runtime"
 DEFAULT_TASK_TYPE = "kernel_runtime_convergence"
+# stdio is local and unauthenticated; a single local principal owns its runs.
+# Hosted OAuth binds the principal to the token subject in MCP-011C.
+LOCAL_PRINCIPAL = "local-stdio"
 READ_ONLY_TOOLS = (
     "runtime_capabilities",
     "compile_intent",
@@ -60,6 +64,7 @@ def build_server(pack_root: Path) -> MCPServer:
     pack = PackLoader().load(root)
     pack_ref = str(pack.manifest.get("pack_name") or root.name)
     service = CognitiveRuntimeService()
+    runs = InMemoryRunStore()
 
     def _compile(mission: str, task_type: str = DEFAULT_TASK_TYPE) -> Any:
         return service.compile_runtime(
@@ -110,15 +115,18 @@ def build_server(pack_root: Path) -> MCPServer:
 
     @mcp.tool()
     def compile_runtime(mission: str, task_type: str = DEFAULT_TASK_TYPE) -> dict[str, Any]:
-        """Compile a full runtime bundle in memory (read-only)."""
+        """Compile a full runtime bundle in memory and store an isolated run."""
         bundle = _compile(mission, task_type)
-        return {
+        # Store only the derived result — never raw request/intent/kernel bodies.
+        payload = {
             "digests": bundle.digests(),
             "execution_contract_id": bundle.execution.contract_id,
             "graph_id": bundle.graph.graph_id,
             "terminal_node": bundle.graph.terminal_node,
             "provenance": bundle.provenance.to_dict(),
         }
+        record = runs.create(principal=LOCAL_PRINCIPAL, payload=payload)
+        return {**payload, "run_id": record.run_id, "resource_uri": record.resource_uri}
 
     @mcp.tool()
     def validate_runtime_bundle(mission: str) -> dict[str, Any]:
@@ -162,6 +170,12 @@ def build_server(pack_root: Path) -> MCPServer:
     def pack_kernel_resource(pack_ref: str, kernel_id: str) -> str:
         _require_bound_pack(pack_ref)
         return _read_pack_file(f"kernels/{kernel_id}")
+
+    @mcp.resource("l9://runs/{run_id}")
+    def run_resource(run_id: str) -> str:
+        # Anti-enumerating: unknown/expired runs raise RunNotFoundError.
+        record = runs.require(run_id, LOCAL_PRINCIPAL)
+        return json.dumps(record.payload, indent=2, sort_keys=True)
 
     return mcp
 

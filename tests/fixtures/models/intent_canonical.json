@@ -1,0 +1,1 @@
+{"constraints":["a","b"],"desired_outputs":["out"],"intent_id":"i1","mission":"do the thing","source_context":{"a":2,"z":1},"task_type":"build","unknowns":["u1"]}

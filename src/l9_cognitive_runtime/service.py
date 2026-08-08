@@ -16,6 +16,7 @@ from l9_cognitive_runtime.models import (
     ValidationContract,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
+from l9_cognitive_runtime.pack import PackLoader, PackProvenance
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ class CompileRequest:
     mission: str
     task_type: str = "kernel_runtime_convergence"
     pack_root: Path | None = None
+    pack_ref: str | Path | None = None
     constraints: tuple[str, ...] = (
         "model_agnostic",
         "kernel_first",
@@ -51,15 +53,18 @@ class RuntimeBundle:
     validation: ValidationContract
     handoff: HandoffContract
     graph: ExecutionGraph
+    provenance: PackProvenance
 
     def digests(self) -> dict[str, str]:
-        return {
+        payload = {
             "intent": self.intent.sha256(),
             "execution": self.execution.sha256(),
             "validation": self.validation.sha256(),
             "handoff": self.handoff.sha256(),
             "graph": self.graph.sha256(),
+            "manifest": self.provenance.manifest_digest,
         }
+        return payload
 
 
 class BundleRepository(Protocol):
@@ -87,7 +92,12 @@ class CognitiveRuntimeService:
     def compile_runtime(self, request: CompileRequest) -> RuntimeBundle:
         if not request.mission.strip():
             raise InvalidValueError("mission must be non-empty", path="mission")
-        pack_root = self._repository.resolve_pack_root(request.pack_root)
+        pack_ref = request.pack_ref if request.pack_ref is not None else request.pack_root
+        if pack_ref is None or str(pack_ref).strip() == "":
+            raise InvalidValueError("explicit pack_ref required", path="pack_ref")
+        pack = PackLoader().load(pack_ref)
+        pack_root = self._repository.resolve_pack_root(Path(pack.provenance.root))
+        provenance = pack.provenance
         intent = IntentContract.from_mapping(
             {
                 "intent_id": "intent.runtime_convergence.v1",
@@ -109,6 +119,7 @@ class CognitiveRuntimeService:
             validation=validation,
             handoff=handoff,
             graph=graph,
+            provenance=provenance,
         )
 
     def _load_yaml(self, path: Path) -> dict[str, Any]:

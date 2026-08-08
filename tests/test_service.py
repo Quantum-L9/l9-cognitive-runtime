@@ -28,7 +28,7 @@ def _sha(path: Path) -> str:
 
 
 def _verified_pack(tmp_path: Path) -> Path:
-    """Copy representative contracts into a pack with a matching MANIFEST.json."""
+    """Copy representative contracts + kernels into a pack with matching MANIFEST.json."""
     pack = tmp_path / "pack"
     pack.mkdir()
     files: list[dict[str, object]] = []
@@ -37,6 +37,16 @@ def _verified_pack(tmp_path: Path) -> Path:
         dst = pack / name
         shutil.copy2(src, dst)
         files.append({"path": name, "sha256": _sha(dst), "bytes": dst.stat().st_size})
+    kernels_src = ROOT / "runtime" / "kernels"
+    if kernels_src.is_dir():
+        for src in kernels_src.rglob("*"):
+            if not src.is_file():
+                continue
+            rel = src.relative_to(ROOT).as_posix()
+            dst = pack / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            files.append({"path": rel, "sha256": _sha(dst), "bytes": dst.stat().st_size})
     (pack / "MANIFEST.json").write_text(
         json.dumps({"pack_name": "test-pack", "files": files}, indent=2) + "\n",
         encoding="utf-8",
@@ -70,6 +80,38 @@ def test_compile_fails_closed_on_missing_manifest(tmp_path: Path) -> None:
     service = CognitiveRuntimeService()
     with pytest.raises(InvalidValueError, match="MANIFEST"):
         service.compile_runtime(CompileRequest(mission="no manifest", pack_ref=pack))
+
+
+def test_compile_fails_closed_on_missing_execution_contract(tmp_path: Path) -> None:
+    pack = _verified_pack(tmp_path)
+    (pack / "FINAL_EXECUTION_CONTRACT.yaml").unlink()
+    # Manifest still lists the file → pack load fails closed on missing listed file.
+    service = CognitiveRuntimeService()
+    with pytest.raises(InvalidValueError):
+        service.compile_runtime(CompileRequest(mission="missing contract", pack_ref=pack))
+
+
+def test_unknown_kernel_fails_compile(tmp_path: Path) -> None:
+    pack = _verified_pack(tmp_path)
+    contract = (pack / "FINAL_EXECUTION_CONTRACT.yaml").read_text(encoding="utf-8")
+    contract = contract.replace(
+        "runtime/kernels/task/repo_auditor_kernel.yaml",
+        "runtime/kernels/task/does_not_exist_kernel.yaml",
+    )
+    (pack / "FINAL_EXECUTION_CONTRACT.yaml").write_text(contract, encoding="utf-8")
+    # Refresh manifest hash for the mutated contract.
+    files = json.loads((pack / "MANIFEST.json").read_text(encoding="utf-8"))["files"]
+    for entry in files:
+        if entry["path"] == "FINAL_EXECUTION_CONTRACT.yaml":
+            entry["sha256"] = _sha(pack / "FINAL_EXECUTION_CONTRACT.yaml")
+            entry["bytes"] = (pack / "FINAL_EXECUTION_CONTRACT.yaml").stat().st_size
+    manifest = {"pack_name": "test-pack", "files": files}
+    (pack / "MANIFEST.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+    from l9_cognitive_runtime.parsing import StrictParseError
+
+    service = CognitiveRuntimeService()
+    with pytest.raises(StrictParseError):
+        service.compile_runtime(CompileRequest(mission="bad kernel", pack_ref=pack))
 
 
 def test_compile_matches_pack_graph_topology(tmp_path: Path) -> None:

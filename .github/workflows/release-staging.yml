@@ -30,7 +30,9 @@ jobs:
   release:
     name: Publish immutable image and dispatch staging request
     needs: analysis
-    if: needs.analysis.outputs.gate-status == 'pass'
+    if: >-
+      needs.analysis.outputs.gate-status == 'pass' &&
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       actions: read

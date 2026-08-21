@@ -43,6 +43,7 @@ def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
     assert f"@{CORE_PIN}" in text
     assert "profile: release" in text
     assert "matrix-id: release-semgrep" in text
+    assert "github.ref == 'refs/heads/main'" in text
     assert "source-revision-build-arg-name: L9_SOURCE_REVISION" in text
     assert (
         "registered-profile-path: integrations/consumers/"

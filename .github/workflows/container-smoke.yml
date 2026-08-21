@@ -40,9 +40,10 @@ jobs:
 
       - name: Run hardened container
         run: |
+          # Match l9-deploy's current container-service renderer exactly:
+          # read-only root filesystem with no implicit writable /tmp mount.
           docker run --detach --name l9-mcp-smoke \
             --read-only \
-            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --cap-drop=ALL \
             --security-opt=no-new-privileges:true \
             --publish 18080:8080 \

@@ -1,0 +1,69 @@
+name: release-staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment target
+        required: true
+        type: choice
+        options:
+          - staging
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    name: Canonical release analysis
+    uses: Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@6d5507245cd01d915e3bf400a1e4f8c31ed95e3c
+    permissions:
+      actions: read
+      checks: write
+      contents: read
+      security-events: write
+    with:
+      profile: release
+      matrix-id: release-semgrep
+      language: python
+
+  release:
+    name: Publish immutable image and dispatch staging request
+    needs: analysis
+    if: needs.analysis.outputs.gate-status == 'pass'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Verify release source
+        run: |
+          set -euo pipefail
+          uv sync --extra dev --frozen
+          uv run --no-sync ruff check src tests
+          uv run --no-sync ruff format --check src tests
+          uv run --no-sync mypy src tests
+          uv run --no-sync python -m pytest -q
+          uv run --no-sync python -m build
+      - name: Publish and request deployment
+        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@6d5507245cd01d915e3bf400a1e4f8c31ed95e3c
+        with:
+          deployment-profile: .l9/deployment.yaml
+          registered-profile-path: integrations/consumers/l9-cognitive-runtime.deployment.yaml
+          image-repository: ghcr.io/quantum-l9/l9-cognitive-runtime
+          environment: ${{ inputs.environment }}
+          analysis-artifact: ${{ needs.analysis.outputs.artifact-name }}
+          matrix-id: release-semgrep
+          source-revision-build-arg-name: L9_SOURCE_REVISION
+          github-token: ${{ github.token }}
+          deployment-broker-token: ${{ secrets.DEPLOYMENT_BROKER_TOKEN }}

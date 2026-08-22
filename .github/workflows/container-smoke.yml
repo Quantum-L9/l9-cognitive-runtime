@@ -1,0 +1,98 @@
+name: container-smoke
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - pyproject.toml
+      - uv.lock
+      - src/**
+      - contracts/**
+      - runtime/**
+      - FINAL_EXECUTION_CONTRACT.yaml
+      - VALIDATION_CONTRACT.yaml
+      - HANDOFF_CONTRACT.yaml
+      - tests/test_deployment_pack.py
+      - .github/workflows/container-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Build immutable candidate image
+        run: |
+          docker build \
+            --build-arg L9_SOURCE_REVISION="${GITHUB_SHA}" \
+            --tag l9-cognitive-runtime-mcp:smoke \
+            .
+          test "$(docker image inspect l9-cognitive-runtime-mcp:smoke --format '{{.Config.User}}')" = "10001:10001"
+
+      - name: Run hardened container
+        run: |
+          # Match l9-deploy's current container-service renderer exactly:
+          # read-only root filesystem with no implicit writable /tmp mount.
+          docker run --detach --name l9-mcp-smoke \
+            --read-only \
+            --cap-drop=ALL \
+            --security-opt=no-new-privileges:true \
+            --publish 18080:8080 \
+            --env L9_ALLOWED_HOSTS="127.0.0.1,127.0.0.1:18080,localhost,localhost:18080" \
+            l9-cognitive-runtime-mcp:smoke
+
+      - name: Health and readiness
+        run: |
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/readyz > ready.json; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            docker logs l9-mcp-smoke
+            exit 1
+          fi
+          curl -fsS http://127.0.0.1:18080/healthz
+          grep -q 'compile_runtime' ready.json
+
+      - name: Real MCP initialize and tool call
+        run: |
+          uv sync --extra dev --frozen
+          uv run --no-sync python - <<'PY'
+          import asyncio
+          from mcp import ClientSession
+          from mcp.client.streamable_http import streamable_http_client
+          from l9_cognitive_runtime.mcp import READ_ONLY_TOOLS
+
+          async def main() -> None:
+              async with streamable_http_client("http://127.0.0.1:18080/v1/mcp") as (read, write):
+                  async with ClientSession(read, write) as session:
+                      initialized = await session.initialize()
+                      assert initialized.server_info.name == "l9-cognitive-runtime"
+                      tools = await session.list_tools()
+                      assert {tool.name for tool in tools.tools} == set(READ_ONLY_TOOLS)
+                      result = await session.call_tool("runtime_capabilities", {})
+                      assert result.is_error is False
+
+          asyncio.run(main())
+          PY
+
+      - name: Container logs
+        if: always()
+        run: docker logs l9-mcp-smoke || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f l9-mcp-smoke || true

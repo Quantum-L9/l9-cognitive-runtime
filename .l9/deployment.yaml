@@ -1,0 +1,77 @@
+# --- L9_META ---
+# l9_schema: 1
+# origin: l9-deployment-platform
+# layer:
+# - repository
+# tags:
+# - L9_META
+# - deployment-platform
+# owner: platform
+# status: active
+# --- /L9_META ---
+schema: l9.deployment-profile/v1
+project:
+  id: l9-cognitive-runtime
+  repository: Quantum-L9/l9-cognitive-runtime
+  owner_team: platform
+  runtime_profile: container-service
+artifact:
+  registry: ghcr.io
+  image: ghcr.io/quantum-l9/l9-cognitive-runtime
+  require_digest: true
+  require_provenance_attestation: true
+  require_sbom_attestation: true
+runtime:
+  architecture: linux/amd64
+  container_port: 8080
+  user: non_root
+  read_only_root_filesystem: true
+  stop_grace_seconds: 30
+  environment:
+    L9_ALLOWED_HOSTS: mcp-staging.quantumaipartners.com
+health:
+  startup:
+    type: http
+    path: /readyz
+    expected_status: 200
+    timeout_seconds: 10
+    interval_seconds: 5
+    attempts: 24
+  post_deploy:
+    type: http
+    path: /readyz
+    expected_status: 200
+    timeout_seconds: 10
+    interval_seconds: 5
+    attempts: 12
+release:
+  strategy: rolling-single-host
+  retain_successful_releases: 5
+  automatic_rollback: true
+  production_approval_required: true
+  stabilization_seconds: 30
+migrations:
+  enabled: false
+  backup_required: false
+secrets:
+  authority: infisical
+  runtime_mode: deploy_render
+  project_slug: l9-cognitive-runtime
+  environment_mapping:
+    staging: staging
+    production: prod
+network:
+  public_ingress:
+    enabled: true
+    hostnames:
+      - mcp-staging.quantumaipartners.com
+    tls: automatic
+  private_dependencies_only: true
+policy:
+  allowed_source_refs:
+    staging:
+      - refs/heads/main
+    production:
+      - refs/tags/v*
+  require_clean_ci_gate: true
+  require_profile_digest_match: true

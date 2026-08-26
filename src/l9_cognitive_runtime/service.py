@@ -32,11 +32,17 @@ class CompileRequest:
     pack_root: Path | None = None
     pack_ref: str | Path | None = None
     constraints: tuple[str, ...] = (
-        "model_agnostic", "kernel_first", "evidence_backed", "no_fake_validation",
+        "model_agnostic",
+        "kernel_first",
+        "evidence_backed",
+        "no_fake_validation",
     )
     desired_outputs: tuple[str, ...] = (
-        "kernel_activation_plan", "execution_contract", "execution_graph",
-        "validation_evidence", "adapter_render",
+        "kernel_activation_plan",
+        "execution_contract",
+        "execution_graph",
+        "validation_evidence",
+        "adapter_render",
     )
     source_context: dict[str, Any] = field(default_factory=lambda: {"pack": "l9_cognitive_runtime"})
     unknowns: tuple[str, ...] = ()
@@ -73,9 +79,12 @@ class RuntimeBundle:
 
     def digests(self) -> dict[str, str]:
         return {
-            "intent": self.intent.sha256(), "execution": self.execution.sha256(),
-            "validation": self.validation.sha256(), "handoff": self.handoff.sha256(),
-            "graph": self.graph.sha256(), "manifest": self.provenance.manifest_digest,
+            "intent": self.intent.sha256(),
+            "execution": self.execution.sha256(),
+            "validation": self.validation.sha256(),
+            "handoff": self.handoff.sha256(),
+            "graph": self.graph.sha256(),
+            "manifest": self.provenance.manifest_digest,
         }
 
 
@@ -83,6 +92,7 @@ class CompileObservationSession(Protocol):
     """Per-call lifecycle hook returned by a configured compile observer."""
 
     def succeeded(self, bundle: RuntimeBundle) -> None: ...
+
     def failed(self, error: Exception) -> None: ...
 
 
@@ -163,19 +173,30 @@ class CognitiveRuntimeService:
         pack = PackLoader().load(pack_ref)
         pack_root = self._repository.resolve_pack_root(Path(pack.provenance.root))
         provenance = pack.provenance
-        intent = IntentContract.from_mapping({
-            "intent_id": "intent.runtime_convergence.v1", "mission": request.mission,
-            "task_type": request.task_type, "constraints": list(request.constraints),
-            "desired_outputs": list(request.desired_outputs),
-            "source_context": dict(request.source_context), "unknowns": list(request.unknowns),
-        })
+        intent = IntentContract.from_mapping(
+            {
+                "intent_id": "intent.runtime_convergence.v1",
+                "mission": request.mission,
+                "task_type": request.task_type,
+                "constraints": list(request.constraints),
+                "desired_outputs": list(request.desired_outputs),
+                "source_context": dict(request.source_context),
+                "unknowns": list(request.unknowns),
+            }
+        )
         execution = self._load_execution(pack_root)
         validation = self._load_validation(pack_root)
         handoff = self._load_handoff(pack_root)
         self._enforce_strict_activation(pack_root, execution)
         graph = derive_execution_graph(execution)
-        return RuntimeBundle(intent=intent, execution=execution, validation=validation,
-                             handoff=handoff, graph=graph, provenance=provenance)
+        return RuntimeBundle(
+            intent=intent,
+            execution=execution,
+            validation=validation,
+            handoff=handoff,
+            graph=graph,
+            provenance=provenance,
+        )
 
     def _start_observer(
         self,

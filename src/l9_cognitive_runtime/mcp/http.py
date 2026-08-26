@@ -27,7 +27,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
-from l9_cognitive_runtime.mcp import READ_ONLY_TOOLS, build_server
+from l9_cognitive_runtime.mcp import (
+    READ_ONLY_TOOLS,
+    CompileInvocationContextFactory,
+    build_server,
+)
+from l9_cognitive_runtime.service import CompileObserver, ObserverErrorReporter
 
 MCP_PATH = "/v1/mcp"
 MAX_BODY_BYTES = 1_048_576  # 1 MiB
@@ -126,9 +131,17 @@ def create_http_app(
     allowed_hosts: frozenset[str] | None = None,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     concurrency_limit: int = COMPILE_CONCURRENCY_LIMIT,
+    observer: CompileObserver | None = None,
+    observer_error_reporter: ObserverErrorReporter | None = None,
+    invocation_context_factory: CompileInvocationContextFactory | None = None,
 ) -> Starlette:
     """Build the Streamable HTTP app for the read-only MCP server."""
-    server = build_server(pack_root)
+    server = build_server(
+        pack_root,
+        observer=observer,
+        observer_error_reporter=observer_error_reporter,
+        invocation_context_factory=invocation_context_factory,
+    )
     origins = _allowed_origins() if allowed_origins is None else allowed_origins
     hosts = _allowed_hosts() if allowed_hosts is None else allowed_hosts
     # DNS-rebinding protection at the transport layer (defense in depth alongside

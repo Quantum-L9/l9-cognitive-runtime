@@ -8,6 +8,8 @@ Exposes the deterministic compiler over MCP stdio. Invariants:
 - Every compile runs against the verified, manifest-bound pack and carries
   provenance. No tool executes shell commands, mutates the repository, or
   executes graphs — the surface is read-only.
+- A configured compile observer is injected at the central service boundary;
+  MCP tools do not duplicate canonical projection.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +27,13 @@ from l9_cognitive_runtime import __version__
 from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.pack import PackLoader, RuntimePack
-from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
+from l9_cognitive_runtime.service import (
+    CognitiveRuntimeService,
+    CompileObserver,
+    CompileRequest,
+    ObserverErrorReporter,
+    RuntimeInvocationContext,
+)
 
 SERVER_NAME = "l9-cognitive-runtime"
 DEFAULT_TASK_TYPE = "kernel_runtime_convergence"
@@ -38,6 +47,8 @@ READ_ONLY_TOOLS = (
     "compile_runtime",
     "validate_runtime_bundle",
 )
+
+CompileInvocationContextFactory = Callable[[str, str], RuntimeInvocationContext | None]
 
 
 def _capabilities(pack: RuntimePack) -> dict[str, Any]:
@@ -55,7 +66,13 @@ def _capabilities(pack: RuntimePack) -> dict[str, Any]:
     }
 
 
-def build_server(pack_root: Path) -> MCPServer:
+def build_server(
+    pack_root: Path,
+    *,
+    observer: CompileObserver | None = None,
+    observer_error_reporter: ObserverErrorReporter | None = None,
+    invocation_context_factory: CompileInvocationContextFactory | None = None,
+) -> MCPServer:
     """Create a read-only MCP server bound to an explicit, verified pack root."""
     root = pack_root.resolve()
     if not root.is_dir():
@@ -63,12 +80,21 @@ def build_server(pack_root: Path) -> MCPServer:
     # Fail closed at startup: the pack must load and verify.
     pack = PackLoader().load(root)
     pack_ref = str(pack.manifest.get("pack_name") or root.name)
-    service = CognitiveRuntimeService()
+    service = CognitiveRuntimeService(
+        observer=observer,
+        observer_error_reporter=observer_error_reporter,
+    )
     runs = InMemoryRunStore()
 
     def _compile(mission: str, task_type: str = DEFAULT_TASK_TYPE) -> Any:
+        invocation_context = (
+            invocation_context_factory(mission, task_type)
+            if invocation_context_factory is not None
+            else None
+        )
         return service.compile_runtime(
-            CompileRequest(mission=mission, task_type=task_type, pack_root=root)
+            CompileRequest(mission=mission, task_type=task_type, pack_root=root),
+            invocation_context=invocation_context,
         )
 
     def _require_bound_pack(requested: str) -> None:

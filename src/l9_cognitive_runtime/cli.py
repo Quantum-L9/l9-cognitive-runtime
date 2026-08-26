@@ -8,7 +8,13 @@ import sys
 from pathlib import Path
 
 from l9_cognitive_runtime.models.errors import InvalidValueError
-from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
+from l9_cognitive_runtime.service import (
+    CognitiveRuntimeService,
+    CompileObserver,
+    CompileRequest,
+    ObserverErrorReporter,
+    RuntimeInvocationContext,
+)
 
 
 def _confined_write_dir(write_dir: Path, *, allow_root: Path | None = None) -> Path:
@@ -26,7 +32,14 @@ def _confined_write_dir(write_dir: Path, *, allow_root: Path | None = None) -> P
     return target
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    observer: CompileObserver | None = None,
+    invocation_context: RuntimeInvocationContext | None = None,
+    observer_error_reporter: ObserverErrorReporter | None = None,
+) -> int:
+    """Run the CLI, optionally injecting the same central observer used elsewhere."""
     parser = argparse.ArgumentParser(description="Compile cognitive runtime artifacts in memory")
     parser.add_argument("--mission", required=True)
     parser.add_argument("--task-type", default="kernel_runtime_convergence")
@@ -39,13 +52,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    service = CognitiveRuntimeService()
+    service = CognitiveRuntimeService(
+        observer=observer,
+        observer_error_reporter=observer_error_reporter,
+    )
     bundle = service.compile_runtime(
         CompileRequest(
             mission=args.mission,
             task_type=args.task_type,
             pack_root=args.pack_root,
-        )
+        ),
+        invocation_context=invocation_context,
     )
     payload = {
         "digests": bundle.digests(),

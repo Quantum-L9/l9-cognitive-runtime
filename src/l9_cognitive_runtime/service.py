@@ -32,20 +32,32 @@ class CompileRequest:
     pack_root: Path | None = None
     pack_ref: str | Path | None = None
     constraints: tuple[str, ...] = (
-        "model_agnostic",
-        "kernel_first",
-        "evidence_backed",
-        "no_fake_validation",
+        "model_agnostic", "kernel_first", "evidence_backed", "no_fake_validation",
     )
     desired_outputs: tuple[str, ...] = (
-        "kernel_activation_plan",
-        "execution_contract",
-        "execution_graph",
-        "validation_evidence",
-        "adapter_render",
+        "kernel_activation_plan", "execution_contract", "execution_graph",
+        "validation_evidence", "adapter_render",
     )
     source_context: dict[str, Any] = field(default_factory=lambda: {"pack": "l9_cognitive_runtime"})
     unknowns: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeInvocationContext:
+    """Optional upstream execution lineage for one runtime invocation.
+
+    This is deliberately separate from ``CompileRequest``. It carries execution
+    context, not business input. Missing upstream coordinates remain ``None``.
+    """
+
+    trace_id: str | None = None
+    parent_span_id: str | None = None
+    program_id: str | None = None
+    campaign_id: str | None = None
+    task_id: str | None = None
+    run_id: str | None = None
+    attempt_id: str | None = None
+    session_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -61,13 +73,33 @@ class RuntimeBundle:
 
     def digests(self) -> dict[str, str]:
         return {
-            "intent": self.intent.sha256(),
-            "execution": self.execution.sha256(),
-            "validation": self.validation.sha256(),
-            "handoff": self.handoff.sha256(),
-            "graph": self.graph.sha256(),
-            "manifest": self.provenance.manifest_digest,
+            "intent": self.intent.sha256(), "execution": self.execution.sha256(),
+            "validation": self.validation.sha256(), "handoff": self.handoff.sha256(),
+            "graph": self.graph.sha256(), "manifest": self.provenance.manifest_digest,
         }
+
+
+class CompileObservationSession(Protocol):
+    """Per-call lifecycle hook returned by a configured compile observer."""
+
+    def succeeded(self, bundle: RuntimeBundle) -> None: ...
+    def failed(self, error: Exception) -> None: ...
+
+
+class CompileObserver(Protocol):
+    """Producer-owned compile lifecycle observer boundary."""
+
+    def start(
+        self,
+        request: CompileRequest,
+        context: RuntimeInvocationContext,
+    ) -> CompileObservationSession: ...
+
+
+class ObserverErrorReporter(Protocol):
+    """Optional diagnostic side channel for observer failures."""
+
+    def __call__(self, phase: str, error: Exception) -> None: ...
 
 
 class BundleRepository(Protocol):
@@ -87,12 +119,42 @@ class LocalBundleRepository:
 
 
 class CognitiveRuntimeService:
-    """Typed in-memory facade for CLI, tests, and future MCP adapters."""
+    """Typed in-memory facade for CLI, tests, and MCP adapters."""
 
-    def __init__(self, repository: BundleRepository | None = None) -> None:
+    def __init__(
+        self,
+        repository: BundleRepository | None = None,
+        *,
+        observer: CompileObserver | None = None,
+        observer_error_reporter: ObserverErrorReporter | None = None,
+    ) -> None:
         self._repository = repository or LocalBundleRepository()
+        self._observer = observer
+        self._observer_error_reporter = observer_error_reporter
 
-    def compile_runtime(self, request: CompileRequest) -> RuntimeBundle:
+    def compile_runtime(
+        self,
+        request: CompileRequest,
+        *,
+        invocation_context: RuntimeInvocationContext | None = None,
+    ) -> RuntimeBundle:
+        """Compile one runtime bundle and notify the configured observer once.
+
+        Observation is a side channel after service construction. Observer
+        start/success/failure errors are reported best-effort and suppressed so
+        they cannot replace a successful bundle or the original compile error.
+        """
+        context = invocation_context or RuntimeInvocationContext()
+        session = self._start_observer(request, context)
+        try:
+            bundle = self._compile_runtime_unobserved(request)
+        except Exception as error:
+            self._notify_observer_failed(session, error)
+            raise
+        self._notify_observer_succeeded(session, bundle)
+        return bundle
+
+    def _compile_runtime_unobserved(self, request: CompileRequest) -> RuntimeBundle:
         if not request.mission.strip():
             raise InvalidValueError("mission must be non-empty", path="mission")
         pack_ref = request.pack_ref if request.pack_ref is not None else request.pack_root
@@ -101,31 +163,65 @@ class CognitiveRuntimeService:
         pack = PackLoader().load(pack_ref)
         pack_root = self._repository.resolve_pack_root(Path(pack.provenance.root))
         provenance = pack.provenance
-        intent = IntentContract.from_mapping(
-            {
-                "intent_id": "intent.runtime_convergence.v1",
-                "mission": request.mission,
-                "task_type": request.task_type,
-                "constraints": list(request.constraints),
-                "desired_outputs": list(request.desired_outputs),
-                "source_context": dict(request.source_context),
-                "unknowns": list(request.unknowns),
-            }
-        )
+        intent = IntentContract.from_mapping({
+            "intent_id": "intent.runtime_convergence.v1", "mission": request.mission,
+            "task_type": request.task_type, "constraints": list(request.constraints),
+            "desired_outputs": list(request.desired_outputs),
+            "source_context": dict(request.source_context), "unknowns": list(request.unknowns),
+        })
         execution = self._load_execution(pack_root)
         validation = self._load_validation(pack_root)
         handoff = self._load_handoff(pack_root)
         self._enforce_strict_activation(pack_root, execution)
-        # Graph derives deterministically from the execution contract (MCP-006).
         graph = derive_execution_graph(execution)
-        return RuntimeBundle(
-            intent=intent,
-            execution=execution,
-            validation=validation,
-            handoff=handoff,
-            graph=graph,
-            provenance=provenance,
-        )
+        return RuntimeBundle(intent=intent, execution=execution, validation=validation,
+                             handoff=handoff, graph=graph, provenance=provenance)
+
+    def _start_observer(
+        self,
+        request: CompileRequest,
+        context: RuntimeInvocationContext,
+    ) -> CompileObservationSession | None:
+        if self._observer is None:
+            return None
+        try:
+            return self._observer.start(request, context)
+        except Exception as error:
+            self._report_observer_error("start", error)
+            return None
+
+    def _notify_observer_succeeded(
+        self,
+        session: CompileObservationSession | None,
+        bundle: RuntimeBundle,
+    ) -> None:
+        if session is None:
+            return
+        try:
+            session.succeeded(bundle)
+        except Exception as error:
+            self._report_observer_error("succeeded", error)
+
+    def _notify_observer_failed(
+        self,
+        session: CompileObservationSession | None,
+        business_error: Exception,
+    ) -> None:
+        if session is None:
+            return
+        try:
+            session.failed(business_error)
+        except Exception as observer_error:
+            self._report_observer_error("failed", observer_error)
+
+    def _report_observer_error(self, phase: str, error: Exception) -> None:
+        reporter = self._observer_error_reporter
+        if reporter is None:
+            return
+        try:
+            reporter(phase, error)
+        except Exception:
+            return
 
     def _load_execution(self, pack_root: Path) -> ExecutionContract:
         path = pack_root / "FINAL_EXECUTION_CONTRACT.yaml"

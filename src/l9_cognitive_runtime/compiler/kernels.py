@@ -74,7 +74,7 @@ def _parse_declared_outputs(
     kernel_doc: dict[str, Any], source_ref: str
 ) -> tuple[KernelOutput, ...]:
     """Parse a kernel file's declared typed outputs, fail closed on bad bindings."""
-    raw_outputs = kernel_doc.get("outputs")
+    raw_outputs = kernel_doc.get("typed_outputs")
     if raw_outputs is None:
         return ()
     if not isinstance(raw_outputs, list):

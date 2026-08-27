@@ -37,7 +37,7 @@ lenses:
   - evolution_lens
   - simplicity_lens
 
-outputs:
+typed_outputs:
   - id: GAR_SYSTEM_MODEL
     required: true
     consumer_refs:

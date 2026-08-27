@@ -1,0 +1,24 @@
+{
+  "generator": "ops/scripts/project_llm_rules.py",
+  "output_relative": "environment/generated/llm-rules",
+  "rules": [
+    {
+      "alias": null,
+      "class": "always",
+      "output": "zz-autonomy-surface-override.md",
+      "output_sha256": "69ee6bd7d1ac3814f408b6238ded1300c475c4937f1def90695da6b642cf5b9c",
+      "source": "ops/autonomy/surface_profile.yaml",
+      "source_sha256": "3da5a9f2f64c811e8287b72d8b5379689ffa233de745df8be2d515091071977a",
+      "stem": "zz-autonomy-surface-override"
+    }
+  ],
+  "schema": "l9.llm-rules-projection/v1",
+  "source_relative": "rules",
+  "summary": {
+    "denied": 0,
+    "projected": 1,
+    "skipped_agent_requested": 0,
+    "source_mdc": 1
+  },
+  "tree_sha256": "cba8ef2abd67aff282442dec61692a18a9aff0297a7b884f77a2b3fa2a0b8d4d"
+}

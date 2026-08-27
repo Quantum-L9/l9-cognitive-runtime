@@ -146,19 +146,20 @@ def validate_runtime_semantic_liveness(
         required_pending <= set(graph.obligation_refs),
         {"missing": sorted(required_pending - set(graph.obligation_refs))},
     )
-    # 8. Every required validation obligation has an evidence path.
+    # 8. Every required validation obligation has an evidence path; GAR
+    # architecture obligations reach validation too (DONE-010).
     bound_properties = {property.obligation_ref for property in validation.validation_properties}
-    validation_obligations = {
+    evidence_bound_obligations = {
         obligation.obligation_id
         for obligation in execution.obligations
         if obligation.required
         and obligation.disposition is ObligationDisposition.PENDING
-        and obligation.kind is ObligationKind.VALIDATION
+        and obligation.kind in {ObligationKind.VALIDATION, ObligationKind.ARCHITECTURE}
     }
     check(
         "every_required_validation_obligation_has_evidence_path",
-        validation_obligations <= bound_properties,
-        {"missing": sorted(validation_obligations - bound_properties)},
+        evidence_bound_obligations <= bound_properties,
+        {"missing": sorted(evidence_bound_obligations - bound_properties)},
     )
     # 9. Every required delivery obligation has a delivery path (handoff).
     delivery_obligations = {

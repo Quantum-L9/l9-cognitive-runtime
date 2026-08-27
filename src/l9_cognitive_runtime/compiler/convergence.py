@@ -28,6 +28,8 @@ _BLOCKING_STATUSES = {
     ValidationStatus.FAILED,
     ValidationStatus.BLOCKED,
     ValidationStatus.UNKNOWN,
+    # A required property that never ran cannot be claimed converged.
+    ValidationStatus.NOT_RUN,
 }
 
 

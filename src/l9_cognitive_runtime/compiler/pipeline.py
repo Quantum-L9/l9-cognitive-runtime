@@ -31,6 +31,7 @@ from l9_cognitive_runtime.compiler.obligations import (
     required_pending_ids,
     validate_obligations,
 )
+from l9_cognitive_runtime.compiler.packet import build_execution_packet
 from l9_cognitive_runtime.compiler.validation import ValidationContractCompiler
 from l9_cognitive_runtime.graph import derive_execution_graph
 from l9_cognitive_runtime.models import (
@@ -115,6 +116,18 @@ class CompilePipeline:
             rules_path=rules_path,
             pipeline_path=pipeline_path,
         )
+        packet = build_execution_packet(
+            intent=intent,
+            kernels=kernels,
+            plan=plan,
+            execution=execution,
+            validation=validation,
+            handoff=handoff,
+            graph=graph,
+            routing_rules_digest=_file_sha256(rules_path),
+            pipeline_digest=_file_sha256(pipeline_path),
+            semantic_digest=semantic_digest,
+        )
         return RuntimeBundle(
             intent=intent,
             execution=execution,
@@ -123,6 +136,7 @@ class CompilePipeline:
             graph=graph,
             provenance=pack.provenance,
             semantic_digest=semantic_digest,
+            packet=packet,
         )
 
     @staticmethod

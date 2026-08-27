@@ -124,6 +124,9 @@ def build_server(pack_root: Path) -> MCPServer:
             "graph_id": bundle.graph.graph_id,
             "terminal_node": bundle.graph.terminal_node,
             "provenance": bundle.provenance.to_dict(),
+            # A0703: the full compiled execution packet is an immutable
+            # per-run artifact resolvable through l9://runs/{run_id}.
+            "execution_packet": bundle.packet,
         }
         record = runs.create(principal=LOCAL_PRINCIPAL, payload=payload)
         return {**payload, "run_id": record.run_id, "resource_uri": record.resource_uri}

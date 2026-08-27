@@ -1,3 +1,27 @@
-# Claude Code Adapter
+# {{adapter}} Adapter — deterministic projection of the execution packet
 
-Render `FINAL_EXECUTION_CONTRACT.yaml` as a repo-scoped execution prompt. Preserve authority order, stop conditions, validation gates, and Flawless Victory terminal doctrine. Do not convert the universal contract into Claude-only source law.
+Packet digest: {{packet_digest}}
+
+## Mission
+{{mission}} (realization: {{realization_mode}})
+
+## Active kernels
+{{kernel_activation}}
+
+## Required obligations (blocking — must not be dropped)
+{{required_obligations}}
+
+## Validation properties
+{{validation_properties}}
+
+## Delivery obligations
+{{delivery_obligations}}
+
+## Unknowns (must be preserved until disposed)
+{{unknowns}}
+
+## Global Architect outputs
+{{gar_outputs}}
+
+## Adapter note
+Render as a repo-scoped execution prompt. Preserve authority order, stop conditions, validation gates, and terminal doctrine. Do not convert the universal contract into Claude-only source law.

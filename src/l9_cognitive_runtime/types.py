@@ -57,6 +57,7 @@ class RuntimeBundle:
     graph: ExecutionGraph
     provenance: PackProvenance
     semantic_digest: str
+    packet: dict[str, Any]
 
     def digests(self) -> dict[str, str]:
         return {

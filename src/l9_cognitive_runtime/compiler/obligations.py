@@ -71,6 +71,18 @@ class ObligationDeriver:
                 consumer_refs=["execution_contract"],
                 evidence_requirements=["authority order respected with evidence"],
             ),
+            # A0601: runtime-integrity validation is a distinct obligation from
+            # objective validation — both bind to validation properties, but the
+            # ladder belongs to runtime integrity alone.
+            Obligation(
+                obligation_id="OBL.RUNTIME_INTEGRITY",
+                kind=ObligationKind.VALIDATION,
+                source_ref=source_ref,
+                required=True,
+                owner="validation_runtime",
+                consumer_refs=["validation_contract"],
+                evidence_requirements=["command run or blocker reason"],
+            ),
             Obligation(
                 obligation_id="OBL.REALIZATION",
                 kind=ObligationKind.REALIZATION,

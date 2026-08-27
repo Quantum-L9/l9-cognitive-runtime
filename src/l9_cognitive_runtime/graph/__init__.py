@@ -84,6 +84,12 @@ def derive_execution_graph(contract: ExecutionContract) -> ExecutionGraph:
 
     # Validation gates derive from the contract; no implicit default is fabricated.
     gates = list(contract.validation_requirements)
+    # INV-003: the graph IR carries the required pending obligation ids.
+    obligation_refs = [
+        obligation.obligation_id
+        for obligation in contract.obligations
+        if obligation.required and obligation.disposition.value == "PENDING"
+    ]
     return ExecutionGraph.from_mapping(
         {
             "graph_id": f"graph.{contract.contract_id}",
@@ -92,6 +98,7 @@ def derive_execution_graph(contract: ExecutionContract) -> ExecutionGraph:
             "edges": edges,
             "terminal_node": ordered_ids[-1],
             "validation_gates": gates,
+            "obligation_refs": obligation_refs,
         }
     )
 

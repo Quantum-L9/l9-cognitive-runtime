@@ -12,7 +12,7 @@ from typing import Any
 
 from l9_cognitive_runtime.compiler.activation import ActivationPlan
 from l9_cognitive_runtime.compiler.kernels import KernelBinding
-from l9_cognitive_runtime.models import ExecutionContract, IntentContract
+from l9_cognitive_runtime.models import ExecutionContract, IntentContract, Obligation
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
 # Canonical phase -> prose-step projection. P2 and P3 share one step: the
@@ -78,6 +78,7 @@ class ExecutionContractCompiler:
         plan: ActivationPlan,
         kernels: list[KernelBinding],
         pipeline: dict[str, Any],
+        obligations: list[Obligation] | None = None,
     ) -> ExecutionContract:
         if plan.blockers:
             raise InvalidValueError(
@@ -130,5 +131,8 @@ class ExecutionContractCompiler:
                     "matched_route": plan.matched_route,
                     "confidence": plan.confidence,
                 },
+                "obligations": [
+                    obligation.to_canonical_dict() for obligation in (obligations or [])
+                ],
             }
         )

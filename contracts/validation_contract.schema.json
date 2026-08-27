@@ -37,6 +37,55 @@
         "type": "string"
       },
       "type": "array"
+    },
+    "validation_properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "property_id",
+          "obligation_ref",
+          "evaluator",
+          "evidence_type",
+          "required",
+          "status",
+          "evidence_refs"
+        ],
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "obligation_ref": {
+            "type": "string"
+          },
+          "evaluator": {
+            "type": "string"
+          },
+          "evidence_type": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "blocked",
+              "not_run",
+              "unknown",
+              "not_applicable_with_reason"
+            ]
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "required": [

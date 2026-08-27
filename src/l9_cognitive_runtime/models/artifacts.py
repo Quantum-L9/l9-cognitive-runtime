@@ -60,6 +60,52 @@ class AccountabilitySpec(ArtifactModel):
     required: bool
 
 
+class ObligationKind(StrEnum):
+    REALIZATION = "REALIZATION"
+    ARCHITECTURE = "ARCHITECTURE"
+    VALIDATION = "VALIDATION"
+    DELIVERY = "DELIVERY"
+    AUTHORITY = "AUTHORITY"
+    EPISTEMIC = "EPISTEMIC"
+    CONVERGENCE = "CONVERGENCE"
+
+
+class ObligationDisposition(StrEnum):
+    # Pre-terminal state: the obligation propagates to the next IR unchanged.
+    PENDING = "PENDING"
+    # Legal terminal dispositions (INV-003): after one of these is recorded,
+    # the obligation need not propagate further.
+    SATISFIED = "SATISFIED"
+    VALID_BLOCK = "VALID_BLOCK"
+    SUPERSEDED_BY_HIGHER_AUTHORITY = "SUPERSEDED_BY_HIGHER_AUTHORITY"
+    NOT_APPLICABLE_WITH_DETERMINISTIC_PROOF = "NOT_APPLICABLE_WITH_DETERMINISTIC_PROOF"
+
+
+class Obligation(ArtifactModel):
+    """A conserved semantic obligation with a stable identity (INV-003)."""
+
+    obligation_id: str
+    kind: ObligationKind
+    source_ref: str
+    required: bool
+    owner: str
+    consumer_refs: list[str] = Field(default_factory=list)
+    evidence_requirements: list[str] = Field(default_factory=list)
+    disposition: ObligationDisposition = ObligationDisposition.PENDING
+
+
+class ValidationProperty(ArtifactModel):
+    """A validation property bound to a stable execution obligation (A0302)."""
+
+    property_id: str
+    obligation_ref: str
+    evaluator: str
+    evidence_type: str
+    required: bool
+    status: ValidationStatus = ValidationStatus.NOT_RUN
+    evidence_refs: list[str] = Field(default_factory=list)
+
+
 class IntentContract(ArtifactModel):
     intent_id: str
     mission: str = Field(min_length=1)
@@ -70,6 +116,7 @@ class IntentContract(ArtifactModel):
     unknowns: list[str] | None = None
     objective: ObjectiveSpec
     accountability: AccountabilitySpec
+    obligations: list[Obligation] = Field(default_factory=list)
 
 
 class ExecutionContract(ArtifactModel):
@@ -87,6 +134,7 @@ class ExecutionContract(ArtifactModel):
     version: str | None = None
     stop_conditions: list[str] | None = None
     metadata: dict[str, Any] | None = None
+    obligations: list[Obligation] = Field(default_factory=list)
 
 
 class ValidationContract(ArtifactModel):
@@ -96,6 +144,7 @@ class ValidationContract(ArtifactModel):
     evidence_required: list[str]
     allowed_statuses: list[ValidationStatus]
     report_outputs: list[str] | None = None
+    validation_properties: list[ValidationProperty] = Field(default_factory=list)
 
 
 class HandoffContract(ArtifactModel):
@@ -107,6 +156,7 @@ class HandoffContract(ArtifactModel):
     unknowns: list[str]
     decisions: list[str] | None = None
     adapter_notes: dict[str, Any] | None = None
+    obligations: list[Obligation] = Field(default_factory=list)
 
     @field_validator("unknowns", mode="before")
     @classmethod
@@ -146,3 +196,4 @@ class ExecutionGraph(ArtifactModel):
     edges: list[ExecutionGraphEdge]
     terminal_node: str
     validation_gates: list[str]
+    obligation_refs: list[str] = Field(default_factory=list)

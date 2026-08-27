@@ -1,10 +1,11 @@
 """Live validation-contract compilation.
 
 The validation contract is compiled from the live intent, execution contract,
-and activation plan. PHASE-06 derives validation properties from execution
-obligations; until then the runtime-integrity ladder is the deterministic
-single source, and no static ``VALIDATION_CONTRACT.yaml`` is loaded as
-fresh-mission truth (INV-009).
+and activation plan. Validation properties are bound one-to-one to the
+required pending execution obligations (A0302): every blocking obligation has
+an evaluator and an evidence type, and no property may reference an obligation
+the execution contract does not carry. No static ``VALIDATION_CONTRACT.yaml``
+is loaded as fresh-mission truth (INV-009).
 """
 
 from __future__ import annotations
@@ -13,7 +14,9 @@ from l9_cognitive_runtime.compiler.activation import ActivationPlan
 from l9_cognitive_runtime.models import (
     ExecutionContract,
     IntentContract,
+    ObligationKind,
     ValidationContract,
+    ValidationProperty,
     ValidationStatus,
 )
 
@@ -42,6 +45,16 @@ REPORT_OUTPUTS = [
     "VALIDATION_EVIDENCE.md",
 ]
 
+_EVALUATOR_BY_KIND = {
+    ObligationKind.REALIZATION: "realization_evidence",
+    ObligationKind.ARCHITECTURE: "architecture_integrity_evidence",
+    ObligationKind.VALIDATION: "validation_ladder",
+    ObligationKind.DELIVERY: "delivery_evidence",
+    ObligationKind.AUTHORITY: "authority_order",
+    ObligationKind.EPISTEMIC: "unknown_resolution",
+    ObligationKind.CONVERGENCE: "terminal_success_gate",
+}
+
 
 class ValidationContractCompiler:
     """Compile the live validation contract for a compiled execution."""
@@ -52,6 +65,20 @@ class ValidationContractCompiler:
         execution: ExecutionContract,
         plan: ActivationPlan,
     ) -> ValidationContract:
+        properties: list[ValidationProperty] = []
+        for obligation in execution.obligations:
+            if not obligation.required:
+                continue
+            properties.append(
+                ValidationProperty(
+                    property_id=f"PROP.{obligation.obligation_id}",
+                    obligation_ref=obligation.obligation_id,
+                    evaluator=_EVALUATOR_BY_KIND[obligation.kind],
+                    evidence_type="evidence_manifest",
+                    required=True,
+                    status=ValidationStatus.NOT_RUN,
+                )
+            )
         return ValidationContract.from_mapping(
             {
                 "contract_id": "VALIDATION_CONTRACT",
@@ -60,5 +87,8 @@ class ValidationContractCompiler:
                 "evidence_required": list(EVIDENCE_REQUIRED),
                 "allowed_statuses": [status.value for status in ValidationStatus],
                 "report_outputs": list(REPORT_OUTPUTS),
+                "validation_properties": [
+                    property.to_canonical_dict() for property in properties
+                ],
             }
         )

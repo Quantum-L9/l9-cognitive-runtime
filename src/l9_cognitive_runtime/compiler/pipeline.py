@@ -3,11 +3,13 @@
 Exactly one authoritative path composes fresh missions into a runtime bundle:
 
 CompileRequest -> ObjectiveDeriver -> IntentContract -> ActivationPlanner ->
-KernelResolver -> ExecutionContractCompiler -> ValidationContractCompiler ->
-HandoffContractCompiler -> ExecutionGraphCompiler -> RuntimeBundle.
+KernelResolver -> ObligationDeriver -> ExecutionContractCompiler ->
+ValidationContractCompiler -> HandoffContractCompiler ->
+ExecutionGraphCompiler -> RuntimeBundle.
 
 All semantic inputs (routing rules, pipeline definition, kernels) are
-resolved from the verified pack and fail closed when absent.
+resolved from the verified pack and fail closed when absent. Obligations are
+derived once and conserved through every downstream IR (INV-003).
 """
 
 from __future__ import annotations
@@ -17,8 +19,17 @@ from l9_cognitive_runtime.compiler.execution import ExecutionContractCompiler
 from l9_cognitive_runtime.compiler.handoff import HandoffContractCompiler
 from l9_cognitive_runtime.compiler.kernels import KernelResolver
 from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
+from l9_cognitive_runtime.compiler.obligations import (
+    ObligationDeriver,
+    conserve,
+    conserve_ids,
+    owner_registry,
+    required_pending_ids,
+    validate_obligations,
+)
 from l9_cognitive_runtime.compiler.validation import ValidationContractCompiler
 from l9_cognitive_runtime.graph import derive_execution_graph
+from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.pack import RuntimePack
 from l9_cognitive_runtime.parsing import load_yaml_file
 from l9_cognitive_runtime.types import CompileRequest, RuntimeBundle
@@ -42,10 +53,32 @@ class CompilePipeline:
         )
         kernels = KernelResolver().resolve(plan.active_kernels, pack.provenance.root)
         pipeline = load_yaml_file(pipeline_path)
-        execution = ExecutionContractCompiler().compile(intent, plan, kernels, pipeline)
+
+        # INV-003: derive obligations once, then conserve them through every IR.
+        obligations = ObligationDeriver().derive(intent, plan, kernels)
+        validate_obligations(obligations, owner_registry(plan, kernels), stage="intent")
+        intent.obligations = obligations
+
+        execution = ExecutionContractCompiler().compile(
+            intent, plan, kernels, pipeline, obligations
+        )
+        conserve(intent.obligations, execution.obligations, stage="intent->execution")
         validation = ValidationContractCompiler().compile(intent, execution, plan)
+        conserve_ids(
+            execution.obligations,
+            [property.obligation_ref for property in validation.validation_properties],
+            stage="execution->validation",
+        )
         handoff = HandoffContractCompiler().compile(intent, execution, validation, plan)
+        conserve(execution.obligations, handoff.obligations, stage="execution->handoff")
         graph = derive_execution_graph(execution)
+        required_ids = required_pending_ids(execution.obligations)
+        if graph.obligation_refs != required_ids:
+            raise InvalidValueError(
+                "graph obligation_refs diverged from required pending obligations",
+                path="execution->graph",
+                details={"expected": required_ids, "got": graph.obligation_refs},
+            )
         return RuntimeBundle(
             intent=intent,
             execution=execution,

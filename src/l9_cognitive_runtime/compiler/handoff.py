@@ -65,5 +65,10 @@ class HandoffContractCompiler:
                 "unknowns": list(plan.unknowns),
                 "decisions": list(DECISIONS),
                 "adapter_notes": dict(ADAPTER_NOTES),
+                # A0303: the handoff preserves every unresolved obligation and
+                # its current disposition.
+                "obligations": [
+                    obligation.to_canonical_dict() for obligation in execution.obligations
+                ],
             }
         )

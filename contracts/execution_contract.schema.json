@@ -69,6 +69,12 @@
       "items": {
         "$ref": "#/$defs/obligation"
       }
+    },
+    "execution_steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/execution_step"
+      }
     }
   },
   "required": [
@@ -143,6 +149,78 @@
             "SUPERSEDED_BY_HIGHER_AUTHORITY",
             "NOT_APPLICABLE_WITH_DETERMINISTIC_PROOF"
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "execution_step": {
+      "type": "object",
+      "required": [
+        "step_id",
+        "phase",
+        "kernel_refs",
+        "obligation_refs",
+        "input_refs",
+        "output_refs",
+        "entry_gates",
+        "exit_gates",
+        "evidence_requirements",
+        "failure_routes"
+      ],
+      "properties": {
+        "step_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "kernel_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "obligation_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "input_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "output_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entry_gates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exit_gates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "failure_routes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false

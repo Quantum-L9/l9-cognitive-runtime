@@ -1,10 +1,13 @@
-"""Derive execution graphs from validated execution contracts.
+"""Derive execution graphs from structured execution contracts.
 
 This is a pure, deterministic transform of an ``ExecutionContract`` into an
-``ExecutionGraph`` — not a runtime scheduler. Nodes derive from the contract's
-declared ``execution_sequence``, edges derive from that declared order, cycles
-and unresolved dependencies are rejected, and identical contracts produce
-byte-identical canonical graphs.
+``ExecutionGraph`` — not a runtime scheduler. Nodes derive mechanically from
+the contract's structured ``execution_steps`` (INV-006): kernel references,
+obligation references, gates, evidence requirements, and failure routes come
+from the step declarations. There is no prose phase map and no first-kernel
+fallback; a contract without structured steps cannot derive a graph (A0501).
+Cycles and unresolved dependencies are rejected, and identical contracts
+produce byte-identical canonical graphs.
 """
 
 from __future__ import annotations
@@ -15,71 +18,53 @@ from typing import Any
 from l9_cognitive_runtime.models import ExecutionContract, ExecutionGraph
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
-# Default phase map used when the contract sequence maps 1:1 onto pack phases.
-# The kernel lists are museum fallbacks for contracts compiled without
-# metadata.phase_kernels; live-compiled contracts override them with the real
-# activated kernel set.
-_DEFAULT_PHASE_META: dict[str, tuple[str, list[str]]] = {
-    "lock context": ("front_end_intake", ["repo_auditor_kernel"]),
-    "run constitutional preflight": (
-        "semantic_preflight",
-        ["K01", "K02", "K03", "K04", "K05"],
-    ),
-    "apply selected task and architecture kernels": (
-        "strategic_expansion",
-        ["prompt_compiler_kernel"],
-    ),
-    "run alignment and stub gate": ("structural_validation", ["validate_eliminate_stubs"]),
-    "run recursive improvement": ("optimization", ["recursive_improvement"]),
-    "run leverage compression": ("global_optimization", ["recursive_leverage"]),
-    "execute terminal doctrine only after gates pass": ("emission", ["flawless_victory"]),
-    "emit evidence-backed final summary": ("emission", ["flawless_victory"]),
-}
-
-# Step text -> phases it realizes. The task-and-architecture step realizes both
-# P2 (task kernels) and P3 (architecture kernels, including Global Architect).
-_STEP_PHASES: dict[str, tuple[str, ...]] = {
-    "lock context": ("P0_UNPACK",),
-    "run constitutional preflight": ("P1_CONSTITUTIONAL_PREFLIGHT",),
-    "apply selected task and architecture kernels": (
-        "P2_TASK_ROUTING",
-        "P3_ARCHITECTURE_DECISION",
-    ),
-    "run alignment and stub gate": ("P4_ALIGNMENT_AND_STUB_GATE",),
-    "run recursive improvement": ("P5_RECURSIVE_IMPROVEMENT",),
-    "run leverage compression": ("P6_LEVERAGE_COMPRESSION",),
-    "execute terminal doctrine only after gates pass": ("P7_FLAWLESS_VICTORY",),
-    "emit evidence-backed final summary": ("P7_FLAWLESS_VICTORY",),
-}
+# Run-level exits every step may route to (A0503): a step can fail closed into
+# a block or an abort; the terminal node additionally represents CONVERGED.
+BLOCKED = "BLOCKED"
+ABORTED = "ABORTED"
+CONVERGED = "CONVERGED"
 
 
 def derive_execution_graph(contract: ExecutionContract) -> ExecutionGraph:
-    """Build a deterministic graph from an execution contract's sequence."""
-    if not contract.execution_sequence:
+    """Build a deterministic graph from a contract's structured steps."""
+    steps = contract.execution_steps
+    if not steps:
         raise InvalidValueError(
-            "execution_sequence required to derive graph",
-            path="execution_sequence",
+            "execution_steps required to derive graph",
+            path="execution_steps",
         )
 
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     ordered_ids: list[str] = []
+    terminal_phase = "P7_FLAWLESS_VICTORY"
 
-    for step in contract.execution_sequence:
-        node_id, kernels = _step_to_node(step, contract)
+    for step in steps:
+        node_id = step.step_id
         if node_id in seen_ids:
-            # Deterministic collapse of duplicate logical steps into one node.
-            continue
+            raise InvalidValueError(
+                "duplicate execution step id",
+                path="execution_steps",
+                details={"step_id": node_id},
+            )
         seen_ids.add(node_id)
         ordered_ids.append(node_id)
+        is_terminal = step.phase == terminal_phase
         nodes.append(
             {
                 "id": node_id,
-                "phase": step,
-                "kernel_refs": kernels,
-                "outputs": [f"{node_id.upper()}.md"],
+                "phase": step.phase,
+                "kernel_refs": list(step.kernel_refs),
+                "obligation_refs": list(step.obligation_refs),
+                "inputs": list(step.input_refs),
+                "outputs": list(step.output_refs),
+                "entry_gates": list(step.entry_gates),
+                "exit_gates": list(step.exit_gates),
+                "evidence_requirements": list(step.evidence_requirements),
+                "failure_routes": list(step.failure_routes),
                 "status": "planned",
+                "disposition": CONVERGED if is_terminal else None,
             }
         )
 
@@ -88,7 +73,7 @@ def derive_execution_graph(contract: ExecutionContract) -> ExecutionGraph:
             {
                 "from": ordered_ids[idx - 1],
                 "to": ordered_ids[idx],
-                "reason": "contract_sequence",
+                "reason": "step_order",
             }
         )
 
@@ -96,8 +81,8 @@ def derive_execution_graph(contract: ExecutionContract) -> ExecutionGraph:
     order = topological_order(nodes, edges)
     if order != ordered_ids:
         raise InvalidValueError(
-            "topological order diverged from contract sequence",
-            path="execution_sequence",
+            "topological order diverged from step order",
+            path="execution_steps",
             details={"expected": ordered_ids, "got": order},
         )
 
@@ -109,6 +94,7 @@ def derive_execution_graph(contract: ExecutionContract) -> ExecutionGraph:
         for obligation in contract.obligations
         if obligation.required and obligation.disposition.value == "PENDING"
     ]
+    terminal_disposition = CONVERGED if any(s.phase == terminal_phase for s in steps) else None
     return ExecutionGraph.from_mapping(
         {
             "graph_id": f"graph.{contract.contract_id}",
@@ -118,6 +104,7 @@ def derive_execution_graph(contract: ExecutionContract) -> ExecutionGraph:
             "terminal_node": ordered_ids[-1],
             "validation_gates": gates,
             "obligation_refs": obligation_refs,
+            "terminal_disposition": terminal_disposition,
         }
     )
 
@@ -153,29 +140,6 @@ def topological_order(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) 
 
 def _assert_acyclic(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
     topological_order(nodes, edges)
-
-
-def _step_to_node(step: str, contract: ExecutionContract) -> tuple[str, list[str]]:
-    key = step.strip().lower()
-    if key in _DEFAULT_PHASE_META:
-        node_id, kernels = _DEFAULT_PHASE_META[key]
-        # Live-compiled contracts carry the real activated kernels per phase;
-        # use them so every activated kernel has a graph invocation.
-        phase_kernels = (contract.metadata or {}).get("phase_kernels") or {}
-        realized: list[str] = []
-        for phase_id in _STEP_PHASES.get(key, ()):
-            realized.extend(phase_kernels.get(phase_id, []))
-        if realized:
-            return node_id, realized
-        return node_id, list(kernels)
-    # Deterministic slug from the contract step text.
-    slug = "".join(ch if ch.isalnum() else "_" for ch in key).strip("_")
-    while "__" in slug:
-        slug = slug.replace("__", "_")
-    if not slug:
-        raise InvalidValueError("empty execution step", path="execution_sequence")
-    kernels = list(contract.kernel_activation[:1]) if contract.kernel_activation else []
-    return slug, kernels
 
 
 def assert_dependencies_satisfied(

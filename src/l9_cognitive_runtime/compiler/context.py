@@ -17,6 +17,7 @@ from l9_cognitive_runtime.compiler.execution import ExecutionContractCompiler
 from l9_cognitive_runtime.compiler.handoff import HandoffContractCompiler
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelResolver
 from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
+from l9_cognitive_runtime.compiler.obligations import ObligationDeriver
 from l9_cognitive_runtime.compiler.validation import ValidationContractCompiler
 from l9_cognitive_runtime.models import (
     ExecutionContract,
@@ -46,7 +47,8 @@ def compile_execution_from_plan(root: Path, plan: ActivationPlan) -> ExecutionCo
     intent = ObjectiveDeriver().derive(CompileRequest(mission=plan.task_summary))
     kernels = KernelResolver().resolve(plan.active_kernels, root)
     pipeline = load_yaml_file(root / PIPELINE_REL)
-    return ExecutionContractCompiler().compile(intent, plan, kernels, pipeline)
+    obligations = ObligationDeriver().derive(intent, plan, kernels)
+    return ExecutionContractCompiler().compile(intent, plan, kernels, pipeline, obligations)
 
 
 def compile_from_root(
@@ -65,7 +67,8 @@ def compile_from_root(
     )
     kernels = KernelResolver().resolve(plan.active_kernels, root)
     pipeline = load_yaml_file(root / PIPELINE_REL)
-    execution = ExecutionContractCompiler().compile(intent, plan, kernels, pipeline)
+    obligations = ObligationDeriver().derive(intent, plan, kernels)
+    execution = ExecutionContractCompiler().compile(intent, plan, kernels, pipeline, obligations)
     validation = ValidationContractCompiler().compile(intent, execution, plan)
     handoff = HandoffContractCompiler().compile(intent, execution, validation, plan)
     return CompiledContracts(

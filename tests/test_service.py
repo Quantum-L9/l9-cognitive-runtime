@@ -120,18 +120,20 @@ def test_unknown_kernel_fails_compile(tmp_path: Path) -> None:
 
 
 def test_graph_is_contract_derived(tmp_path: Path) -> None:
-    # Graph is derived from the live-compiled execution contract (MCP-006),
-    # not the static pack EXECUTION_GRAPH.json.
+    # Graph is derived from the live-compiled execution contract's structured
+    # steps (MCP-006 / INV-006), not the static pack EXECUTION_GRAPH.json.
     pack = _verified_pack(tmp_path)
     service = CognitiveRuntimeService()
     bundle = service.compile_runtime(CompileRequest(mission="topology", pack_ref=pack))
     node_ids = [n.id for n in bundle.graph.nodes]
     assert bundle.graph.source_contract == "FINAL_EXECUTION_CONTRACT"
-    assert node_ids[0] == "front_end_intake"
-    assert "semantic_preflight" in node_ids
-    # "topology" routes to the default pack_review route (P0/P1/P2): the last
-    # derived node is the task-and-architecture expansion node.
-    assert bundle.graph.terminal_node == "strategic_expansion"
+    # "topology" routes to the default pack_review route (P0/P1/P2).
+    assert node_ids == [
+        "step.P0_UNPACK",
+        "step.P1_CONSTITUTIONAL_PREFLIGHT",
+        "step.P2_TASK_ROUTING",
+    ]
+    assert bundle.graph.terminal_node == "step.P2_TASK_ROUTING"
 
 
 def test_cli_memory_only(tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]

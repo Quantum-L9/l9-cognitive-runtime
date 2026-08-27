@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from l9_cognitive_runtime.graph import derive_execution_graph
 from l9_cognitive_runtime.models import ExecutionContract
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
@@ -46,37 +48,42 @@ def test_a0001_different_missions_derive_independent_runtime_irs(  # type: ignor
 
 
 def test_a0002_task_and_architecture_step_substitutes_prompt_compiler(make_execution) -> None:  # type: ignore[no-untyped-def]
-    """The selected task-and-architecture step maps to prompt_compiler_kernel.
+    """PHASE-05 conversion: the prompt_compiler substitution museum seam is gone.
 
-    The contract's own ``kernel_activation`` entries are ignored for this step;
-    the hard-coded phase map substitutes ``prompt_compiler_kernel``.
+    A structured step's declared kernel_refs survive verbatim — the graph
+    never substitutes a kernel the contract did not declare.
     """
-    contract = ExecutionContract.from_mapping(
-        make_execution(
-            kernel_activation=["kernels/repo_auditor.yaml", "kernels/flawless_victory.yaml"],
-            execution_sequence=["apply selected task and architecture kernels"],
-        )
-    )
+    steps = [
+        {
+            "step_id": "step.P2_TASK_ROUTING",
+            "phase": "P2_TASK_ROUTING",
+            "kernel_refs": ["runtime/kernels/task/developer_core_kernel.yaml"],
+            "obligation_refs": ["OBL.REALIZATION"],
+            "input_refs": [],
+            "output_refs": ["KERNEL_ACTIVATION_PLAN.yaml"],
+            "entry_gates": [],
+            "exit_gates": [],
+            "evidence_requirements": ["realization evidence"],
+            "failure_routes": ["BLOCKED", "ABORTED"],
+        }
+    ]
+    contract = ExecutionContract.from_mapping(make_execution(execution_steps=steps))
     graph = derive_execution_graph(contract)
     assert len(graph.nodes) == 1
     node = graph.nodes[0]
-    assert node.id == "strategic_expansion"
-    assert node.kernel_refs == ["prompt_compiler_kernel"]
-    assert node.kernel_refs != list(contract.kernel_activation)
+    assert node.id == "step.P2_TASK_ROUTING"
+    assert node.kernel_refs == ["runtime/kernels/task/developer_core_kernel.yaml"]
+    assert "prompt_compiler_kernel" not in node.kernel_refs
 
 
 def test_a0003_unknown_step_collapses_to_first_kernel_activation(make_execution) -> None:  # type: ignore[no-untyped-def]
-    """An unknown execution-sequence step collapses to ``kernel_activation[:1]``."""
+    """PHASE-05 conversion: the unknown-step first-kernel fallback is gone.
+
+    There is no prose execution-sequence decoding left: a contract without
+    structured steps cannot derive a graph at all.
+    """
     contract = ExecutionContract.from_mapping(
-        make_execution(
-            kernel_activation=["kernels/repo_auditor.yaml", "kernels/flawless_victory.yaml"],
-            execution_sequence=["a completely novel step nobody has heard of"],
-        )
+        make_execution(execution_sequence=["a completely novel step nobody has heard of"])
     )
-    graph = derive_execution_graph(contract)
-    assert len(graph.nodes) == 1
-    node = graph.nodes[0]
-    # Museum seam: the first activation entry becomes the kernel set; the
-    # second entry is silently dropped.
-    assert node.kernel_refs == [contract.kernel_activation[0]]
-    assert node.kernel_refs != list(contract.kernel_activation)
+    with pytest.raises(Exception, match="execution_steps"):
+        derive_execution_graph(contract)

@@ -99,19 +99,8 @@ class ExecutionContractCompiler:
                 path="runtime/kernel_pipeline/KERNEL_PIPELINE.yaml",
             )
 
-        sequence: list[str] = []
-        for phase_id in plan.phase_sequence:
-            step = PHASE_STEP_MAP.get(phase_id)
-            if step is None:
-                raise InvalidValueError(
-                    "phase has no canonical execution step",
-                    path="phase_sequence",
-                    details={"phase_id": phase_id},
-                )
-            sequence.append(step)
-
-        # Phase->kernel projection lets the graph compiler reference the real
-        # activated kernels per step (GAR appears in the graph by construction).
+        # Phase->kernel projection feeds both the metadata and the structured
+        # steps (GAR appears in the graph by construction).
         phase_kernels: dict[str, list[str]] = {}
         for binding in kernels:
             for phase_id in plan.phase_sequence:
@@ -125,6 +114,83 @@ class ExecutionContractCompiler:
                 )
                 if phase and binding.source_ref in phase.get("primary_kernels", []):
                     phase_kernels.setdefault(phase_id, []).append(binding.source_ref)
+
+        sequence: list[str] = []
+        for phase_id in plan.phase_sequence:
+            step = PHASE_STEP_MAP.get(phase_id)
+            if step is None:
+                raise InvalidValueError(
+                    "phase has no canonical execution step",
+                    path="phase_sequence",
+                    details={"phase_id": phase_id},
+                )
+            sequence.append(step)
+
+        # Structured steps (INV-006): the mechanical source for the graph.
+        obligations = obligations or []
+        obligations_by_id = {obligation.obligation_id: obligation for obligation in obligations}
+        phase_by_id = {phase["id"]: phase for phase in pipeline.get("phase_order", [])}
+        validation_phase = (
+            "P4_ALIGNMENT_AND_STUB_GATE"
+            if "P4_ALIGNMENT_AND_STUB_GATE" in plan.phase_sequence
+            else "P2_TASK_ROUTING"
+        )
+        terminal_target = (
+            "P7_FLAWLESS_VICTORY"
+            if "P7_FLAWLESS_VICTORY" in plan.phase_sequence
+            else plan.phase_sequence[-1]
+        )
+        kind_phase: dict[str, str] = {
+            "AUTHORITY": "P1_CONSTITUTIONAL_PREFLIGHT",
+            "REALIZATION": "P2_TASK_ROUTING",
+            "ARCHITECTURE": "P3_ARCHITECTURE_DECISION",
+            "EPISTEMIC": "P0_UNPACK",
+            "VALIDATION": validation_phase,
+            "DELIVERY": terminal_target,
+            "CONVERGENCE": terminal_target,
+        }
+
+        execution_steps: list[dict[str, Any]] = []
+        previous_outputs: list[str] = []
+        for phase_id in plan.phase_sequence:
+            phase = phase_by_id.get(phase_id, {})
+            kernels_in_step = list(phase_kernels.get(phase_id, []))
+            gar_outputs: list[str] = []
+            for binding in kernels:
+                if binding.source_ref in kernels_in_step:
+                    gar_outputs.extend(output.output_id for output in binding.outputs)
+            required_outputs = list(phase.get("required_outputs", []))
+            outputs = required_outputs + [o for o in gar_outputs if o not in required_outputs]
+            obligation_ids = [
+                obligation.obligation_id
+                for obligation in obligations
+                if kind_phase.get(obligation.kind.value) == phase_id
+            ]
+            evidence: list[str] = []
+            for obligation_id in obligation_ids:
+                obligation = obligations_by_id.get(obligation_id)
+                if obligation is not None:
+                    evidence.extend(obligation.evidence_requirements)
+            exit_gates = [str(phase["exit_gate"])] if phase.get("exit_gate") else []
+            failure_routes = (
+                ["ABORTED"] if phase_id == "P7_FLAWLESS_VICTORY" else ["BLOCKED", "ABORTED"]
+            )
+            execution_steps.append(
+                {
+                    "step_id": f"step.{phase_id}",
+                    "phase": phase_id,
+                    "kernel_refs": kernels_in_step,
+                    "obligation_refs": obligation_ids,
+                    "input_refs": list(previous_outputs),
+                    "output_refs": outputs,
+                    "entry_gates": [],
+                    "exit_gates": exit_gates,
+                    "evidence_requirements": sorted(set(evidence)),
+                    "failure_routes": failure_routes,
+                }
+            )
+            previous_outputs = list(outputs)
+
         return ExecutionContract.from_mapping(
             {
                 "contract_id": "FINAL_EXECUTION_CONTRACT",
@@ -155,5 +221,6 @@ class ExecutionContractCompiler:
                 "obligations": [
                     obligation.to_canonical_dict() for obligation in (obligations or [])
                 ],
+                "execution_steps": execution_steps,
             }
         )

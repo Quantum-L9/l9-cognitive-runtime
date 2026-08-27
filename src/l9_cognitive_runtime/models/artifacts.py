@@ -119,6 +119,21 @@ class IntentContract(ArtifactModel):
     obligations: list[Obligation] = Field(default_factory=list)
 
 
+class ExecutionStep(ArtifactModel):
+    """Structured execution step (INV-006): the graph's mechanical source."""
+
+    step_id: str
+    phase: str
+    kernel_refs: list[str] = Field(default_factory=list)
+    obligation_refs: list[str] = Field(default_factory=list)
+    input_refs: list[str] = Field(default_factory=list)
+    output_refs: list[str] = Field(default_factory=list)
+    entry_gates: list[str] = Field(default_factory=list)
+    exit_gates: list[str] = Field(default_factory=list)
+    evidence_requirements: list[str] = Field(default_factory=list)
+    failure_routes: list[str] = Field(default_factory=list)
+
+
 class ExecutionContract(ArtifactModel):
     contract_id: str
     contract_type: Literal["universal_execution_contract"]
@@ -135,6 +150,7 @@ class ExecutionContract(ArtifactModel):
     stop_conditions: list[str] | None = None
     metadata: dict[str, Any] | None = None
     obligations: list[Obligation] = Field(default_factory=list)
+    execution_steps: list[ExecutionStep] = Field(default_factory=list)
 
 
 class ValidationContract(ArtifactModel):
@@ -181,6 +197,13 @@ class ExecutionGraphNode(ArtifactModel):
     kernel_refs: list[str]
     outputs: list[str]
     status: str | None = None
+    obligation_refs: list[str] = Field(default_factory=list)
+    inputs: list[str] = Field(default_factory=list)
+    entry_gates: list[str] = Field(default_factory=list)
+    exit_gates: list[str] = Field(default_factory=list)
+    evidence_requirements: list[str] = Field(default_factory=list)
+    failure_routes: list[str] = Field(default_factory=list)
+    disposition: str | None = None
 
 
 class ExecutionGraphEdge(ArtifactModel):
@@ -197,3 +220,4 @@ class ExecutionGraph(ArtifactModel):
     terminal_node: str
     validation_gates: list[str]
     obligation_refs: list[str] = Field(default_factory=list)
+    terminal_disposition: str | None = None

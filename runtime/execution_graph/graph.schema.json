@@ -48,6 +48,48 @@
           },
           "status": {
             "type": "string"
+          },
+          "obligation_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entry_gates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exit_gates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_requirements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "failure_routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disposition": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       }
@@ -81,6 +123,12 @@
       "items": {
         "type": "string"
       }
+    },
+    "terminal_disposition": {
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "additionalProperties": true

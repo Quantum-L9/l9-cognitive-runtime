@@ -16,6 +16,9 @@ from l9_cognitive_runtime.models import ExecutionContract, ExecutionGraph
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
 # Default phase map used when the contract sequence maps 1:1 onto pack phases.
+# The kernel lists are museum fallbacks for contracts compiled without
+# metadata.phase_kernels; live-compiled contracts override them with the real
+# activated kernel set.
 _DEFAULT_PHASE_META: dict[str, tuple[str, list[str]]] = {
     "lock context": ("front_end_intake", ["repo_auditor_kernel"]),
     "run constitutional preflight": (
@@ -31,6 +34,22 @@ _DEFAULT_PHASE_META: dict[str, tuple[str, list[str]]] = {
     "run leverage compression": ("global_optimization", ["recursive_leverage"]),
     "execute terminal doctrine only after gates pass": ("emission", ["flawless_victory"]),
     "emit evidence-backed final summary": ("emission", ["flawless_victory"]),
+}
+
+# Step text -> phases it realizes. The task-and-architecture step realizes both
+# P2 (task kernels) and P3 (architecture kernels, including Global Architect).
+_STEP_PHASES: dict[str, tuple[str, ...]] = {
+    "lock context": ("P0_UNPACK",),
+    "run constitutional preflight": ("P1_CONSTITUTIONAL_PREFLIGHT",),
+    "apply selected task and architecture kernels": (
+        "P2_TASK_ROUTING",
+        "P3_ARCHITECTURE_DECISION",
+    ),
+    "run alignment and stub gate": ("P4_ALIGNMENT_AND_STUB_GATE",),
+    "run recursive improvement": ("P5_RECURSIVE_IMPROVEMENT",),
+    "run leverage compression": ("P6_LEVERAGE_COMPRESSION",),
+    "execute terminal doctrine only after gates pass": ("P7_FLAWLESS_VICTORY",),
+    "emit evidence-backed final summary": ("P7_FLAWLESS_VICTORY",),
 }
 
 
@@ -140,6 +159,14 @@ def _step_to_node(step: str, contract: ExecutionContract) -> tuple[str, list[str
     key = step.strip().lower()
     if key in _DEFAULT_PHASE_META:
         node_id, kernels = _DEFAULT_PHASE_META[key]
+        # Live-compiled contracts carry the real activated kernels per phase;
+        # use them so every activated kernel has a graph invocation.
+        phase_kernels = (contract.metadata or {}).get("phase_kernels") or {}
+        realized: list[str] = []
+        for phase_id in _STEP_PHASES.get(key, ()):
+            realized.extend(phase_kernels.get(phase_id, []))
+        if realized:
+            return node_id, realized
         return node_id, list(kernels)
     # Deterministic slug from the contract step text.
     slug = "".join(ch if ch.isalnum() else "_" for ch in key).strip("_")

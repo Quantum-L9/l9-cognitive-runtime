@@ -9,10 +9,12 @@ plan_activation.py`` script is a thin CLI wrapper over this module.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from l9_cognitive_runtime.compiler.architecture_materiality import assess_materiality
 from l9_cognitive_runtime.models import IntentContract
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.parsing import load_yaml_file
@@ -29,6 +31,7 @@ _REQUIRED_PLAN_FIELDS = (
     "blockers",
     "unknowns",
     "next_phase",
+    "architecture_materiality",
 )
 
 
@@ -45,6 +48,7 @@ class ActivationPlan:
     blockers: list[str]
     unknowns: list[str]
     next_phase: str
+    architecture_materiality: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> ActivationPlan:
@@ -60,6 +64,7 @@ class ActivationPlan:
                 path="activation_plan",
                 details={"missing": missing},
             )
+        materiality = data.get("architecture_materiality") or {}
         return cls(
             task_summary=str(data["task_summary"]),
             matched_route=str(data["matched_route"]),
@@ -72,6 +77,7 @@ class ActivationPlan:
             blockers=[str(item) for item in data["blockers"]],
             unknowns=[str(item) for item in data["unknowns"]],
             next_phase=str(data["next_phase"]),
+            architecture_materiality=dict(materiality),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -88,6 +94,7 @@ class ActivationPlan:
             "blockers": list(self.blockers),
             "unknowns": list(self.unknowns),
             "next_phase": self.next_phase,
+            "architecture_materiality": dict(self.architecture_materiality),
         }
 
 
@@ -106,6 +113,11 @@ class ActivationPlanner:
         rules = load_yaml_file(rules_path)
         phases_by_id = self._phase_map(pipeline)
         route_name, route, confidence = self._match_route(intent.mission, rules)
+
+        # A0402: Global Architect activates from architecture materiality —
+        # proven intent + verified context signals — never from file presence.
+        materiality = assess_materiality(intent, rules)
+        materiality_dict = materiality.to_dict()
 
         phases = list(route.get("phases", []))
         if include_terminal:
@@ -131,6 +143,11 @@ class ActivationPlanner:
                         ]
                     ):
                         phases.append(optional)
+
+        # GAR materiality pulls the architecture phase into the sequence.
+        gar_activation = (rules.get("architecture_materiality") or {}).get("gar_activation") or {}
+        if materiality.required and gar_activation.get("adds_phase") not in phases:
+            phases.append(str(gar_activation["adds_phase"]))
 
         # Preserve canonical order and remove duplicates.
         canonical_order = [phase["id"] for phase in pipeline.get("phase_order", [])]
@@ -196,6 +213,7 @@ class ActivationPlanner:
             blockers=blockers,
             unknowns=unknowns,
             next_phase=phases[0] if phases else "BLOCKED",
+            architecture_materiality=materiality_dict,
         )
 
     @staticmethod
@@ -220,7 +238,9 @@ class ActivationPlanner:
         for name, route in rules.get("task_routes", {}).items():
             score = 0
             for token in route.get("match_any", []):
-                if str(token).lower() in lowered:
+                # Word-boundary matching keeps route selection precise
+                # ("add" must not match "address").
+                if re.search(rf"\b{re.escape(str(token).lower())}\b", lowered):
                     score += 1
             if score > best_score:
                 best_name = name

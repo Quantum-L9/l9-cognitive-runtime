@@ -56,6 +56,7 @@ class RuntimeBundle:
     handoff: HandoffContract
     graph: ExecutionGraph
     provenance: PackProvenance
+    semantic_digest: str
 
     def digests(self) -> dict[str, str]:
         return {
@@ -65,4 +66,5 @@ class RuntimeBundle:
             "handoff": self.handoff.sha256(),
             "graph": self.graph.sha256(),
             "manifest": self.provenance.manifest_digest,
+            "semantic": self.semantic_digest,
         }

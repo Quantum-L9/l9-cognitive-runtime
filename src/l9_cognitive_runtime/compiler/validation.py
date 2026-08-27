@@ -79,6 +79,23 @@ class ValidationContractCompiler:
                     status=ValidationStatus.NOT_RUN,
                 )
             )
+        # Temporal materiality derives an idempotency property bound to the
+        # architecture obligation (GAR temporal lens evidence).
+        materiality = plan.architecture_materiality or {}
+        has_architecture = any(
+            obligation.obligation_id == "OBL.ARCHITECTURE" for obligation in execution.obligations
+        )
+        if has_architecture and "temporal_lens" in materiality.get("active_lenses", []):
+            properties.append(
+                ValidationProperty(
+                    property_id="PROP.GAR.IDEMPOTENCY",
+                    obligation_ref="OBL.ARCHITECTURE",
+                    evaluator="idempotency_evidence",
+                    evidence_type="evidence_manifest",
+                    required=True,
+                    status=ValidationStatus.NOT_RUN,
+                )
+            )
         return ValidationContract.from_mapping(
             {
                 "contract_id": "VALIDATION_CONTRACT",

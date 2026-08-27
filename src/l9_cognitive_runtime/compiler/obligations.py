@@ -109,7 +109,10 @@ class ObligationDeriver:
                     ],
                 )
             )
-        if intent.accountability.required:
+        # INV-008: every terminal success path crosses convergence; an
+        # activated terminal phase derives the convergence obligation even
+        # when pure outcome-accountability did not.
+        if intent.accountability.required or plan.terminal_allowed:
             obligations.append(
                 Obligation(
                     obligation_id="OBL.CONVERGENCE",
@@ -119,6 +122,30 @@ class ObligationDeriver:
                     owner=_terminal_kernel(kernels),
                     consumer_refs=["validation_contract"],
                     evidence_requirements=["terminal disposition receipt"],
+                )
+            )
+        materiality = plan.architecture_materiality or {}
+        if materiality.get("required"):
+            gar_kernel = next(
+                (
+                    binding.source_ref
+                    for binding in kernels
+                    if binding.source_ref.endswith("global_architect_kernel.yaml")
+                ),
+                "runtime/kernels/architecture/global_architect_kernel.yaml",
+            )
+            obligations.append(
+                Obligation(
+                    obligation_id="OBL.ARCHITECTURE",
+                    kind=ObligationKind.ARCHITECTURE,
+                    source_ref=source_ref,
+                    required=True,
+                    owner=gar_kernel,
+                    consumer_refs=["validation_contract", "execution_graph"],
+                    evidence_requirements=[
+                        "architectural integrity evidence",
+                        "plan readiness evidence",
+                    ],
                 )
             )
         if intent.objective.realization_mode.value == "UNKNOWN":

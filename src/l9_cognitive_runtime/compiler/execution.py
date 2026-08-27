@@ -110,6 +110,21 @@ class ExecutionContractCompiler:
                 )
             sequence.append(step)
 
+        # Phase->kernel projection lets the graph compiler reference the real
+        # activated kernels per step (GAR appears in the graph by construction).
+        phase_kernels: dict[str, list[str]] = {}
+        for binding in kernels:
+            for phase_id in plan.phase_sequence:
+                phase = next(
+                    (
+                        item
+                        for item in pipeline.get("phase_order", [])
+                        if item.get("id") == phase_id
+                    ),
+                    None,
+                )
+                if phase and binding.source_ref in phase.get("primary_kernels", []):
+                    phase_kernels.setdefault(phase_id, []).append(binding.source_ref)
         return ExecutionContract.from_mapping(
             {
                 "contract_id": "FINAL_EXECUTION_CONTRACT",
@@ -130,6 +145,12 @@ class ExecutionContractCompiler:
                     "pipeline_id": pipeline_id,
                     "matched_route": plan.matched_route,
                     "confidence": plan.confidence,
+                    "phase_kernels": phase_kernels,
+                    # INV-014: active kernel semantic content is part of
+                    # bundle provenance.
+                    "kernel_digests": {
+                        binding.source_ref: binding.source_digest for binding in kernels
+                    },
                 },
                 "obligations": [
                     obligation.to_canonical_dict() for obligation in (obligations or [])

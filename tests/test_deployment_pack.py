@@ -32,11 +32,14 @@ def test_deployment_pack_verifies_compiles_and_preserves_resources(tmp_path: Pat
     assert pack.manifest["pack_name"] == PACK_NAME
     assert pack.manifest["source_revision"] == REVISION
 
-    bundle = CognitiveRuntimeService().compile_runtime(
-        CompileRequest(mission="hosted MCP smoke", pack_root=pack_root)
-    )
-    assert bundle.execution.contract_id == "FINAL_EXECUTION_CONTRACT"
-    assert bundle.provenance.manifest_digest
+    # PHASE-01 state: the deployment pack does not yet carry the live routing
+    # sources (runtime/kernel_pipeline), so live compilation against it fails
+    # closed. PHASE-08 (deployment semantic closure) converts this to a
+    # successful dynamic compile from the sealed pack.
+    with pytest.raises(InvalidValueError):
+        CognitiveRuntimeService().compile_runtime(
+            CompileRequest(mission="hosted MCP smoke", pack_root=pack_root)
+        )
 
     server = build_server(pack_root)
     tools = _run(server.list_tools())

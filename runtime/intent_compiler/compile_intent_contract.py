@@ -1,37 +1,49 @@
 #!/usr/bin/env python3
+"""Intent-contract compiler CLI — thin wrapper over the typed objective deriver.
+
+All intent derivation lives in
+``l9_cognitive_runtime.compiler.objective.ObjectiveDeriver``; this script only
+adapts CLI arguments into a ``CompileRequest`` and serializes the canonical
+intent contract.
+"""
 from __future__ import annotations
+
 import argparse
+import sys
 from pathlib import Path
 
-def emit_yaml(data: dict) -> str:
-    lines=[]
-    for k,v in data.items():
-        if isinstance(v, list):
-            lines.append(f"{k}:")
-            for item in v: lines.append(f"  - {item}")
-        elif isinstance(v, dict):
-            lines.append(f"{k}:")
-            for dk,dv in v.items(): lines.append(f"  {dk}: {dv}")
-        else:
-            lines.append(f"{k}: {v}")
-    return "\n".join(lines)+"\n"
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+
+import yaml  # noqa: E402
+
+from l9_cognitive_runtime.compiler import ObjectiveDeriver  # noqa: E402
+from l9_cognitive_runtime.types import CompileRequest  # noqa: E402
+
+DEFAULT_TASK_TYPE = "kernel_runtime_convergence"
+
 
 def main() -> int:
-    p=argparse.ArgumentParser()
-    p.add_argument('--mission', required=True)
-    p.add_argument('--task-type', default='kernel_runtime_convergence')
-    p.add_argument('--output', default='INTENT_CONTRACT.yaml')
-    args=p.parse_args()
-    contract={
-        'intent_id':'intent.runtime_convergence.v1',
-        'mission':args.mission,
-        'task_type':args.task_type,
-        'constraints':['model_agnostic','kernel_first','evidence_backed','no_fake_validation'],
-        'desired_outputs':['kernel_activation_plan','execution_contract','execution_graph','validation_evidence','adapter_render'],
-        'source_context':{'pack':'l9_cognitive_runtime_kernel_pack_clean'},
-        'unknowns':[]
-    }
-    Path(args.output).write_text(emit_yaml(contract))
+    p = argparse.ArgumentParser()
+    p.add_argument("--mission", required=True)
+    p.add_argument("--task-type", default=DEFAULT_TASK_TYPE)
+    p.add_argument("--output", default="INTENT_CONTRACT.yaml")
+    args = p.parse_args()
+    intent = ObjectiveDeriver().derive(
+        CompileRequest(
+            mission=args.mission,
+            task_type=args.task_type,
+            source_context={"pack": "l9_cognitive_runtime_kernel_pack_clean"},
+        )
+    )
+    Path(args.output).write_text(
+        yaml.safe_dump(intent.to_canonical_dict(), sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
     print(args.output)
     return 0
-if __name__ == '__main__': raise SystemExit(main())
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

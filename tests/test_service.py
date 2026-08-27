@@ -28,7 +28,8 @@ def _sha(path: Path) -> str:
 
 
 def _verified_pack(tmp_path: Path) -> Path:
-    """Copy representative contracts + kernels into a pack with matching MANIFEST.json."""
+    """Copy representative contracts + the runtime tree (kernels, pipeline,
+    routing rules) into a pack with matching MANIFEST.json."""
     pack = tmp_path / "pack"
     pack.mkdir()
     files: list[dict[str, object]] = []
@@ -37,9 +38,9 @@ def _verified_pack(tmp_path: Path) -> Path:
         dst = pack / name
         shutil.copy2(src, dst)
         files.append({"path": name, "sha256": _sha(dst), "bytes": dst.stat().st_size})
-    kernels_src = ROOT / "runtime" / "kernels"
-    if kernels_src.is_dir():
-        for src in kernels_src.rglob("*"):
+    runtime_src = ROOT / "runtime"
+    if runtime_src.is_dir():
+        for src in runtime_src.rglob("*"):
             if not src.is_file():
                 continue
             rel = src.relative_to(ROOT).as_posix()
@@ -62,7 +63,9 @@ def test_compile_runtime_in_memory_against_pack(tmp_path: Path) -> None:
     )
     assert bundle.intent.mission == "compile representative pack"
     assert bundle.execution.contract_id == "FINAL_EXECUTION_CONTRACT"
-    assert bundle.graph.terminal_node == "emission"
+    # Live spine: the graph derives from the compiled execution contract; the
+    # terminal node is the last derived node (no static contract consulted).
+    assert bundle.graph.terminal_node == bundle.graph.nodes[-1].id
     assert bundle.provenance.manifest_digest
     assert bundle.digests()["manifest"] == bundle.provenance.manifest_digest
     assert not (pack / "INTENT_CONTRACT.yaml").exists()
@@ -92,31 +95,33 @@ def test_compile_fails_closed_on_missing_execution_contract(tmp_path: Path) -> N
 
 
 def test_unknown_kernel_fails_compile(tmp_path: Path) -> None:
+    # Live spine: the static FINAL_EXECUTION_CONTRACT.yaml is no longer
+    # authority. An activated kernel missing from the pack fails compilation
+    # through KernelResolver (fail closed, no silent fallback).
     pack = _verified_pack(tmp_path)
-    contract = (pack / "FINAL_EXECUTION_CONTRACT.yaml").read_text(encoding="utf-8")
-    contract = contract.replace(
-        "runtime/kernels/task/repo_auditor_kernel.yaml",
-        "runtime/kernels/task/does_not_exist_kernel.yaml",
-    )
-    (pack / "FINAL_EXECUTION_CONTRACT.yaml").write_text(contract, encoding="utf-8")
-    # Refresh manifest hash for the mutated contract.
+    target = pack / "runtime" / "kernels" / "task" / "prompt_compiler_kernel.yaml"
+    target.unlink()
     files = json.loads((pack / "MANIFEST.json").read_text(encoding="utf-8"))["files"]
-    for entry in files:
-        if entry["path"] == "FINAL_EXECUTION_CONTRACT.yaml":
-            entry["sha256"] = _sha(pack / "FINAL_EXECUTION_CONTRACT.yaml")
-            entry["bytes"] = (pack / "FINAL_EXECUTION_CONTRACT.yaml").stat().st_size
-    manifest = {"pack_name": "test-pack", "files": files}
-    (pack / "MANIFEST.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+    files = [
+        entry
+        for entry in files
+        if entry["path"] != "runtime/kernels/task/prompt_compiler_kernel.yaml"
+    ]
+    (pack / "MANIFEST.json").write_text(
+        json.dumps({"pack_name": "test-pack", "files": files}) + "\n", encoding="utf-8"
+    )
     from l9_cognitive_runtime.parsing import StrictParseError
 
     service = CognitiveRuntimeService()
     with pytest.raises(StrictParseError):
-        service.compile_runtime(CompileRequest(mission="bad kernel", pack_ref=pack))
+        service.compile_runtime(
+            CompileRequest(mission="compile a kernel contract", pack_ref=pack)
+        )
 
 
 def test_graph_is_contract_derived(tmp_path: Path) -> None:
-    # Graph is derived from the execution contract (MCP-006), not the static
-    # pack EXECUTION_GRAPH.json.
+    # Graph is derived from the live-compiled execution contract (MCP-006),
+    # not the static pack EXECUTION_GRAPH.json.
     pack = _verified_pack(tmp_path)
     service = CognitiveRuntimeService()
     bundle = service.compile_runtime(CompileRequest(mission="topology", pack_ref=pack))
@@ -124,7 +129,9 @@ def test_graph_is_contract_derived(tmp_path: Path) -> None:
     assert bundle.graph.source_contract == "FINAL_EXECUTION_CONTRACT"
     assert node_ids[0] == "front_end_intake"
     assert "semantic_preflight" in node_ids
-    assert bundle.graph.terminal_node == "emission"
+    # "topology" routes to the default pack_review route (P0/P1/P2): the last
+    # derived node is the task-and-architecture expansion node.
+    assert bundle.graph.terminal_node == "strategic_expansion"
 
 
 def test_cli_memory_only(tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]

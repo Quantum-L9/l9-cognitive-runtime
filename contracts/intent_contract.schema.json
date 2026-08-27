@@ -7,7 +7,9 @@
     "mission",
     "task_type",
     "constraints",
-    "desired_outputs"
+    "desired_outputs",
+    "objective",
+    "accountability"
   ],
   "properties": {
     "intent_id": {
@@ -40,7 +42,66 @@
       "items": {
         "type": "string"
       }
+    },
+    "objective": {
+      "type": "object",
+      "required": [
+        "requested",
+        "realization_mode",
+        "acceptance_conditions",
+        "validation_required",
+        "delivery_required",
+        "delivery_mode"
+      ],
+      "properties": {
+        "requested": {
+          "type": "boolean"
+        },
+        "realization_mode": {
+          "enum": [
+            "MUTATION",
+            "ARTIFACT",
+            "ANALYSIS",
+            "DECISION",
+            "UNKNOWN"
+          ]
+        },
+        "acceptance_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "validation_required": {
+          "type": "boolean"
+        },
+        "delivery_required": {
+          "type": "boolean"
+        },
+        "delivery_mode": {
+          "enum": [
+            "RETURNED_ARCHIVE",
+            "RETURNED_FILES",
+            "PERSISTED_REPOSITORY",
+            "IN_PLACE_WORKSPACE",
+            "NONE"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "accountability": {
+      "type": "object",
+      "required": [
+        "required"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

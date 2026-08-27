@@ -27,6 +27,39 @@ class AdapterName(StrEnum):
     HUMAN_OPERATOR = "human_operator"
 
 
+class RealizationMode(StrEnum):
+    MUTATION = "MUTATION"
+    ARTIFACT = "ARTIFACT"
+    ANALYSIS = "ANALYSIS"
+    DECISION = "DECISION"
+    UNKNOWN = "UNKNOWN"
+
+
+class DeliveryMode(StrEnum):
+    RETURNED_ARCHIVE = "RETURNED_ARCHIVE"
+    RETURNED_FILES = "RETURNED_FILES"
+    PERSISTED_REPOSITORY = "PERSISTED_REPOSITORY"
+    IN_PLACE_WORKSPACE = "IN_PLACE_WORKSPACE"
+    NONE = "NONE"
+
+
+class ObjectiveSpec(ArtifactModel):
+    """Canonical objective facts derived once from explicit intent (INV-002)."""
+
+    requested: bool
+    realization_mode: RealizationMode
+    acceptance_conditions: list[str] = Field(default_factory=list)
+    validation_required: bool
+    delivery_required: bool
+    delivery_mode: DeliveryMode
+
+
+class AccountabilitySpec(ArtifactModel):
+    """Outcome-accountability requirement derived with the objective."""
+
+    required: bool
+
+
 class IntentContract(ArtifactModel):
     intent_id: str
     mission: str = Field(min_length=1)
@@ -35,6 +68,8 @@ class IntentContract(ArtifactModel):
     desired_outputs: list[str]
     source_context: dict[str, Any] | None = None
     unknowns: list[str] | None = None
+    objective: ObjectiveSpec
+    accountability: AccountabilitySpec
 
 
 class ExecutionContract(ArtifactModel):

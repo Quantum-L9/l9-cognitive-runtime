@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from l9_cognitive_runtime.compiler import ActivationPlanner  # noqa: E402
-from l9_cognitive_runtime.models import IntentContract  # noqa: E402
+from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver  # noqa: E402
+from l9_cognitive_runtime.types import CompileRequest  # noqa: E402
 
 PIPELINE_PATH = ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml"
 RULES_PATH = ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml"
@@ -28,22 +28,11 @@ RULES_PATH = ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RU
 
 def build_plan(task: str, include_terminal: bool = False) -> dict[str, Any]:
     """Build an activation plan for a task (thin delegation to the typed planner)."""
-    intent = IntentContract.from_mapping(
-        {
-            "intent_id": "intent.runtime_convergence.v1",
-            "mission": task,
-            "task_type": "kernel_runtime_convergence",
-            "constraints": ["model_agnostic", "kernel_first", "evidence_backed", "no_fake_validation"],
-            "desired_outputs": [
-                "kernel_activation_plan",
-                "execution_contract",
-                "execution_graph",
-                "validation_evidence",
-                "adapter_render",
-            ],
-            "source_context": {"pack": "l9_cognitive_runtime_kernel_pack_clean"},
-            "unknowns": [],
-        }
+    intent = ObjectiveDeriver().derive(
+        CompileRequest(
+            mission=task,
+            source_context={"pack": "l9_cognitive_runtime_kernel_pack_clean"},
+        )
     )
     plan = ActivationPlanner().plan(
         intent,

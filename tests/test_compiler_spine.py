@@ -101,22 +101,12 @@ def test_legacy_execution_compiler_wraps_same_compiler(tmp_path: Path) -> None:
     """runtime/contract_compiler/compile_execution_contract.py delegates to the
     typed ExecutionContractCompiler and produces identical semantics."""
     plan_path = tmp_path / "KERNEL_ACTIVATION_PLAN.yaml"
-    from l9_cognitive_runtime.compiler import ActivationPlanner
+    from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver
     from l9_cognitive_runtime.compiler.context import compile_execution_from_plan
     from l9_cognitive_runtime.compiler.kernels import KernelResolver
-    from l9_cognitive_runtime.models import IntentContract
+    from l9_cognitive_runtime.types import CompileRequest
 
-    intent = IntentContract.from_mapping(
-        {
-            "intent_id": "intent.runtime_convergence.v1",
-            "mission": "compile a kernel contract",
-            "task_type": "kernel_runtime_convergence",
-            "constraints": ["kernel_first"],
-            "desired_outputs": ["execution_contract"],
-            "source_context": {"pack": "test"},
-            "unknowns": [],
-        }
-    )
+    intent = ObjectiveDeriver().derive(CompileRequest(mission="compile a kernel contract"))
     plan = ActivationPlanner().plan(
         intent,
         rules_path=ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",

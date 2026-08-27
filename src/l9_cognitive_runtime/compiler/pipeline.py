@@ -172,4 +172,3 @@ class CompilePipeline:
             "pipeline_digest": _file_sha256(pipeline_path),
         }
         return sha256_digest(canonical_json(payload))
-

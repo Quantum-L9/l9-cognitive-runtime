@@ -39,11 +39,7 @@ def test_graph_kernel_refs_originate_from_contract(valid_pack: Path) -> None:
 
 def test_required_obligations_have_node_realization_path(valid_pack: Path) -> None:
     bundle = _compile(valid_pack, "Audit and fix this repository.")
-    required = {
-        o.obligation_id
-        for o in bundle.execution.obligations
-        if o.required
-    }
+    required = {o.obligation_id for o in bundle.execution.obligations if o.required}
     realized = {ref for node in bundle.graph.nodes for ref in node.obligation_refs}
     assert required <= realized
 

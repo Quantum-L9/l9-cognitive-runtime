@@ -86,9 +86,7 @@ def build_execution_packet(
             "semantic_digest": semantic_digest,
             "routing_rules_digest": routing_rules_digest,
             "pipeline_digest": pipeline_digest,
-            "kernel_digests": {
-                binding.source_ref: binding.source_digest for binding in kernels
-            },
+            "kernel_digests": {binding.source_ref: binding.source_digest for binding in kernels},
             "graph_digest": graph.sha256(),
             "handoff_digest": handoff.sha256(),
         },

@@ -114,9 +114,7 @@ def test_unknown_kernel_fails_compile(tmp_path: Path) -> None:
 
     service = CognitiveRuntimeService()
     with pytest.raises(StrictParseError):
-        service.compile_runtime(
-            CompileRequest(mission="compile a kernel contract", pack_ref=pack)
-        )
+        service.compile_runtime(CompileRequest(mission="compile a kernel contract", pack_ref=pack))
 
 
 def test_graph_is_contract_derived(tmp_path: Path) -> None:

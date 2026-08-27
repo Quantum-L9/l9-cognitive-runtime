@@ -119,9 +119,7 @@ def _parse_declared_outputs(
             )
         seen.add(output_id)
         parsed.append(
-            KernelOutput(
-                output_id=output_id, required=required, consumer_refs=tuple(consumer_refs)
-            )
+            KernelOutput(output_id=output_id, required=required, consumer_refs=tuple(consumer_refs))
         )
     return tuple(parsed)
 

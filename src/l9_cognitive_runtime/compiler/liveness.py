@@ -88,9 +88,7 @@ def validate_runtime_semantic_liveness(
 
     binding_by_ref = {binding.source_ref: binding for binding in kernels}
     kernel_ids = {_kernel_id(binding.source_ref) for binding in kernels}
-    node_kernel_ids = {
-        _kernel_id(ref) for node in graph.nodes for ref in node.kernel_refs
-    }
+    node_kernel_ids = {_kernel_id(ref) for node in graph.nodes for ref in node.kernel_refs}
     required_pending = {
         obligation.obligation_id
         for obligation in execution.obligations
@@ -128,10 +126,7 @@ def validate_runtime_semantic_liveness(
     )
     # 5. Every required kernel output exists (declared at binding).
     required_outputs = [
-        (binding, output)
-        for binding in kernels
-        for output in binding.outputs
-        if output.required
+        (binding, output) for binding in kernels for output in binding.outputs if output.required
     ]
     check("every_required_kernel_output_exists", True, {})
     # 6. Every required kernel output has a named consumer surface.
@@ -203,8 +198,7 @@ def validate_runtime_semantic_liveness(
     orphan = [
         node.id
         for node in graph.nodes
-        if node.id != terminal
-        and not any(edge.from_node == node.id for edge in graph.edges)
+        if node.id != terminal and not any(edge.from_node == node.id for edge in graph.edges)
     ]
     check("no_orphan_required_graph_node", not orphan, {"orphans": orphan})
     # 13. No unresolved kernel reference in the graph.

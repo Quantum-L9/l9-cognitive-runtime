@@ -33,8 +33,7 @@ def test_live002_gar_lenses_and_developer_execution(valid_pack: Path) -> None:
     bundle = CognitiveRuntimeService().compile_runtime(_gar_request(valid_pack))
     assert GAR_REF in bundle.execution.kernel_activation
     assert any(
-        ref.endswith("developer_core_kernel.yaml")
-        for ref in bundle.execution.kernel_activation
+        ref.endswith("developer_core_kernel.yaml") for ref in bundle.execution.kernel_activation
     )
     evaluators = {p.evaluator for p in bundle.validation.validation_properties}
     assert "idempotency_evidence" in evaluators
@@ -44,11 +43,7 @@ def test_live002_gar_lenses_and_developer_execution(valid_pack: Path) -> None:
     plan = ActivationPlanner().plan(
         ObjectiveDeriver().derive(_gar_request(valid_pack)),
         rules_path=(
-            valid_pack
-            / "runtime"
-            / "kernel_pipeline"
-            / "planner"
-            / "TASK_ROUTING_RULES.yaml"
+            valid_pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml"
         ),
         pipeline_path=valid_pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
     )

@@ -37,7 +37,9 @@ def main() -> int:
     p.add_argument("--output", default="EXECUTION_GRAPH.json")
     args = p.parse_args()
     graph = build(args.source_contract, Path(args.root))
-    Path(args.output).write_text(json.dumps(graph, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    Path(args.output).write_text(
+        json.dumps(graph, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(args.output)
     return 0
 

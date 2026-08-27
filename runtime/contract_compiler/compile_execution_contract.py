@@ -32,7 +32,11 @@ def main() -> int:
     p.add_argument("--out", default="FINAL_EXECUTION_CONTRACT.yaml")
     args = p.parse_args()
     root = Path(args.root)
-    plan_path = root / args.activation_plan if not Path(args.activation_plan).is_absolute() else Path(args.activation_plan)
+    plan_path = (
+        root / args.activation_plan
+        if not Path(args.activation_plan).is_absolute()
+        else Path(args.activation_plan)
+    )
     plan_data = load_yaml_file(plan_path)
     if not plan_data.get("active_kernels"):
         raise InvalidValueError(

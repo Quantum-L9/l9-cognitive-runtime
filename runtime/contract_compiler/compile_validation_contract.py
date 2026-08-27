@@ -30,7 +30,11 @@ def main() -> int:
     contracts = compile_from_root(root, CANONICAL_MISSION)
     out = root / args.out
     out.write_text(
-        yaml.safe_dump(contracts.validation.to_canonical_dict(), sort_keys=False, allow_unicode=True),
+        yaml.safe_dump(
+            contracts.validation.to_canonical_dict(),
+            sort_keys=False,
+            allow_unicode=True,
+        ),
         encoding="utf-8",
     )
     print(out)

@@ -67,9 +67,7 @@ def _iter_kernel_sources(root: Path) -> list[str]:
     if not kernels_root.is_dir():
         raise InvalidValueError("runtime/kernels missing", path="runtime/kernels")
     return sorted(
-        path.relative_to(root).as_posix()
-        for path in kernels_root.rglob("*")
-        if path.is_file()
+        path.relative_to(root).as_posix() for path in kernels_root.rglob("*") if path.is_file()
     )
 
 
@@ -89,9 +87,7 @@ def _iter_adapter_sources(root: Path) -> list[str]:
     if not adapter_root.is_dir():
         raise InvalidValueError("adapter templates missing", path=str(adapter_root))
     return sorted(
-        path.relative_to(root).as_posix()
-        for path in adapter_root.glob("*.md")
-        if path.is_file()
+        path.relative_to(root).as_posix() for path in adapter_root.glob("*.md") if path.is_file()
     )
 
 

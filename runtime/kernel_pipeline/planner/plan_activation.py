@@ -46,8 +46,16 @@ def build_plan(task: str, include_terminal: bool = False) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate a kernel activation plan.")
     parser.add_argument("task", help="Task or objective to route.")
-    parser.add_argument("--terminal", action="store_true", help="Allow terminal Flawless Victory when route supports it.")
-    parser.add_argument("--out", default=None, help="Optional output path for KERNEL_ACTIVATION_PLAN.yaml")
+    parser.add_argument(
+        "--terminal",
+        action="store_true",
+        help="Allow terminal Flawless Victory when route supports it.",
+    )
+    parser.add_argument(
+        "--out",
+        default=None,
+        help="Optional output path for KERNEL_ACTIVATION_PLAN.yaml",
+    )
     args = parser.parse_args()
     plan = build_plan(args.task, include_terminal=args.terminal)
     text = yaml.safe_dump(plan, sort_keys=False, allow_unicode=True)

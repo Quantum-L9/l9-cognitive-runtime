@@ -12,11 +12,7 @@ def test_graph_nodes_carry_obligations_and_gates(valid_pack: Path) -> None:
     bundle = CognitiveRuntimeService().compile_runtime(
         CompileRequest(mission="Audit and fix this repository.", pack_root=valid_pack)
     )
-    required = {
-        o.obligation_id
-        for o in bundle.execution.obligations
-        if o.required
-    }
+    required = {o.obligation_id for o in bundle.execution.obligations if o.required}
     realized = {ref for node in bundle.graph.nodes for ref in node.obligation_refs}
     assert required <= realized
     declared = set(bundle.execution.kernel_activation)

@@ -112,18 +112,14 @@ def test_museum008_public_surfaces_use_live_compiler(  # type: ignore[no-untyped
     bundle = CognitiveRuntimeService().compile_runtime(
         CompileRequest(mission="Audit this repository.", pack_root=valid_pack)
     )
-    assert (
-        cli_main(["--mission", "Audit this repository.", "--pack-root", str(valid_pack)]) == 0
-    )
+    assert cli_main(["--mission", "Audit this repository.", "--pack-root", str(valid_pack)]) == 0
     cli_payload = json.loads(capsys.readouterr().out)
     assert cli_payload["digests"] == bundle.digests()
 
 
 def test_museum009_obligation_cannot_disappear(valid_pack: Path) -> None:
     bundle = _gar_bundle(valid_pack)
-    dropped = [
-        o for o in bundle.execution.obligations if o.obligation_id != "OBL.ARCHITECTURE"
-    ]
+    dropped = [o for o in bundle.execution.obligations if o.obligation_id != "OBL.ARCHITECTURE"]
     with pytest.raises(ModelValidationError, match="disappeared"):
         conserve(bundle.intent.obligations, dropped, stage="intent->execution")
 

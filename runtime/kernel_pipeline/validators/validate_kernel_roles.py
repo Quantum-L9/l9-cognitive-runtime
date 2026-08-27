@@ -16,7 +16,6 @@ instead:
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from _common import STATUS_FAIL, STATUS_PASS, base_parser, emit, load_yaml, rel, resolve_root
 
@@ -24,7 +23,9 @@ _KERNEL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 def main() -> int:
-    parser = base_parser("Validate kernel role declarations, identity uniqueness, and ownership topology.")
+    parser = base_parser(
+        "Validate kernel role declarations, identity uniqueness, and ownership topology."
+    )
     args = parser.parse_args()
     root = resolve_root(__file__, args.root)
     role_map_path = root / "runtime/kernel_pipeline/KERNEL_ROLE_MAP.yaml"
@@ -62,7 +63,12 @@ def main() -> int:
             findings.append(f"Role {role} directory missing: {directory}")
             continue
         files = sorted(
-            [p for p in dir_path.iterdir() if p.is_file() and p.suffix.lower() in {".yaml", ".yml", ".md"}]
+            [
+                p
+                for p in dir_path.iterdir()
+                if p.is_file()
+                and p.suffix.lower() in {".yaml", ".yml", ".md"}
+            ]
         )
         if not files:
             findings.append(f"Role {role} directory holds no kernel files: {directory}")
@@ -113,7 +119,9 @@ def main() -> int:
     # Ownership topology: exactly one terminal contract.
     terminal_dir = root / "runtime/kernels/terminal"
     terminals = list(terminal_dir.glob("*")) if terminal_dir.exists() else []
-    terminal_contracts = [p for p in terminals if p.is_file() and p.name == "flawless_victory.contract.yaml"]
+    terminal_contracts = [
+        p for p in terminals if p.is_file() and p.name == "flawless_victory.contract.yaml"
+    ]
     if len(terminal_contracts) != 1:
         findings.append("Exactly one terminal flawless_victory.contract.yaml is required.")
 

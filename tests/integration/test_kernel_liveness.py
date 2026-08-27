@@ -35,9 +35,7 @@ def test_live005_gar_without_validation_consumer_fails_liveness(valid_pack: Path
     # Strip the architecture validation properties — GAR activates but its
     # downstream consumer is gone.
     stripped = [
-        p
-        for p in bundle.validation.validation_properties
-        if p.obligation_ref != "OBL.ARCHITECTURE"
+        p for p in bundle.validation.validation_properties if p.obligation_ref != "OBL.ARCHITECTURE"
     ]
     bundle.validation.validation_properties = stripped
     with pytest.raises(
@@ -47,9 +45,7 @@ def test_live005_gar_without_validation_consumer_fails_liveness(valid_pack: Path
             intent=bundle.intent,
             plan=ActivationPlanner().plan(
                 ObjectiveDeriver().derive(
-                    Request(
-                    mission="Add safe retry behavior to this asynchronous payment worker."
-                )
+                    Request(mission="Add safe retry behavior to this asynchronous payment worker.")
                 ),
                 rules_path=(
                     valid_pack
@@ -58,9 +54,7 @@ def test_live005_gar_without_validation_consumer_fails_liveness(valid_pack: Path
                     / "planner"
                     / "TASK_ROUTING_RULES.yaml"
                 ),
-                pipeline_path=(
-                    valid_pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml"
-                ),
+                pipeline_path=(valid_pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml"),
             ),
             kernels=KernelResolver().resolve(list(bundle.execution.kernel_activation), valid_pack),
             execution=bundle.execution,
@@ -89,15 +83,9 @@ def test_live005_full_liveness_passes_for_live_bundle(valid_pack: Path) -> None:
                 )
             ),
             rules_path=(
-                valid_pack
-                / "runtime"
-                / "kernel_pipeline"
-                / "planner"
-                / "TASK_ROUTING_RULES.yaml"
+                valid_pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml"
             ),
-            pipeline_path=(
-                valid_pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml"
-            ),
+            pipeline_path=(valid_pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml"),
         ),
         kernels=KernelResolver().resolve(list(bundle.execution.kernel_activation), valid_pack),
         execution=bundle.execution,

@@ -36,9 +36,7 @@ def test_live007_adapter_omitting_architecture_obligation_fails(valid_pack: Path
     packet = _gar_packet(valid_pack)
     weakened = copy.deepcopy(packet)
     weakened["required_obligations"] = [
-        o
-        for o in weakened["required_obligations"]
-        if o["obligation_id"] != "OBL.ARCHITECTURE"
+        o for o in weakened["required_obligations"] if o["obligation_id"] != "OBL.ARCHITECTURE"
     ]
     with pytest.raises(ModelValidationError):
         AdapterRenderer().render(weakened, "cursor")

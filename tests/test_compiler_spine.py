@@ -86,9 +86,7 @@ def test_cli_and_service_share_the_spine(tmp_path: Path, valid_pack: Path, capsy
     """The CLI output digests match a direct service compile (one spine)."""
     from l9_cognitive_runtime.cli import main as cli_main
 
-    assert (
-        cli_main(["--mission", "Audit this repository.", "--pack-root", str(valid_pack)]) == 0
-    )
+    assert cli_main(["--mission", "Audit this repository.", "--pack-root", str(valid_pack)]) == 0
     out = json.loads(capsys.readouterr().out)
     service = CognitiveRuntimeService()
     bundle = service.compile_runtime(

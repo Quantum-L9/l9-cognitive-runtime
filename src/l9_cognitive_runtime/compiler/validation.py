@@ -104,8 +104,6 @@ class ValidationContractCompiler:
                 "evidence_required": list(EVIDENCE_REQUIRED),
                 "allowed_statuses": [status.value for status in ValidationStatus],
                 "report_outputs": list(REPORT_OUTPUTS),
-                "validation_properties": [
-                    property.to_canonical_dict() for property in properties
-                ],
+                "validation_properties": [property.to_canonical_dict() for property in properties],
             }
         )

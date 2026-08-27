@@ -45,8 +45,7 @@ def test_live009_static_contract_route_is_ignored(  # type: ignore[no-untyped-de
     # The live route selects developer_core — the stale static route (l9
     # engine build) has no effect.
     assert any(
-        ref.endswith("developer_core_kernel.yaml")
-        for ref in bundle.execution.kernel_activation
+        ref.endswith("developer_core_kernel.yaml") for ref in bundle.execution.kernel_activation
     )
 
 
@@ -79,8 +78,6 @@ def test_live010_cli_and_mcp_compile_same_semantics_from_sealed_pack(tmp_path: P
 
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        assert cli_main(
-            ["--mission", "Audit this repository.", "--pack-root", str(pack_root)]
-        ) == 0
+        assert cli_main(["--mission", "Audit this repository.", "--pack-root", str(pack_root)]) == 0
     cli_payload = json.loads(buffer.getvalue())
     assert cli_payload["digests"] == bundle.digests()

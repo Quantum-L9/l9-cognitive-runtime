@@ -85,9 +85,7 @@ def validate_provider_acceptance(
     acceptance: ProviderAcceptance,
 ) -> dict[str, Any]:
     """A required unsupported obligation blocks execution (A0704)."""
-    required_ids = {
-        o["obligation_id"] for o in packet.get("required_obligations") or []
-    }
+    required_ids = {o["obligation_id"] for o in packet.get("required_obligations") or []}
     accepted = set(acceptance.accepted_obligation_ids)
     unsupported = set(acceptance.unsupported_obligation_ids)
     overlap = accepted & unsupported

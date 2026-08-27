@@ -148,9 +148,7 @@ def test_mcp_remains_read_only_with_packet_resource(valid_pack: Path) -> None:
     packet = compiled["execution_packet"]
     assert packet["required_obligations"]
     assert packet["convergence_contract"]
-    resource_parts = list(
-        asyncio.run(server.read_resource(compiled["resource_uri"]))
-    )
+    resource_parts = list(asyncio.run(server.read_resource(compiled["resource_uri"])))
     text = "".join(str(getattr(part, "content", "")) for part in resource_parts)
     payload = json.loads(text)
     assert payload["execution_packet"] == packet

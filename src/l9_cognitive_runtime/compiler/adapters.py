@@ -153,9 +153,7 @@ class AdapterRenderer:
             raise InvalidValueError("unknown adapter target", path=adapter)
         packet_digest = _packet_digest(packet)
         content = self._render_template(template_name, packet, packet_digest)
-        required_ids = tuple(
-            sorted(o["obligation_id"] for o in packet["required_obligations"])
-        )
+        required_ids = tuple(sorted(o["obligation_id"] for o in packet["required_obligations"]))
         return AdapterPacket(
             adapter=adapter,
             source_contract="FINAL_EXECUTION_CONTRACT",
@@ -163,12 +161,8 @@ class AdapterRenderer:
             content=content,
             required_obligation_ids=required_ids,
             unknowns=tuple(str(u) for u in packet["unknowns"]),
-            validation_properties=tuple(
-                dict(p) for p in packet["validation_properties"]
-            ),
-            delivery_obligations=tuple(
-                dict(o) for o in packet["delivery_obligations"]
-            ),
+            validation_properties=tuple(dict(p) for p in packet["validation_properties"]),
+            delivery_obligations=tuple(dict(o) for o in packet["delivery_obligations"]),
             gar_output_refs=gar_output_refs(packet),
         )
 
@@ -182,16 +176,10 @@ class AdapterRenderer:
         if template is None:
             template = DEFAULT_TEMPLATE
         intent = packet["intent"]
-        kernels = [
-            binding["source_ref"] for binding in packet["active_kernel_bindings"]
-        ]
-        obligations = [
-            o["obligation_id"] for o in packet["required_obligations"]
-        ]
+        kernels = [binding["source_ref"] for binding in packet["active_kernel_bindings"]]
+        obligations = [o["obligation_id"] for o in packet["required_obligations"]]
         delivery = [o["obligation_id"] for o in packet["delivery_obligations"]]
-        validation = [
-            p["property_id"] for p in packet["validation_properties"]
-        ]
+        validation = [p["property_id"] for p in packet["validation_properties"]]
         placeholders = {
             "{{adapter}}": str(self._adapter_for_template(template_name)),
             "{{packet_digest}}": digest,

@@ -71,9 +71,7 @@ def evaluate_terminal_success(
         unmet.append("no_blocking_validation_failed")
         details["blocking_properties"] = [p.property_id for p in blocking_properties]
 
-    architecture = next(
-        (o for o in required if o.obligation_id == "OBL.ARCHITECTURE"), None
-    )
+    architecture = next((o for o in required if o.obligation_id == "OBL.ARCHITECTURE"), None)
     if architecture is not None and architecture.disposition is not ObligationDisposition.PENDING:
         architecture_properties = [
             p

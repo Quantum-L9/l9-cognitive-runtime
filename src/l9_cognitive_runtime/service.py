@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Protocol
 
 from l9_cognitive_runtime.compiler import CompilePipeline
+from l9_cognitive_runtime.models.context import ContextSnapshot
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.pack import PackLoader
 from l9_cognitive_runtime.types import CompileRequest, RuntimeBundle
@@ -21,6 +22,7 @@ __all__ = [
     "BundleRepository",
     "CognitiveRuntimeService",
     "CompileRequest",
+    "ContextSnapshot",
     "LocalBundleRepository",
     "RuntimeBundle",
 ]
@@ -48,7 +50,20 @@ class CognitiveRuntimeService:
     def __init__(self, repository: BundleRepository | None = None) -> None:
         self._repository = repository or LocalBundleRepository()
 
-    def compile_runtime(self, request: CompileRequest) -> RuntimeBundle:
+    def compile_runtime(
+        self,
+        request: CompileRequest,
+        *,
+        context_snapshot: ContextSnapshot | None = None,
+    ) -> RuntimeBundle:
+        """Compile a fresh mission.
+
+        ``context_snapshot`` is the governed context input (INV-CTX-007). It is
+        deliberately a separate keyword rather than a ``CompileRequest`` field:
+        raw caller hints in ``request.source_context`` must never be promotable
+        into governed truth. ``None`` means an empty governed snapshot, which is
+        what every pre-context caller gets.
+        """
         if not request.mission.strip():
             raise InvalidValueError("mission must be non-empty", path="mission")
         pack_ref = request.pack_ref if request.pack_ref is not None else request.pack_root
@@ -56,4 +71,4 @@ class CognitiveRuntimeService:
             raise InvalidValueError("explicit pack_ref required", path="pack_ref")
         pack = PackLoader().load(pack_ref)
         self._repository.resolve_pack_root(Path(pack.provenance.root))
-        return CompilePipeline().compile(request, pack)
+        return CompilePipeline().compile(request, pack, context_snapshot=context_snapshot)

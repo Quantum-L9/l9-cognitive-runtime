@@ -21,7 +21,7 @@ ambient version-control state (INV-CTX-032).
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import field_validator, model_validator
@@ -36,7 +36,7 @@ from l9_cognitive_runtime.models.errors import InvalidValueError
 CONTEXT_COMPILER_SEMANTICS_VERSION = "2.0.0"
 
 
-class ContextKind(str, Enum):
+class ContextKind(StrEnum):
     RELEVANT_ENTITY = "relevant_entity"
     REPOSITORY_STATE = "repository_state"
     ARCHITECTURE_CONSTRAINT = "architecture_constraint"
@@ -49,12 +49,12 @@ class ContextKind(str, Enum):
     AUTHORITY_FACT = "authority_fact"
 
 
-class ContextScopeMode(str, Enum):
+class ContextScopeMode(StrEnum):
     SCOPED = "scoped"
     GLOBAL = "global"
 
 
-class AuthorityLevel(str, Enum):
+class AuthorityLevel(StrEnum):
     GOVERNED_AUTHORITATIVE = "governed_authoritative"
     GOVERNED_VERIFIED = "governed_verified"
     INFORMATIVE = "informative"
@@ -75,30 +75,30 @@ GOVERNED_LEVELS = frozenset(
 )
 
 
-class DecisionStatus(str, Enum):
+class DecisionStatus(StrEnum):
     ACTIVE = "active"
     SUPERSEDED = "superseded"
     UNKNOWN = "unknown"
 
 
-class MissingPolicy(str, Enum):
+class MissingPolicy(StrEnum):
     BLOCK = "BLOCK"
     PRESERVE_UNKNOWN = "PRESERVE_UNKNOWN"
     OPTIONAL = "OPTIONAL"
 
 
-class CoverageMode(str, Enum):
+class CoverageMode(StrEnum):
     MINIMUM = "minimum"
     ALL_ELIGIBLE = "all_eligible"
     SEMANTIC_KEYS = "semantic_keys"
 
 
-class UnknownMateriality(str, Enum):
+class UnknownMateriality(StrEnum):
     BLOCKING = "blocking"
     NON_BLOCKING = "non_blocking"
 
 
-class UnknownReasonCode(str, Enum):
+class UnknownReasonCode(StrEnum):
     AMBIGUOUS_SCOPE = "ambiguous_scope"
     MISSING_REQUIRED_CONTEXT = "missing_required_context"
     CONFLICTING_GOVERNED_CLAIMS = "conflicting_governed_claims"
@@ -111,12 +111,12 @@ class UnknownReasonCode(str, Enum):
     UNRESOLVED_FRESHNESS = "unresolved_freshness"
 
 
-class EffectiveAuthorityOrderSource(str, Enum):
+class EffectiveAuthorityOrderSource(StrEnum):
     GOVERNED_CONTEXT = "governed_context"
     COMPILER_DEFAULT = "compiler_default"
 
 
-class FreshnessRequirement(str, Enum):
+class FreshnessRequirement(StrEnum):
     EXACT_REVISION = "exact_revision"
     SNAPSHOT_BOUND = "snapshot_bound"
     ANY = "any"
@@ -268,9 +268,7 @@ class RepositoryState(ContextItemIdentity):
 
 
 class GovernedConstraint(ContextItemIdentity):
-    context_kind: Literal[ContextKind.ARCHITECTURE_CONSTRAINT] = (
-        ContextKind.ARCHITECTURE_CONSTRAINT
-    )
+    context_kind: Literal[ContextKind.ARCHITECTURE_CONSTRAINT] = ContextKind.ARCHITECTURE_CONSTRAINT
     constraint_id: str
     statement: str
     applies_because: list[str] = []
@@ -532,9 +530,10 @@ class ContextRequirement(ArtifactModel):
                 raise ValueError(
                     "semantic_keys coverage requires min_items >= number of required keys"
                 )
-        if self.freshness_requirement is FreshnessRequirement.EXACT_REVISION and not (
-            self.coordinate_constraint or ""
-        ).strip():
+        if (
+            self.freshness_requirement is FreshnessRequirement.EXACT_REVISION
+            and not (self.coordinate_constraint or "").strip()
+        ):
             raise ValueError("exact_revision freshness requires a coordinate_constraint")
         if self.required and self.missing_policy is MissingPolicy.OPTIONAL:
             raise ValueError("required requirement cannot use the OPTIONAL missing policy")

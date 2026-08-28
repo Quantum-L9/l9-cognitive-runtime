@@ -23,6 +23,7 @@ from l9_cognitive_runtime.models.artifacts import (
     ValidationProperty,
     ValidationStatus,
 )
+from l9_cognitive_runtime.models.canonical import canonical_json, sha256_digest
 from l9_cognitive_runtime.models.context import (
     AUTHORITY_RANK,
     CONTEXT_COMPILER_SEMANTICS_VERSION,
@@ -66,7 +67,6 @@ from l9_cognitive_runtime.models.context import (
     canonical_cost,
     derive_id,
 )
-from l9_cognitive_runtime.models.canonical import canonical_json, sha256_digest
 from l9_cognitive_runtime.models.errors import (
     CanonicalizationError,
     InvalidValueError,

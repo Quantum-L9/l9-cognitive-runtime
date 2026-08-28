@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from l9_cognitive_runtime.models import (
+    CompiledTaskContext,
     ExecutionContract,
     ExecutionGraph,
     HandoffContract,
@@ -58,6 +59,7 @@ class RuntimeBundle:
     provenance: PackProvenance
     semantic_digest: str
     packet: dict[str, Any]
+    task_context: CompiledTaskContext
 
     def digests(self) -> dict[str, str]:
         return {
@@ -68,4 +70,7 @@ class RuntimeBundle:
             "graph": self.graph.sha256(),
             "manifest": self.provenance.manifest_digest,
             "semantic": self.semantic_digest,
+            # INV-CTX-027: computed from the finished context, carried here —
+            # never stored inside the context itself.
+            "context": self.task_context.sha256(),
         }

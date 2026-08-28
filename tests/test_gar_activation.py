@@ -18,31 +18,42 @@ from pathlib import Path
 import pytest
 
 from l9_cognitive_runtime.models import ExecutionGraph
+from l9_cognitive_runtime.models.context import ContextSnapshot
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.parsing import ParseErrorCode, StrictParseError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 from l9_cognitive_runtime.types import RuntimeBundle
+from tests.conftest import discovery_for, governed_signal_snapshot
 
 GAR_REF = "runtime/kernels/architecture/global_architect_kernel.yaml"
 
 
 def _context_pack_request(pack: Path, **context_signals: object) -> CompileRequest:
-    signals = list(context_signals)
+    """A request whose architecture signals arrive as *governed* context.
+
+    INV-CTX-014: a raw ``source_context.context_signals`` hint cannot prove an
+    external architecture fact, so the signals travel in the governed snapshot
+    returned by :func:`_signal_snapshot` instead of in the request body.
+    """
     return CompileRequest(
         mission="Add safe retry behavior to this asynchronous payment worker.",
         pack_root=pack,
-        source_context={"pack": "l9_cognitive_runtime", "context_signals": signals},
+        source_context={"pack": "l9_cognitive_runtime"},
     )
+
+
+def _signal_snapshot(**context_signals: object) -> ContextSnapshot:
+    return governed_signal_snapshot(*context_signals)
 
 
 def _live_compile(pack: Path) -> RuntimeBundle:
     return CognitiveRuntimeService().compile_runtime(
-        _context_pack_request(
-            pack,
+        _context_pack_request(pack),
+        context_snapshot=_signal_snapshot(
             message_redelivery_possible=True,
             external_side_effect=True,
             multiple_workers=True,
-        )
+        ),
     )
 
 
@@ -80,18 +91,17 @@ def test_gar_activation_has_lens_evidence(  # type: ignore[no-untyped-def]
     from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver
 
     pack = pack_builder(tmp_path / "pack")
-    intent = ObjectiveDeriver().derive(
-        _context_pack_request(
-            pack,
-            message_redelivery_possible=True,
-            external_side_effect=True,
-            multiple_workers=True,
-        )
+    intent = ObjectiveDeriver().derive(_context_pack_request(pack))
+    snapshot = _signal_snapshot(
+        message_redelivery_possible=True,
+        external_side_effect=True,
+        multiple_workers=True,
     )
     plan = ActivationPlanner().plan(
         intent,
         rules_path=pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
         pipeline_path=pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        discovery=discovery_for(intent, snapshot),
     )
     materiality = plan.architecture_materiality
     assert materiality["required"] is True

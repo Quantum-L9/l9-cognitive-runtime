@@ -45,9 +45,7 @@ def main() -> int:
     graph = build(args.source_contract, Path(args.root))
     write_root = Path(args.allow_write_root) if args.allow_write_root else None
     out = confined_output_path(args.output, allow_root=write_root)
-    out.write_text(
-        json.dumps(graph, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    out.write_text(json.dumps(graph, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(out)
     return 0
 

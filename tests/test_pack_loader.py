@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -63,8 +64,19 @@ def test_explicit_pack_ref_required() -> None:
 
 def test_bundle_contains_provenance(tmp_path: Path) -> None:
     root = _tiny_pack(tmp_path)
+    # The live spine resolves routing rules, the pipeline definition, and
+    # activated kernels from the pack; copy the runtime tree in (unlisted
+    # files are permitted — the loader only verifies listed files).
+    repo_root = Path(__file__).resolve().parents[1]
+    for src in (repo_root / "runtime").rglob("*"):
+        if not src.is_file():
+            continue
+        rel = src.relative_to(repo_root).as_posix()
+        dst = root / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
     kernel = root / "runtime" / "kernels" / "task" / "k1.yaml"
-    kernel.parent.mkdir(parents=True)
+    kernel.parent.mkdir(parents=True, exist_ok=True)
     kernel.write_text("id: k1\n", encoding="utf-8")
     (root / "FINAL_EXECUTION_CONTRACT.yaml").write_text(
         "\n".join(

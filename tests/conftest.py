@@ -86,6 +86,9 @@ def build_pack(
     - ``execution_text`` writes raw text (for malformed-YAML tests).
     - Passing ``execution=None`` AND ``execution_text=None`` omits the execution
       file entirely (for missing-required tests).
+    - The live compiler spine resolves routing rules, the pipeline definition,
+      and activated kernels from the pack, so every pack carries the
+      repository ``runtime/`` tree.
     """
     pack.mkdir(parents=True, exist_ok=True)
     for kernel in kernels:
@@ -100,6 +103,15 @@ def build_pack(
         )
     for name in COPIED_FILES:
         shutil.copyfile(ROOT / name, pack / name)
+    runtime_src = ROOT / "runtime"
+    if runtime_src.is_dir():
+        for src in runtime_src.rglob("*"):
+            if not src.is_file():
+                continue
+            rel = src.relative_to(ROOT).as_posix()
+            dst = pack / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
     write_manifest(pack)
     return pack
 

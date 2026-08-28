@@ -1,4 +1,17 @@
-"""Build a minimal, manifest-verified pack for hosted MCP deployment."""
+"""Build a semantically closed, manifest-verified pack for hosted MCP
+deployment (PHASE-08, INV-011).
+
+The sealed pack contains everything required to dynamically compile every
+supported mission route without a repository checkout: routing rules, the
+pipeline definition, the kernel role registry, every dynamically selectable
+kernel, objective derivation inputs, compiler-required contracts, schemas,
+convergence definition, validation semantics, and a provenance manifest.
+
+Selection never originates from the static FINAL_EXECUTION_CONTRACT.yaml
+(A0801): the static contracts are copied only as museum examples. Before
+sealing, a closure validator proves every supported route compiles against
+the pack itself (A0802).
+"""
 
 from __future__ import annotations
 
@@ -7,20 +20,32 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any, cast
-
-import yaml
+from typing import Any
 
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
 PACK_NAME = "l9-cognitive-runtime-deployment"
 SOURCE_REPOSITORY = "https://github.com/Quantum-L9/l9-cognitive-runtime"
-_REQUIRED_CONTRACTS = (
+_FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
+
+# Museum examples: inert, never selection authority (INV-009).
+_MUSEUM_CONTRACTS = (
     "FINAL_EXECUTION_CONTRACT.yaml",
     "VALIDATION_CONTRACT.yaml",
     "HANDOFF_CONTRACT.yaml",
+    "EXECUTION_GRAPH.json",
 )
-_FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
+
+# Compiler-required semantic sources (INV-011 closure set).
+_CLOSURE_SOURCES = (
+    "runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml",
+    "runtime/kernel_pipeline/KERNEL_PIPELINE.yaml",
+    "runtime/kernel_pipeline/KERNEL_ROLE_MAP.yaml",
+    "runtime/kernel_pipeline/planner/ACTIVATION_PLAN_SCHEMA.yaml",
+    "runtime/intent_compiler/INTENT_COMPILER.yaml",
+    "runtime/execution_graph/graph.schema.json",
+    "runtime/kernels/terminal/flawless_victory.contract.yaml",
+)
 
 
 def _source_file(root: Path, relative: str) -> Path:
@@ -37,18 +62,81 @@ def _source_file(root: Path, relative: str) -> Path:
     return candidate
 
 
+def _iter_kernel_sources(root: Path) -> list[str]:
+    kernels_root = root / "runtime" / "kernels"
+    if not kernels_root.is_dir():
+        raise InvalidValueError("runtime/kernels missing", path="runtime/kernels")
+    return sorted(
+        path.relative_to(root).as_posix() for path in kernels_root.rglob("*") if path.is_file()
+    )
+
+
+def _iter_schema_sources(root: Path) -> list[str]:
+    schema_root = root / "contracts"
+    if not schema_root.is_dir():
+        raise InvalidValueError("contracts missing", path="contracts")
+    return sorted(
+        path.relative_to(root).as_posix()
+        for path in schema_root.glob("*.schema.json")
+        if path.is_file()
+    )
+
+
+def _iter_adapter_sources(root: Path) -> list[str]:
+    adapter_root = root / "runtime" / "contract_compiler" / "adapters"
+    if not adapter_root.is_dir():
+        raise InvalidValueError("adapter templates missing", path=str(adapter_root))
+    return sorted(
+        path.relative_to(root).as_posix() for path in adapter_root.glob("*.md") if path.is_file()
+    )
+
+
+def validate_deployment_closure(pack_root: Path) -> dict[str, Any]:
+    """A0802: prove every supported route compiles from the sealed pack."""
+    from l9_cognitive_runtime.compiler.activation import ActivationPlanner
+    from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
+    from l9_cognitive_runtime.pack import PackLoader
+    from l9_cognitive_runtime.parsing import load_yaml_file
+    from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
+
+    pack = PackLoader().load(pack_root)
+    rules = load_yaml_file(pack.resolve("runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"))
+    routes = rules.get("task_routes") or {}
+    service = CognitiveRuntimeService()
+    deriver = ObjectiveDeriver()
+    planner = ActivationPlanner()
+    compiled_routes: list[str] = []
+    for route_name, route in sorted(routes.items()):
+        tokens = route.get("match_any") or []
+        if not tokens:
+            raise InvalidValueError("route without match_any tokens", path=route_name)
+        mission = f"Representative {tokens[0]} mission"
+        intent = deriver.derive(CompileRequest(mission=mission))
+        plan = planner.plan(
+            intent,
+            rules_path=pack.resolve("runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"),
+            pipeline_path=pack.resolve("runtime/kernel_pipeline/KERNEL_PIPELINE.yaml"),
+        )
+        if plan.blockers:
+            raise InvalidValueError(
+                "route activation blocked in sealed pack",
+                path=route_name,
+                details={"blockers": plan.blockers},
+            )
+        # Full spine compile against the sealed pack: kernel resolution,
+        # obligations, liveness, graph, packet — all fail closed.
+        service.compile_runtime(CompileRequest(mission=mission, pack_root=pack_root))
+        compiled_routes.append(route_name)
+    return {"routes_compiled": compiled_routes, "count": len(compiled_routes)}
+
+
 def build_deployment_pack(
     source_root: Path,
     destination: Path,
     *,
     source_revision: str,
 ) -> Path:
-    """Seal the canonical contracts and activated kernels into a verified pack.
-
-    The mutable repository-root MANIFEST.json is deliberately not consumed. The
-    deployment pack receives its own manifest over exactly the files copied into
-    the image, with every entry linked back to its canonical repository path.
-    """
+    """Seal the semantic closure set into a verified pack and prove closure."""
     source = source_root.resolve()
     dest = destination.resolve()
     revision = source_revision.strip().lower()
@@ -61,18 +149,6 @@ def build_deployment_pack(
     if dest.exists() and (not dest.is_dir() or any(dest.iterdir())):
         raise InvalidValueError("destination must be absent or empty", path=str(dest))
     dest.mkdir(parents=True, exist_ok=True)
-
-    execution_path = _source_file(source, "FINAL_EXECUTION_CONTRACT.yaml")
-    raw: Any = yaml.safe_load(execution_path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        raise InvalidValueError("execution contract root must be a mapping")
-    execution = cast("dict[str, Any]", raw)
-    activation = execution.get("kernel_activation")
-    if not isinstance(activation, list) or not activation:
-        raise InvalidValueError("execution contract requires kernel_activation")
-    kernels = [item for item in activation if isinstance(item, str) and item.strip()]
-    if len(kernels) != len(activation):
-        raise InvalidValueError("kernel_activation entries must be non-empty strings")
 
     copies: dict[str, str] = {}
 
@@ -87,31 +163,25 @@ def build_deployment_pack(
                 details={"first": existing, "second": source_rel},
             )
         copies[target_rel] = source_rel
-        # Resolve now so a bad registration fails before any bytes are written.
         src.relative_to(source)
 
-    for relative in _REQUIRED_CONTRACTS:
+    # Museum contracts: inert examples, never selection authority (A0801).
+    for relative in _MUSEUM_CONTRACTS:
         register(relative)
-
-    source_plan = execution.get("source_activation_plan")
-    if isinstance(source_plan, str) and source_plan.strip():
-        register(source_plan.strip())
-
-    for kernel in kernels:
-        relative = kernel.strip().replace("\\", "/")
+    # Compiler-required semantic sources.
+    for relative in _CLOSURE_SOURCES:
         register(relative)
-        # Preserve the public MCP resource URI shape: l9://.../kernels/<filename>.
+    # Every dynamically selectable kernel (A0801: no static preselection).
+    for relative in _iter_kernel_sources(source):
+        register(relative)
+        # Preserve the public MCP resource URI shape: l9://.../kernels/<name>.
         register(relative, f"kernels/{Path(relative).name}")
-
-    schema_root = source / "contracts"
-    schemas = sorted(schema_root.glob("*.schema.json")) if schema_root.is_dir() else []
-    if not schemas:
-        raise InvalidValueError("no contract schemas found", path="contracts")
-    for schema in schemas:
-        relative = schema.relative_to(source).as_posix()
+    # Schemas, adapter templates, and the validation report convention.
+    for relative in _iter_schema_sources(source):
         register(relative)
-        # Preserve the public MCP resource URI shape: l9://.../schemas/<filename>.
-        register(relative, f"schemas/{schema.name}")
+        register(relative, f"schemas/{Path(relative).name}")
+    for relative in _iter_adapter_sources(source):
+        register(relative)
 
     entries: list[dict[str, Any]] = []
     for target_rel in sorted(copies):
@@ -129,7 +199,9 @@ def build_deployment_pack(
             }
         )
 
-    manifest = {
+    # A0802: prove every supported route compiles from the sealed pack
+    # before the manifest is finalized — an unproven pack cannot be sealed.
+    base_manifest: dict[str, Any] = {
         "manifest_format": "l9.mcp.deployment-pack.v1",
         "pack_name": PACK_NAME,
         "pack_version": revision[:12],
@@ -138,7 +210,13 @@ def build_deployment_pack(
         "files": entries,
     }
     (dest / "MANIFEST.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        json.dumps(base_manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    closure = validate_deployment_closure(dest)
+    base_manifest["semantic_closure"] = closure
+    (dest / "MANIFEST.json").write_text(
+        json.dumps(base_manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return dest

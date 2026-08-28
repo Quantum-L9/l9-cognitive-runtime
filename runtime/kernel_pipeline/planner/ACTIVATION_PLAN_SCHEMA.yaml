@@ -11,16 +11,17 @@ required_fields:
   blockers: list
   unknowns: list
   next_phase: string
+  architecture_materiality: mapping
 allowed_confidence:
-  - high
-  - medium
-  - low
+- high
+- medium
+- low
 allowed_phase_ids:
-  - P0_UNPACK
-  - P1_CONSTITUTIONAL_PREFLIGHT
-  - P2_TASK_ROUTING
-  - P3_ARCHITECTURE_DECISION
-  - P4_ALIGNMENT_AND_STUB_GATE
-  - P5_RECURSIVE_IMPROVEMENT
-  - P6_LEVERAGE_COMPRESSION
-  - P7_FLAWLESS_VICTORY
+- P0_UNPACK
+- P1_CONSTITUTIONAL_PREFLIGHT
+- P2_TASK_ROUTING
+- P3_ARCHITECTURE_DECISION
+- P4_ALIGNMENT_AND_STUB_GATE
+- P5_RECURSIVE_IMPROVEMENT
+- P6_LEVERAGE_COMPRESSION
+- P7_FLAWLESS_VICTORY

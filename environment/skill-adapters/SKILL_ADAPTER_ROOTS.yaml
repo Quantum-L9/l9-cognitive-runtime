@@ -1,0 +1,27 @@
+# LLM skill discovery adapters.
+# Single maintainable corpus: governance `skills/` (== `.cursor-commands/skills`).
+# Adapters receive per-skill symlinks only — never copies, never whole-dir duplicates.
+schema_version: 1
+ssot_relative: skills
+mode: symlink
+replace_l9_duplicates: true
+adapters:
+  - id: claude-code-user
+    surface: claude-code
+    kind: user
+    path: ~/.claude/skills
+  - id: claude-code-project
+    surface: claude-code
+    kind: project
+    path: .claude/skills
+  - id: codex-user
+    surface: codex
+    kind: user
+    path: ~/.codex/skills
+  - id: cursor-plugin
+    surface: cursor
+    kind: plugin
+    # Cursor discovers skills under the l9-governance local plugin root
+    # (~/.cursor/plugins/local/l9-governance → governance). No second skills tree.
+    path: null
+    notes: "plugin-root discovery; ~/.cursor/skills is forbidden"

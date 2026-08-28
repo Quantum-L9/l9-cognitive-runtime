@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": [
+    "Committable .claude/settings.json for an L9 consumer repo. Copy to .claude/settings.json",
+    "and commit it: on Claude Code Web/Mobile only git-tracked files survive the clone, so a",
+    "committed settings.json is what makes governance boot with no manual step. On the CLI the",
+    "same file is picked up locally. Keep secrets OUT of this file \u2014 they belong in the account",
+    "environment (web/environment.env.example) or user-scope config, never in a repo.",
+    "Field/event names track the Claude Code release; see https://code.claude.com/docs.",
+    "permissions.allow lets the bounded-autonomy runtime complete work end to end: scoped git",
+    "writes (branch/worktree/commit), CI inspection (gh run/pr checks), read-only GitHub",
+    "queries, PR monitoring (subscribe/unsubscribe), and `make pr` \u2014 so completed work",
+    "opens a PR and is driven to green via the l9-pr-remediation loop WITHOUT a prompt.",
+    "PUBLISH PATH: `PR_REMEDIATE=0 make pr` remains the preferred route to GitHub \u2014 it runs",
+    "the Makefile checkers, then pushes and opens the PR. That preference is POLICY and is",
+    "unchanged. It is no longer enforced by denying execution: `git` and `gh` commands are",
+    "exempt from every governance gate (ops/autonomy/git_execution_exemption.py), so no deny",
+    "entry for them belongs here either. `make push` and the MCP create_pull_request/",
+    "push_files tools are still denied \u2014 they are not git/gh executables and the gate still",
+    "blocks them. This allow/deny split must agree with ops/autonomy/local_execution_gate.py,",
+    "and validate_claude_env.py fails when it does not, in both directions.",
+    "An allow entry here is what an agent reads as 'approved, no prompt', so git/gh forms the",
+    "workflow discourages are simply absent from both lists: permitted to execute, not",
+    "advertised as approved.",
+    "There is no standing autonomous-merge grant. merge_gate.py does not consult any",
+    "environment boolean; a flag set once in this configuration cannot authorize merge.",
+    "Merge is allowed only by a human per-session breakglass (L9_MERGE_AUTHORIZED) or a",
+    "scoped, expiring receipt that /l9-pr-remediation writes for the target repo (and PR).",
+    "Campaigns and make pr still do not merge, and only reach green + mergeable + resolved",
+    "threads, oldest first. Force pushes, hard resets, destructive cleanup, and admin-merge",
+    "remain forbidden by policy."
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || exit 0; exec bash \"$x\" --class observer session_start_claude_governance.sh'",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || exit 0; exec bash \"$x\" --class observer memory_prefetch.py'",
+            "timeout": 25
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || exit 0; exec bash \"$x\" --class observer memory_writeback.py'",
+            "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || { printf \"l9-gate: launcher missing at %s \u2014 BLOCKING (INV-1)\\n\" \"$x\" >&2; exit 2; }; exec bash \"$x\" --class gate session_debt_wrap.py'",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || exit 0; exec bash \"$x\" --class observer user_prompt_skill_router.py'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Skill|mcp__context7__.*|mcp__plugin_context7_context7__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || exit 0; exec bash \"$x\" --class observer skill_usage_logger.py'",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || exit 0; exec bash \"$x\" --class observer context7_stack_pretool.py'",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|mcp__github__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || { printf \"l9-gate: launcher missing at %s \u2014 BLOCKING (INV-1)\\n\" \"$x\" >&2; exit 2; }; exec bash \"$x\" --class gate merge_gate_wrap.py'",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || { printf \"l9-gate: launcher missing at %s \u2014 BLOCKING (INV-1)\\n\" \"$x\" >&2; exit 2; }; exec bash \"$x\" --class gate local_execution_gate_wrap.py'",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit|Bash|mcp__github__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || { printf \"l9-gate: launcher missing at %s \u2014 BLOCKING (INV-1)\\n\" \"$x\" >&2; exit 2; }; exec bash \"$x\" --class gate memory_gate.py'",
+            "timeout": 12
+          }
+        ]
+      }
+    ],
+    "UserPromptExpansion": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || exit 0; exec bash \"$x\" --class observer skill_usage_logger.py'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git fetch:*)",
+      "Bash(git switch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree:*)",
+      "Bash(git add --:*)",
+      "Bash(git commit:*)",
+      "Bash(make pr:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run watch:*)",
+      "Bash(gh run rerun:*)",
+      "Bash(make claude-env:*)",
+      "mcp__github__pull_request_read",
+      "mcp__github__get_check_run",
+      "mcp__github__actions_get",
+      "mcp__github__actions_list",
+      "mcp__github__get_job_logs",
+      "mcp__github__get_commit",
+      "mcp__github__list_commits",
+      "mcp__github__list_pull_requests",
+      "mcp__github__search_pull_requests",
+      "mcp__github__get_file_contents",
+      "mcp__github__list_branches",
+      "mcp__github__list_tags",
+      "mcp__github__list_releases",
+      "mcp__github__get_latest_release",
+      "mcp__github__get_me",
+      "mcp__github__issue_read",
+      "mcp__github__list_issues",
+      "mcp__github__search_issues",
+      "mcp__github__search_code",
+      "mcp__github__subscribe_pr_activity",
+      "mcp__github__unsubscribe_pr_activity",
+      "mcp__github__update_pull_request",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.mcp.json)",
+      "Bash(rm -rf:*)",
+      "Bash(make push:*)",
+      "mcp__github__create_pull_request",
+      "mcp__github__push_files"
+    ]
+  },
+  "env": {
+    "L9_GOVERNANCE_SURFACE": "claude-code",
+    "L9_AUTONOMY_ENABLED": "true",
+    "L9_AUTONOMY_AUTHORITY": "A4_CAMPAIGN_BOUNDED_EXTERNAL_WRITE",
+    "L9_AUTONOMY_MATURITY": "M4_ASSURANCE_GOVERNED",
+    "L9_AUTONOMY_PROFILE": "pr-convergence",
+    "L9_AUTONOMY_REMEDIATION_SKILL": "l9-pr-remediation",
+    "L9_AUTONOMY_MAX_PARALLEL": "480",
+    "L9_AUTONOMY_MAX_MUTATION_LANES": "128",
+    "L9_AUTONOMY_STATE_DIR": ".l9/autonomy",
+    "L9_DISCOVER_BEFORE_ASK": "true",
+    "L9_REQUIRE_EXACT_SHA_GREEN": "true",
+    "L9_PROACTIVE_SKILLS": "true",
+    "L9_SKILL_USAGE_LOGGING": "true",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "480",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3"
+  },
+  "skillOverrides": {},
+  "workflowSizeGuideline": "unrestricted"
+}

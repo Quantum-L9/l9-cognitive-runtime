@@ -1,3 +1,27 @@
-# Human Operator Adapter
+# {{adapter}} Adapter — deterministic projection of the execution packet
 
-Render the universal execution contract as a checklist/runbook for a human operator. Include gates, commands to run, evidence to capture, and stop conditions.
+Packet digest: {{packet_digest}}
+
+## Mission
+{{mission}} (realization: {{realization_mode}})
+
+## Active kernels
+{{kernel_activation}}
+
+## Required obligations (blocking — must not be dropped)
+{{required_obligations}}
+
+## Validation properties
+{{validation_properties}}
+
+## Delivery obligations
+{{delivery_obligations}}
+
+## Unknowns (must be preserved until disposed)
+{{unknowns}}
+
+## Global Architect outputs
+{{gar_outputs}}
+
+## Adapter note
+Render as a runbook checklist. Every required obligation, validation property, and delivery requirement is a checklist item; nothing may be elided.

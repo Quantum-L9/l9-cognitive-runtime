@@ -3,22 +3,18 @@ role_map:
     directory: runtime/kernels/constitutional
     load_policy: required_for_l9_work
     duplicate_policy: never_duplicate
-
   task_execution:
     directory: runtime/kernels/task
     load_policy: select_minimal_matching_set
     duplicate_policy: one_kernel_per_task_role
-
   architecture_decision:
     directory: runtime/kernels/architecture
-    load_policy: load_when_repo_taxonomy_dependency_or_bundle_boundary_is_in_scope
+    load_policy: load_when_architecture_materiality_or_repo_taxonomy_dependency_or_bundle_boundary_in_scope
     duplicate_policy: merge_overlapping_repo_boundary_guidance
-
   improvement:
     directory: runtime/kernels/improvement
     load_policy: sequential_gated
     duplicate_policy: merge_gap_stub_validation_into_validate_eliminate_stubs
-
   terminal_execution:
     directory: runtime/kernels/terminal
     load_policy: terminal_only

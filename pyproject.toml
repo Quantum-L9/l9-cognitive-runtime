@@ -80,5 +80,8 @@ files = ["src", "tests"]
 
 [dependency-groups]
 dev = [
+    "cryptography>=50.0.1",
+    "jsonschema>=4.26.0",
+    "structlog>=26.1.0",
     "types-pyyaml>=6.0.12.20260724",
 ]

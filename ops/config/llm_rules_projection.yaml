@@ -1,0 +1,12 @@
+# Projection policy: rules/*.mdc → environment/generated/llm-rules/*.md
+# Author only rules/*.mdc. Never hand-edit the generated tree.
+#
+# This consumer repo does not host L9 rules of its own (rules live in the
+# Cursor-Governance SSOT); the projection exists so the governance publish
+# gate can evaluate the (empty) projection deterministically.
+schema_version: 1
+source_relative: rules
+output_relative: environment/generated/llm-rules
+deny_stems: []
+aliases: {}
+project_agent_requested: false

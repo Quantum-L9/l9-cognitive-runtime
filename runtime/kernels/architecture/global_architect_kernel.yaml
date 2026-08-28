@@ -1,0 +1,61 @@
+kernel_id: global_architect_kernel
+kernel_name: L9 Global Architect Runtime Kernel (GAR)
+version: 1.0.0
+status: canonical
+role: architecture_decision
+purpose: >
+  Live architectural cognition for missions whose architecture materiality is
+  proven by intent and verified context signals. GAR judges ownership,
+  boundaries, state, temporal semantics, failure domains, scale, operability,
+  and evolution; falsifies candidate plans; and attacks candidate plans
+  adversarially before they are accepted.
+
+activation: architecture_materiality
+source_semantics:
+  - GAR_architectural_judgment
+  - ownership_lens
+  - boundary_lens
+  - state_lens
+  - temporal_lens
+  - failure_lens
+  - scale_lens
+  - operability_lens
+  - evolution_lens
+  - simplicity_lens
+  - candidate_falsification
+  - adversarial_plan_attack
+
+lenses:
+  - ownership_lens
+  - boundary_lens
+  - state_lens
+  - temporal_lens
+  - failure_lens
+  - concurrency_lens
+  - scale_lens
+  - operability_lens
+  - evolution_lens
+  - simplicity_lens
+
+typed_outputs:
+  - id: GAR_SYSTEM_MODEL
+    required: true
+    consumer_refs:
+      - execution_gate
+  - id: GAR_ARCHITECTURE_DECISION
+    required: true
+    consumer_refs:
+      - execution_gate
+      - validation_contract
+  - id: GAR_ARCHITECTURAL_INTEGRITY_EVIDENCE
+    required: true
+    consumer_refs:
+      - validation_contract
+  - id: GAR_PLAN_READINESS
+    required: true
+    consumer_refs:
+      - execution_gate
+  - id: GAR_TYPED_DEFECTS
+    required: true
+    consumer_refs:
+      - convergence_gate

@@ -1,101 +1,95 @@
 pipeline_id: l9_clean_kernel_pipeline.v1
 status: ACTIVE
-supersedes: "L9 Cognitive Runtime (kernels).zip"
+supersedes: L9 Cognitive Runtime (kernels).zip
 terminal_contract: runtime/kernels/terminal/flawless_victory.contract.yaml
-
 phase_order:
-  - id: P0_UNPACK
-    purpose: Inventory, classify, and map source artifacts before decisions.
-    primary_kernels:
-      - runtime/kernels/task/repo_auditor_kernel.yaml
-    required_outputs:
-      - SYSTEM_MAP.md
-      - KERNEL_INVENTORY.json
-      - UNKNOWN_QUEUE.md
-    exit_gate: "All relevant files inventoried or unavailable files listed as blockers."
-
-  - id: P1_CONSTITUTIONAL_PREFLIGHT
-    purpose: Load source law and enforce L9 invariants before any build planning.
-    primary_kernels:
-      - runtime/kernels/constitutional/K01-platform-architecture-engine.yaml
-      - runtime/kernels/constitutional/K02-contracts-code-laws-enforcement.yaml
-      - runtime/kernels/constitutional/K03-constellation-transport-authority.yaml
-      - runtime/kernels/constitutional/K04-domain-spec-yaml-authoring.yaml
-      - runtime/kernels/constitutional/K05-file-ownership-placement-capability-registry.yaml
-    required_outputs:
-      - CONSTITUTIONAL_PREFLIGHT_REPORT.md
-    exit_gate: "No critical unresolved law or boundary conflict."
-
-  - id: P2_TASK_ROUTING
-    purpose: Select the smallest task kernel set needed for the work.
-    primary_kernels:
-      - runtime/kernels/task/developer_core_kernel.yaml
-      - runtime/kernels/task/repo_auditor_kernel.yaml
-      - runtime/kernels/task/prompt_compiler_kernel.yaml
-      - runtime/kernels/task/l9_engine_build_kernel.yaml
-      - runtime/kernels/task/code_review_ci_kernel.yaml
-    required_outputs:
-      - KERNEL_ACTIVATION_PLAN.yaml
-    exit_gate: "No duplicate active kernels with the same role."
-
-  - id: P3_ARCHITECTURE_DECISION
-    purpose: Resolve repo taxonomy, dependency birth, bundle, and node-extra boundaries.
-    primary_kernels:
-      - runtime/kernels/architecture/repo_taxonomy_and_dependency_architecture.md
-      - runtime/kernels/architecture/dependency_birth_and_mirror_codegen.md
-      - runtime/kernels/architecture/bundle_and_node_extras.md
-    required_outputs:
-      - ARCHITECTURE_DECISION_RECORD.md
-    exit_gate: "Architecture ownership and dependency boundaries are explicit."
-
-  - id: P4_ALIGNMENT_AND_STUB_GATE
-    purpose: Prevent drift, gaps, placeholders, fake validation, and incomplete contracts.
-    primary_kernels:
-      - runtime/kernels/improvement/recursive_alignment.md
-      - runtime/kernels/improvement/validate_eliminate_stubs.md
-    required_outputs:
-      - ALIGNMENT_FINDINGS.md
-      - NO_STUB_REPORT.md
-    exit_gate: "Execution allowed only if no blocking stubs or fake validation remain."
-
-  - id: P5_RECURSIVE_IMPROVEMENT
-    purpose: Improve boundedly, preserve strengths, and converge.
-    primary_kernels:
-      - runtime/kernels/improvement/recursive_improvement.md
-    required_outputs:
-      - IMPROVEMENT_PATCH_PLAN.md
-      - CONVERGENCE_STATUS.md
-    exit_gate: "Another improvement pass would add no material value."
-
-  - id: P6_LEVERAGE_COMPRESSION
-    purpose: Collapse overlap and keep only high-compounding primitives.
-    primary_kernels:
-      - runtime/kernels/improvement/recursive_leverage.md
-    required_outputs:
-      - LEVERAGE_DECISIONS.md
-    exit_gate: "Keep/merge/remove/promote decisions recorded."
-
-  - id: P7_FLAWLESS_VICTORY
-    purpose: Compile universal execution, validation, handoff, and adapter render contracts only after blueprint and gates are clean.
-    primary_kernels:
-      - runtime/kernels/terminal/flawless_victory.contract.yaml
-    required_outputs:
-      - FINAL_EXECUTION_CONTRACT.yaml
-      - VALIDATION_CONTRACT.yaml
-      - HANDOFF_CONTRACT.yaml
-      - ADAPTER_RENDER.md
-      - VALIDATION_EVIDENCE.md
-      - CONVERGENCE_BLOCK.md
-    exit_gate: "Honest validation, no drift, no stubs, terminal summary complete."
-
+- id: P0_UNPACK
+  purpose: Inventory, classify, and map source artifacts before decisions.
+  primary_kernels:
+  - runtime/kernels/task/repo_auditor_kernel.yaml
+  required_outputs:
+  - SYSTEM_MAP.md
+  - KERNEL_INVENTORY.json
+  - UNKNOWN_QUEUE.md
+  exit_gate: All relevant files inventoried or unavailable files listed as blockers.
+- id: P1_CONSTITUTIONAL_PREFLIGHT
+  purpose: Load source law and enforce L9 invariants before any build planning.
+  primary_kernels:
+  - runtime/kernels/constitutional/K01-platform-architecture-engine.yaml
+  - runtime/kernels/constitutional/K02-contracts-code-laws-enforcement.yaml
+  - runtime/kernels/constitutional/K03-constellation-transport-authority.yaml
+  - runtime/kernels/constitutional/K04-domain-spec-yaml-authoring.yaml
+  - runtime/kernels/constitutional/K05-file-ownership-placement-capability-registry.yaml
+  required_outputs:
+  - CONSTITUTIONAL_PREFLIGHT_REPORT.md
+  exit_gate: No critical unresolved law or boundary conflict.
+- id: P2_TASK_ROUTING
+  purpose: Select the smallest task kernel set needed for the work.
+  primary_kernels:
+  - runtime/kernels/task/developer_core_kernel.yaml
+  - runtime/kernels/task/repo_auditor_kernel.yaml
+  - runtime/kernels/task/prompt_compiler_kernel.yaml
+  - runtime/kernels/task/l9_engine_build_kernel.yaml
+  - runtime/kernels/task/code_review_ci_kernel.yaml
+  required_outputs:
+  - KERNEL_ACTIVATION_PLAN.yaml
+  exit_gate: No duplicate active kernels with the same role.
+- id: P3_ARCHITECTURE_DECISION
+  purpose: Resolve repo taxonomy, dependency birth, bundle, and node-extra boundaries.
+  primary_kernels:
+  - runtime/kernels/architecture/repo_taxonomy_and_dependency_architecture.md
+  - runtime/kernels/architecture/dependency_birth_and_mirror_codegen.md
+  - runtime/kernels/architecture/bundle_and_node_extras.md
+  - runtime/kernels/architecture/global_architect_kernel.yaml
+  required_outputs:
+  - ARCHITECTURE_DECISION_RECORD.md
+  exit_gate: Architecture ownership and dependency boundaries are explicit.
+- id: P4_ALIGNMENT_AND_STUB_GATE
+  purpose: Prevent drift, gaps, placeholders, fake validation, and incomplete contracts.
+  primary_kernels:
+  - runtime/kernels/improvement/recursive_alignment.md
+  - runtime/kernels/improvement/validate_eliminate_stubs.md
+  required_outputs:
+  - ALIGNMENT_FINDINGS.md
+  - NO_STUB_REPORT.md
+  exit_gate: Execution allowed only if no blocking stubs or fake validation remain.
+- id: P5_RECURSIVE_IMPROVEMENT
+  purpose: Improve boundedly, preserve strengths, and converge.
+  primary_kernels:
+  - runtime/kernels/improvement/recursive_improvement.md
+  required_outputs:
+  - IMPROVEMENT_PATCH_PLAN.md
+  - CONVERGENCE_STATUS.md
+  exit_gate: Another improvement pass would add no material value.
+- id: P6_LEVERAGE_COMPRESSION
+  purpose: Collapse overlap and keep only high-compounding primitives.
+  primary_kernels:
+  - runtime/kernels/improvement/recursive_leverage.md
+  required_outputs:
+  - LEVERAGE_DECISIONS.md
+  exit_gate: Keep/merge/remove/promote decisions recorded.
+- id: P7_FLAWLESS_VICTORY
+  purpose: Compile universal execution, validation, handoff, and adapter render contracts
+    only after blueprint and gates are clean.
+  primary_kernels:
+  - runtime/kernels/terminal/flawless_victory.contract.yaml
+  required_outputs:
+  - FINAL_EXECUTION_CONTRACT.yaml
+  - VALIDATION_CONTRACT.yaml
+  - HANDOFF_CONTRACT.yaml
+  - ADAPTER_RENDER.md
+  - VALIDATION_EVIDENCE.md
+  - CONVERGENCE_BLOCK.md
+  exit_gate: Honest validation, no drift, no stubs, terminal summary complete.
 hard_rules:
-  - K01 MUST load before K02-K05.
-  - Constitutional kernels are source law, not task profiles.
-  - Task kernels are selected by work type, not all loaded by default.
-  - Architecture kernels govern dependency and repo taxonomy decisions only.
-  - Improvement kernels run after architecture and before terminal execution.
-  - Flawless Victory is terminal only.
-  - Do not generate terminal execution contracts or adapter renders before blueprint and gates are complete.
-  - Do not claim validation without captured evidence.
-  - Do not keep duplicate active kernels for the same role.
-  - Do not reintroduce PacketEnvelope where TransportPacket law applies.
+- K01 MUST load before K02-K05.
+- Constitutional kernels are source law, not task profiles.
+- Task kernels are selected by work type, not all loaded by default.
+- Architecture kernels govern dependency and repo taxonomy decisions only.
+- Improvement kernels run after architecture and before terminal execution.
+- Flawless Victory is terminal only.
+- Do not generate terminal execution contracts or adapter renders before blueprint
+  and gates are complete.
+- Do not claim validation without captured evidence.
+- Do not keep duplicate active kernels for the same role.
+- Do not reintroduce PacketEnvelope where TransportPacket law applies.

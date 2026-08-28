@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "Claude Code MCP configuration — capability broker architecture.",
+    "Authority: environment/agents/adapters/claude-code/mcp.template.json is the",
+    "SINGLE canonical owner. The project-scope .mcp.json is RENDERED from this file",
+    "by ops/scripts/claude_projection.py (domain: mcp) and drift-checked — it is a",
+    "projection, never a second authority.",
+    "",
+    "NO CREDENTIALS in this file or in the account environment. The broker holds",
+    "secrets on the far side of the trust boundary; this surface holds none.",
+    "",
+    "Identity: there is NO platform-issued bearer env var for a hosted Claude Code",
+    "session. `CLAUDE_SESSION_JWT` was never an Anthropic primitive and is gone from",
+    "this file: it does not exist in the runtime, no code reads it, and a `.mcp.json`",
+    "header cannot carry the platform's per-session identity on the current contract",
+    "(cloud_default issues no broker-verifiable identity; see docs/DEGRADED_MODE_CONTRACT.md).",
+    "The broker verifies a session assertion ONLY where the platform projects one as",
+    "a file (CLAUDE_SESSION_IDENTITY_TOKEN_FILE on a self-hosted ccpool_* pool), read",
+    "by ops/secrets/capability_client.py — never a header interpolated here.",
+    "",
+    "Credential-bearing capabilities (sonar.read_issues, semgrep.*, github.*,",
+    "context7.mcp, gitguardian.mcp) are therefore consumed through the capability",
+    "client CLI (`ops/secrets/capability_client.py --invoke <id>`), which attaches",
+    "the platform's file-based session assertion as the Authorization header.",
+    "They are deliberately NOT registered as .mcp.json servers here: a broker /mcp",
+    "route requires a verified identity that .mcp.json headers cannot supply, so",
+    "registering them would only ship dangling 401 references.",
+    "",
+    "graphiti-memory is the one genuine MCP server: it points at the broker front",
+    "door (${L9_CAPABILITY_BROKER_URL}/mcp/graphiti) and carries NO bearer. The broker",
+    "resolves the Graphiti credential on its own side and authenticates the session",
+    "against its verifiable identity; initialize is anonymous but tools/list and",
+    "tools/call require that identity. When the broker URL is unset, the broker is not",
+    "deployed, or the platform issues no identity, this server returns an honest 401",
+    "and memory runs DEGRADED — the honest posture, not a reason to paste a token.",
+    "FORBIDDEN: GRAPHITI_MCP_TOKEN in server config, the retired HTTP l9-shared-memory",
+    "side door, and L9_MEMORY_HTTP_* lifecycle env."
+  ],
+  "mcpServers": {
+    "graphiti-memory": {
+      "type": "http",
+      "url": "${L9_CAPABILITY_BROKER_URL}/mcp/graphiti",
+      "timeout": 120000,
+      "alwaysLoad": true
+    }
+  }
+}

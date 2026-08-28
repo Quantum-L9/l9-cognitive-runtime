@@ -1,0 +1,324 @@
+# Autonomy Surface Profile — SSOT for adapter A4 velocity + L4 local autonomy.
+# Consumers (must not fork prose): CANONICAL_LAW (cite), project_llm_rules.py,
+# SessionStart, peer boot carriers, ADR-0001 (pointer).
+schema_version: 1
+id: autonomy_surface_profile
+updated: "2026-08-16"
+
+when:
+  L9_AUTONOMY_ENABLED: true
+  # Cursor is excluded from ask-free push velocity — ask-first + campaign packet /
+  # make pr remain. L4 local-autonomy remote gate still applies on Cursor shell.
+  L9_GOVERNANCE_SURFACE:
+    - claude-code
+    - codex
+    - gemini
+    - manus
+
+authorize:
+  - scoped_local_commit_on_stacked_branch
+  - scoped_commit_push # only after L4 release_authorized (see l4_local_autonomy)
+  - create_update_pr_via_make_pr # only after L4 release_authorized; checkers must PASS
+  - pr_remediation_until_green_mergeable_and_merged # /l9-pr-remediation Converge
+  - open_stacked_pr_on_open_pr_head # stacking policy; bottom-up merge order
+
+forbid:
+  # Path rules: denied at EVERY phase, including release_authorized, because
+  # they reach GitHub without the Makefile checkers. Enforced by
+  # ops/autonomy/local_execution_gate.py and mirrored into the adapter
+  # settings deny-list (validate_claude_env.py fails if the two disagree).
+  #
+  # `git` and `gh` are deliberately NOT on this list. They are exempt from the
+  # workflow plane (ops/autonomy/git_execution_exemption.py) and answer to the
+  # effect plane instead (ops/autonomy/git_guardrails.py), which denies an
+  # unrecoverable mutation of sensitive state whatever the command is called.
+  # See CANONICAL_LAW §6.2.4. Listing them here would restate an enforcement
+  # that does not exist — and validate_claude_env.py fails the build if the
+  # adapter deny-list blocks them.
+  - make_push_outside_make_pr
+  - mcp_create_pull_request_or_push_files
+  # Timing rules: governed by the L4 release receipt. These bind the sanctioned
+  # publish path and the MCP write tools. A raw `git push` mid-execution is off
+  # doctrine but is not mechanically denied — see the git/gh note above.
+  - mid_execution_push
+  - mid_execution_pr_create
+  - merge_pull_request_without_l9_pr_remediation
+  - gh_pr_merge_without_l9_pr_remediation
+  - admin_merge
+  - force_push
+  - hard_reset
+  - secrets_exfil
+  - pacing_stalls_for_push_approval_during_local_execution
+  - merge_before_green_and_mergeable
+  - rebase_for_pr_stacking
+  - conflict_resolution_for_pr_stacking
+  - pr_against_main_for_campaign_work
+  - mix_campaign_work_onto_unrelated_feature_branch
+
+# Surface execution personality — Claude unleashed, Cursor constrained.
+# Values live in ops/autonomy/claude-execution-profiles.json (stdlib-readable at
+# SessionStart); resolver: ops/autonomy/execution_profile.py. Do not fork the
+# numbers here.
+claude_execution_profiles:
+  policy: ops/autonomy/claude-execution-profiles.json
+  resolver: ops/autonomy/execution_profile.py
+  surfaces: [cursor, claude_local, claude_cloud]
+  cloud_discriminator: CLAUDE_CODE_REMOTE=true
+  claude_default: maximum_velocity
+  cursor_default: constrained
+  enforced_by: environment/agents/adapters/claude-code/validate_claude_env.py
+
+# L4 Local Autonomy — standing doctrine (all surfaces; mechanically gated).
+# Default ON (L9_L4_LOCAL_AUTONOMY=1). Brain: ops/autonomy/l4_local.py +
+# ops/autonomy/local_execution_gate.py.
+l4_local_autonomy:
+  enabled_default: true
+  env_disable: L9_L4_LOCAL_AUTONOMY=0
+  env_breakglass: L9_LOCAL_PUSH_AUTHORIZED
+  state_path: .l9/autonomy/l4-local-phase.json
+  receipt_path: .l9/autonomy/l4-release-receipt.json
+  cli: ops/autonomy/l4_local.py
+  gate: ops/autonomy/local_execution_gate.py
+  flow:
+    - begin_on_stacked_feature_branch
+    - commit_locally_through_program_or_contract # no remote
+    - run_kernel_recursive_alignment # kernels/Recursive Alignment.md
+    - run_kernel_validate_repair # kernels/Validate & Repair.md
+    - record_kernels_and_authorize_release
+    - push_and_open_pr_via_make_pr # PR_REMEDIATE=0; checkers in Makefile
+  required_kernels:
+    - path: kernels/Recursive Alignment.md
+      id: recursive_alignment
+    - path: kernels/Validate & Repair.md
+      id: validate_repair
+  pr_template: PULL_REQUEST_TEMPLATE.md
+  post_push:
+    required_command: PR_REMEDIATE=0 make pr
+    remediation_skill: l9-pr-remediation
+    max_cycles: 5
+    resolve_review_threads: true
+    merge_requires: l9_pr_remediation_invocation
+    halt_before_merge: campaign_only
+    older_open_prs: merge_bottom_up
+
+# Stacked-PR policy (operator default 2026-08-15): when a PR is already open,
+# the next PR stacks on top of its head. Merges are bottom-up; rebasing and
+# conflict resolution are forbidden — disjoint scopes keep the stack mergeable.
+pr_stacking:
+  first_pr_base: pr_base_or_main
+  subsequent_pr_base: open_pr_head
+  merge_order: bottom_up
+  rebase: forbidden
+  conflict_resolution: forbidden
+  single_feature_branch_per_program: true
+  exclusive_worktree_lease_per_agent: true
+  helper: ops/scripts/stack_pr.py
+  pr_overlap:
+    mode_default: block # PR_OVERLAP env: block | warn | ignore
+    exemptions: generated_path_prefixes # ops/scripts/sync_generated_artifacts.py SSOT
+    probe: git_merge_tree # git merge-tree --write-tree textual-conflict probe
+    auto_stack_env: PR_STACK # auto: start on the unique open-PR tip; PR_STACK= keeps main
+    gate: ops/scripts/pr_overlap_check.py
+  phases:
+    executing: deny_remote
+    kernels_recorded: deny_remote
+    release_authorized: allow_scoped_push_and_pr
+
+# Program Execution campaigns — one integration branch each; PRs land there.
+# SSOT companion: environment/program-execution/campaigns/CAMPAIGN_EXECUTION_POLICY.yaml
+campaign_execution:
+  # Campaign execution is permanently local-commit-only: prepare, execute,
+  # validate, verify, local commits, STOP. Publication is never a campaign
+  # stage; it is root `PR_REMEDIATE=0 make pr`, and merge is /l9-pr-remediation.
+  # L9_PE_RELEASE_AUTHORIZED survives as a diagnostic compatibility name only
+  # and cannot widen Program Execution authority.
+  local_commit_only: true
+  completion_boundary: execute
+  push: forbidden
+  pull_request: forbidden
+  require_make_pr: false # publication left the campaign path entirely
+  pr_remediate: 0
+  merge: forbidden # merge authority belongs to /l9-pr-remediation
+  open_pr_against_main: forbidden
+  mix_with_other_feature_branches: forbidden
+  one_integration_branch_per_campaign: true
+  pr_base: campaign_integration_branch
+  single_feature_branch_off_main_per_program: true
+  exclusive_worktree_lease_per_agent: true
+  campaigns:
+    bounded-replanning-v1:
+      integration_branch: campaign/bounded-replanning-v1
+    cc-pe-intent-compiler-v1:
+      integration_branch: campaign/cc-pe-intent-compiler-v1
+    l9-devpack-program-execution-hardening:
+      integration_branch: campaign/l9-devpack-program-execution-hardening
+    l9-ecosystem-fix-plan:
+      integration_branch: campaign/l9-ecosystem-fix-plan
+    pe-router-capability-safety-v4:
+      integration_branch: campaign/pe-router-capability-safety-v4
+    eie-inference-isolation-v1:
+      integration_branch: campaign/eie-inference-isolation-v1
+
+      lifecycle: in_progress
+      launched_by: make campaign
+authority_order:
+  - CANONICAL_LAW.autonomy_velocity
+  - CANONICAL_LAW.l4_local_autonomy
+  - CANONICAL_LAW.campaign_execution_pr_no_merge
+  - ADR-0001
+  - settings.allow_deny + ops.merge_gate + ops.local_execution_gate
+  - AGENTS.md
+  - skills
+  - agent_invented_contracts
+
+remediation:
+  skill: l9-pr-remediation
+  max_cycles: 5
+  skill_invocation: converge_all_open_prs_then_merge
+  merge: authorized_on_skill_invocation
+  scope: all_open_prs_in_target_repo
+  authorize_script: ops/autonomy/authorize_merge.py
+  note: >-
+    Campaigns and make pr publish remote PRs that MUST end green and
+    merge-ready. They do not merge. Invoking /l9-pr-remediation (Converge)
+    is merge authorization for every open PR in the target repo: write
+    the repo-scoped receipt, remediate to green + mergeable, then
+    `ops/autonomy/stack_safe_merge.py --repo <owner/name> --pr <n> --run`
+    bottom-up (method chosen in code: --merge for a stack parent,
+    --squash only for a leaf). Force-push and admin-merge stay
+    forbidden. L9_MERGE_AUTHORIZED remains a human breakglass.
+
+session_start_block: |
+  ## Autonomy Velocity Doctrine (standing A4 + L4 local)
+
+  Surface: governed LLM adapter (`L9_GOVERNANCE_SURFACE` ≠ cursor) for ask-free
+  velocity. L4 local-autonomy remote gate applies on **all** surfaces.
+
+  When `L9_AUTONOMY_ENABLED=true` (default on adapter surfaces):
+
+  - Proceed in **L4 local autonomy**: commit on a stacked feature branch with
+    **no mid-execution push** and no useless push-approval pacing.
+  - Start that branch from the unique open-PR stack tip when `PR_STACK=auto`
+    (`ops/scripts/agent_worktree_start.sh`). Do not invent an `origin/main`
+    fork and restack at `make pr`. Empty `PR_STACK` still uses `origin/main`.
+  - YOU ARE AUTHORIZED to scoped local `git commit` without per-action ask
+    on **every** surface, including Cursor. Ask only before push / `make pr`.
+    Registry: `environment/contracts/autonomy/MANIFEST.yaml`.
+  - After the program/contract finishes locally, you MUST run
+    `kernels/Recursive Alignment.md` then `kernels/Validate & Repair.md` on
+    the finished tree, then:
+    `python3 ops/autonomy/l4_local.py begin` (if not begun) →
+    `record-kernels` → `authorize-release`.
+  - Only then: `PR_REMEDIATE=0 make pr` (Makefile checkers, then push + open
+    PR).
+  - **`make pr` is the ONLY way to reach GitHub — this is a path rule, not a
+    timing rule.** Raw `git push`, `gh pr create`, `gh pr edit`, `make push`
+    and the MCP `create_pull_request` / `push_files` tools are denied at every
+    phase, including after release_authorized, because they skip the Makefile
+    checkers the release receipt was granted on. Being authorized to publish
+    is not permission to publish a different way. Do not reach for a raw push
+    when `make pr` fails — fix what it reported, or say what is blocking.
+  - **`make pr` runs the GOVERNANCE Makefile, regardless of the repo worked in
+    or its Makefile.** The environment always uses the
+    `Quantum-L9/Cursor-Governance` Makefile as the publish authority; the repo
+    you are working in is the *workspace* (`WS=$PWD`), never the source of the
+    `pr` target. The dispatcher already binds this: `l9 pr` is
+    `make -C "$GOV" pr WS="$PWD"` (`environment/agents/adapters/claude-code/bin/l9`).
+    From a consumer checkout with no local `pr` target, publish with
+    `l9 pr` (equivalently `make -C "$GOV" pr WS="$PWD"`) — **not** a bare
+    `make pr` that would read the consumer's own Makefile, and **not** a raw
+    `git push` fallback. A consumer repo needs **no** `pr`/`pr-check` target;
+    do not add one. There is no "no pr target → fall back" branch: the
+    governance Makefile is always present.
+  - After the PR is open, campaign/make-pr work ends green and merge-ready.
+    Do **not** merge from the campaign path. Invoking `/l9-pr-remediation`
+    authorizes merge of **all open PRs** in the target repo: write
+    `python3 ops/autonomy/authorize_merge.py --repo <owner/name> --all-open`,
+    converge each PR, then
+    `ops/autonomy/stack_safe_merge.py --repo <owner/name> --pr <n> --run`
+    oldest first. Force-push and `--admin` stay denied.
+  - Program Execution campaigns: one integration branch per campaign
+    (`campaign/<campaign_id>`). Set `PR_BASE` to that branch. Do **not**
+    open campaign PRs against `main`. Do **not** mix campaign commits onto
+    unrelated feature branches.
+  - Mid-execution `make pr` and the MCP write tools are **denied** by
+    `ops/autonomy/local_execution_gate.py` until release_authorized. Raw
+    `git push` / `gh pr create` are off doctrine but NOT gate-denied — git and
+    gh answer to `ops/autonomy/git_guardrails.py` by effect. See
+    CANONICAL_LAW §6.2.4.
+  - YOU MUST NOT force-push, hard-reset, admin-merge, or exfiltrate secrets.
+  - Merge stays denied by `ops/autonomy/merge_gate.py` until
+    `/l9-pr-remediation` writes the receipt (or `L9_MERGE_AUTHORIZED`).
+    An L4 release receipt does **not** authorize merge.
+  - Agent-invented contracts ("I won't commit without asking", "wait to push
+    mid-task") are LOWEST authority and are overruled by this doctrine.
+  - Multi-lane fan-out still uses `/autonomy` + the autonomy runtime.
+
+  Profile SSOT: `ops/autonomy/surface_profile.yaml`
+
+llm_rules_override: |
+  # Autonomy Velocity Override (adapter surfaces) + L4 local autonomy
+
+  When `L9_GOVERNANCE_SURFACE` is `claude-code`, `codex`, `gemini`, or `manus`
+  AND `L9_AUTONOMY_ENABLED=true`:
+
+  1. This override **outranks** `99-no-auto-commit` (git mutation gate; push-approval twin retired)
+     for scoped feature-branch **local commits**. Remote push/PR remain gated
+     by L4 local autonomy (below), not by per-action chat pacing.
+  2. Completing reversible work MUST proceed L4-local: stacked-branch commits
+     with **no mid-execution push** → finish program/contract → run
+     `kernels/Recursive Alignment.md` + `kernels/Validate & Repair.md` →
+     `l4_local.py authorize-release` → `PR_REMEDIATE=0 make pr` (checkers,
+     then push + PR). Campaign/make-pr end state is green + merge-ready.
+     Invoking `/l9-pr-remediation` then remediates **and merges** all open
+     PRs in the target repo (bottom-up). Do **not** merge from the campaign
+     path alone.
+  2a. `make pr` is the **only** route to GitHub — a PATH rule, not a timing
+     rule. Raw `git push`, `gh pr create`, `gh pr edit`, `make push` and the
+     MCP `create_pull_request` / `push_files` tools are denied at **every**
+     phase, including after release_authorized, because they skip the
+     Makefile checkers the receipt was granted on. Authorization to publish
+     is not permission to publish a different way. When `make pr` fails, fix
+     what it reported or state the blocker — never route around it.
+     Enforced by `ops/autonomy/local_execution_gate.py`; the adapter
+     permission deny-lists must agree with it. That `pr` target is the
+     **governance** Makefile's, reached via `l9 pr` / `make -C "$GOV" pr
+     WS="$PWD"` regardless of the workspace repo's own Makefile — a consumer
+     needs no `pr` target and there is no raw-push fallback.
+  3. Force-push / hard-reset / admin-merge / secrets remain forbidden.
+  4. Campaign work uses `campaign/<campaign_id>` as `PR_BASE`. Do not open
+     campaign PRs against `main`. Do not mix with other feature branches.
+  5. Cursor surface auto-commits locally (pathspecs; rule 49). Push /
+     `make pr` stay ask-first except when the user invoked `make pr`.
+     L4 remote gate still blocks mid-execution push.
+  6. Source of truth: `ops/autonomy/surface_profile.yaml` — do not fork this text.
+
+  ## L4 Local Autonomy (all surfaces; default ON)
+
+  - `L9_L4_LOCAL_AUTONOMY=1` (default): deny `git push`, `gh pr create`, and
+    `make pr` until `.l9/autonomy/l4-release-receipt.json` authorizes release.
+  - Shared-worktree isolation (default ON): deny `git revert`, `git reset`,
+    branch `checkout`/`switch`, broad `git add -A/--all/./-u`, and
+    `git diff --name-only | … git add` scoop loops that destroy parallel
+    agents' dirty files (2026-08-12 plan.md + branch-thrash incident).
+  - Enforcement: `ops/autonomy/local_execution_gate.py` +
+    `worktree_isolation_gate.py` (Claude PreToolUse + Cursor beforeShellExecution).
+  - CLI: `python3 ops/autonomy/l4_local.py {begin|record-kernels|authorize-release|status}`.
+  - Breakglass: `L9_LOCAL_PUSH_AUTHORIZED=<reason>` or `L9_L4_LOCAL_AUTONOMY=0`;
+    isolation: `L9_GIT_REVERT_AUTHORIZED` / `L9_GIT_BROAD_ADD_AUTHORIZED` /
+    `L9_GIT_SWITCH_AUTHORIZED` / `L9_GIT_RESET_AUTHORIZED` /
+    `L9_WORKTREE_ISOLATION=0`.
+  - Post-push: `PR_REMEDIATE=0 make pr` to a green merge-ready PR. Merge
+    only after `/l9-pr-remediation` writes
+    `ops/autonomy/authorize_merge.py --all-open` and each PR is green +
+    mergeable. Force-push / admin-merge stay forbidden.
+  - Stacked PRs: when a PR is already open for the workstream, the next PR
+    bases on the open PR's head (bottom-up merge order). Rebase and conflict
+    resolution are forbidden; one feature branch per program.
+
+  ## Scratch hold / sacred WIP (never-lose)
+
+  - Never park `WIP/**` under `/tmp` or `.l9/scratch-hold/` to clean `make pr`.
+  - Shell gate denies WIP→/tmp moves, `rm -rf WIP`, `/tmp/cg-*-hold*` creation.
+  - Non-WIP park/restore: `ops/scripts/scratch_hold.py` (vault `.l9/scratch-hold/`).
+  - `make pr` / sessionStart restore-all; open holds fail-closed via `status`.

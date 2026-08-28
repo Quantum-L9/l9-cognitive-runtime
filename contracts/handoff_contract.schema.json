@@ -33,6 +33,12 @@
         "type": "string"
       },
       "type": "array"
+    },
+    "obligations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/obligation"
+      }
     }
   },
   "required": [
@@ -44,5 +50,67 @@
     "unknowns"
   ],
   "title": "L9 Handoff Contract",
-  "type": "object"
+  "type": "object",
+  "$defs": {
+    "obligation": {
+      "type": "object",
+      "required": [
+        "obligation_id",
+        "kind",
+        "source_ref",
+        "required",
+        "owner",
+        "consumer_refs",
+        "evidence_requirements",
+        "disposition"
+      ],
+      "properties": {
+        "obligation_id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "REALIZATION",
+            "ARCHITECTURE",
+            "VALIDATION",
+            "DELIVERY",
+            "AUTHORITY",
+            "EPISTEMIC",
+            "CONVERGENCE"
+          ]
+        },
+        "source_ref": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "consumer_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "disposition": {
+          "enum": [
+            "PENDING",
+            "SATISFIED",
+            "VALID_BLOCK",
+            "SUPERSEDED_BY_HIGHER_AUTHORITY",
+            "NOT_APPLICABLE_WITH_DETERMINISTIC_PROOF"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

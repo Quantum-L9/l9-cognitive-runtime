@@ -1,0 +1,15 @@
+# LLM rule discovery adapters (.md peers).
+# SSOT for content: rules/*.mdc → projected to environment/generated/llm-rules/.
+# Adapters get a directory symlink to the generated mount — never to raw rules/.
+schema_version: 1
+ssot_relative: environment/generated/llm-rules
+mode: directory-symlink
+adapters:
+  - id: claude-code-user
+    surface: claude-code
+    kind: user
+    path: ~/.claude/rules
+  - id: claude-code-project
+    surface: claude-code
+    kind: project
+    path: .claude/rules

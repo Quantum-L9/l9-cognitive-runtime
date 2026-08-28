@@ -37,6 +37,15 @@ def test_intent_rejects_unknown_field() -> None:
                 "task_type": "build",
                 "constraints": [],
                 "desired_outputs": ["x"],
+                "objective": {
+                    "requested": True,
+                    "realization_mode": "MUTATION",
+                    "acceptance_conditions": [],
+                    "validation_required": True,
+                    "delivery_required": True,
+                    "delivery_mode": "IN_PLACE_WORKSPACE",
+                },
+                "accountability": {"required": True},
                 "not_in_schema": True,
             }
         )
@@ -51,6 +60,15 @@ def test_intent_rejects_empty_mission() -> None:
                 "task_type": "build",
                 "constraints": [],
                 "desired_outputs": ["x"],
+                "objective": {
+                    "requested": True,
+                    "realization_mode": "MUTATION",
+                    "acceptance_conditions": [],
+                    "validation_required": True,
+                    "delivery_required": True,
+                    "delivery_mode": "IN_PLACE_WORKSPACE",
+                },
+                "accountability": {"required": True},
             }
         )
 
@@ -65,6 +83,15 @@ def test_canonical_json_and_digest_stable() -> None:
             "desired_outputs": ["out"],
             "unknowns": ["u1"],
             "source_context": {"z": 1, "a": 2},
+            "objective": {
+                "requested": True,
+                "realization_mode": "MUTATION",
+                "acceptance_conditions": [],
+                "validation_required": True,
+                "delivery_required": True,
+                "delivery_mode": "IN_PLACE_WORKSPACE",
+            },
+            "accountability": {"required": True},
         }
     )
     first = model.to_canonical_json()

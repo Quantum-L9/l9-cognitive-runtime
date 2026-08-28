@@ -8,8 +8,26 @@ authority_order:
   - unknown
 outputs:
   - INTENT_CONTRACT.yaml
+derivation_rules:
+  realization_mode:
+    - mixed_analysis_and_mutation_intent_retains_MUTATION
+    - pure_analysis_verbs_derive_ANALYSIS
+    - artifact_verbs_derive_ARTIFACT
+    - decision_verbs_derive_DECISION
+    - no_matching_verb_derives_UNKNOWN
+  delivery:
+    - MUTATION_derives_IN_PLACE_WORKSPACE_delivery
+    - ARTIFACT_derives_RETURNED_FILES_delivery
+    - ANALYSIS_DECISION_UNKNOWN_derive_NONE_delivery
+  unknown_realization:
+    - remains_visible_in_unknowns
+    - remains_blocking_when_its_resolution_changes_execution_validation_or_delivery
+  single_owner:
+    - ObjectiveDeriver_is_the_only_realization_delivery_and_validation_deriver
 hard_rules:
   - do_not_render_adapter_output
   - do_not_skip_kernel_planner
   - preserve_unknowns
   - keep_contract_model_agnostic
+  - do_not_rederive_realization_mode_downstream
+  - do_not_infer_away_delivery_obligations_before_delivery

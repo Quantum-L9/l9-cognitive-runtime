@@ -11,19 +11,36 @@ from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
 
-def _confined_write_dir(write_dir: Path, *, allow_root: Path | None = None) -> Path:
-    """Resolve write_dir and require it to stay beneath allow_root (default: cwd)."""
-    root = (allow_root or Path.cwd()).resolve()
-    target = write_dir.expanduser().resolve()
+def _confine(path: Path, root: Path, *, label: str) -> Path:
+    """Resolve path against root and require the result to stay beneath it."""
+    target = path.expanduser()
+    if not target.is_absolute():
+        target = root / target
+    target = target.resolve()
     try:
         target.relative_to(root)
     except ValueError as exc:
         raise InvalidValueError(
-            "write_dir escapes allow_root",
-            path=str(write_dir),
+            f"{label} escapes allow_root",
+            path=str(path),
             details={"allow_root": str(root), "resolved": str(target)},
         ) from exc
     return target
+
+
+def _confined_write_dir(write_dir: Path, *, allow_root: Path | None = None) -> Path:
+    """Resolve write_dir and require it to stay beneath allow_root (default: cwd)."""
+    return _confine(write_dir, (allow_root or Path.cwd()).resolve(), label="write_dir")
+
+
+def confined_output_path(output: Path | str, *, allow_root: Path | None = None) -> Path:
+    """Resolve a CLI ``--out``/``--output`` argument beneath allow_root (default: cwd).
+
+    A CLI output argument is untrusted input: an absolute path, a ``~`` prefix,
+    or a ``..`` segment would otherwise let the caller write anywhere on the
+    filesystem. The constructed path is validated here, before any write.
+    """
+    return _confine(Path(output), (allow_root or Path.cwd()).resolve(), label="output path")
 
 
 def main(argv: list[str] | None = None) -> int:

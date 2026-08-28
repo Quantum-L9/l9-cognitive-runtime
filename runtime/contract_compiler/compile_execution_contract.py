@@ -19,6 +19,7 @@ if str(ROOT_DEFAULT / "src") not in sys.path:
 
 import yaml  # noqa: E402
 
+from l9_cognitive_runtime.cli import confined_output_path  # noqa: E402
 from l9_cognitive_runtime.compiler import ActivationPlan  # noqa: E402
 from l9_cognitive_runtime.compiler.context import compile_execution_from_plan  # noqa: E402
 from l9_cognitive_runtime.models.errors import InvalidValueError  # noqa: E402
@@ -30,8 +31,14 @@ def main() -> int:
     p.add_argument("--root", default=str(ROOT_DEFAULT))
     p.add_argument("--activation-plan", required=True)
     p.add_argument("--out", default="FINAL_EXECUTION_CONTRACT.yaml")
+    p.add_argument(
+        "--allow-write-root",
+        default=None,
+        help="Directory --out must stay beneath (default: --root)",
+    )
     args = p.parse_args()
     root = Path(args.root)
+    write_root = Path(args.allow_write_root) if args.allow_write_root else root
     plan_path = (
         root / args.activation_plan
         if not Path(args.activation_plan).is_absolute()
@@ -45,7 +52,7 @@ def main() -> int:
         )
     plan = ActivationPlan.from_mapping(plan_data)
     execution = compile_execution_from_plan(root, plan)
-    out = root / args.out
+    out = confined_output_path(args.out, allow_root=write_root)
     out.write_text(
         yaml.safe_dump(execution.to_canonical_dict(), sort_keys=False, allow_unicode=True),
         encoding="utf-8",

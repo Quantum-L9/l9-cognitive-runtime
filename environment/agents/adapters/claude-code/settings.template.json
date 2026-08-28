@@ -57,7 +57,7 @@
           },
           {
             "type": "command",
-            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || { printf \"l9-gate: launcher missing at %s — BLOCKING (INV-1)\\n\" \"$x\" >&2; exit 2; }; exec bash \"$x\" --class gate session_debt_wrap.py'",
+            "command": "bash -c 'x=\"$HOME/.cursor-governance/environment/agents/adapters/claude-code/hooks/l9_hook_exec.sh\"; [ -f \"$x\" ] || { printf \"l9-gate: launcher missing at %s \u2014 BLOCKING (INV-1)\\n\" \"$x\" >&2; exit 2; }; exec bash \"$x\" --class gate session_debt_wrap.py'",
             "timeout": 30
           }
         ]
@@ -209,37 +209,6 @@
     "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "480",
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3"
   },
-  "skillOverrides": {
-    "l9-bounded-autonomy": "user-invocable-only",
-    "l9-chat-extraction": "user-invocable-only",
-    "l9-ci-ops": "user-invocable-only",
-    "l9-cli-optimization": "user-invocable-only",
-    "l9-code-maintenance": "user-invocable-only",
-    "l9-component-verification": "user-invocable-only",
-    "l9-dag-authoring": "user-invocable-only",
-    "l9-e2e-blocker-resolution": "user-invocable-only",
-    "l9-end-session": "user-invocable-only",
-    "l9-forge": "user-invocable-only",
-    "l9-git-work-preserve": "user-invocable-only",
-    "l9-global-architect": "user-invocable-only",
-    "l9-governance-symlinks": "user-invocable-only",
-    "l9-governance-wiring": "user-invocable-only",
-    "l9-harvest-pipeline": "user-invocable-only",
-    "l9-inspect": "user-invocable-only",
-    "l9-issue-remediation": "user-invocable-only",
-    "l9-kubernetes-deploying": "user-invocable-only",
-    "l9-mac-storage-triage": "user-invocable-only",
-    "l9-pe-campaign-activate": "user-invocable-only",
-    "l9-pe-nuggets": "user-invocable-only",
-    "l9-plan-simple": "user-invocable-only",
-    "l9-pr-remediation": "user-invocable-only",
-    "l9-python-tdd-with-uv": "user-invocable-only",
-    "l9-repo-index": "user-invocable-only",
-    "l9-repo-sync": "user-invocable-only",
-    "l9-repository-renovation": "user-invocable-only",
-    "l9-setting-up-terraform": "user-invocable-only",
-    "l9-ui-operator": "user-invocable-only",
-    "l9-update-command": "user-invocable-only"
-  },
+  "skillOverrides": {},
   "workflowSizeGuideline": "unrestricted"
 }

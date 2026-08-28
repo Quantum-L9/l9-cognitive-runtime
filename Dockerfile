@@ -13,7 +13,7 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
-COPY FINAL_EXECUTION_CONTRACT.yaml VALIDATION_CONTRACT.yaml HANDOFF_CONTRACT.yaml ./
+COPY FINAL_EXECUTION_CONTRACT.yaml VALIDATION_CONTRACT.yaml HANDOFF_CONTRACT.yaml EXECUTION_GRAPH.json ./
 COPY contracts ./contracts
 COPY runtime ./runtime
 

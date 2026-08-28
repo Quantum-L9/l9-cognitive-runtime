@@ -18,6 +18,7 @@ if str(ROOT / "src") not in sys.path:
 
 import yaml  # noqa: E402
 
+from l9_cognitive_runtime.cli import confined_output_path  # noqa: E402
 from l9_cognitive_runtime.compiler import ObjectiveDeriver  # noqa: E402
 from l9_cognitive_runtime.types import CompileRequest  # noqa: E402
 
@@ -29,7 +30,14 @@ def main() -> int:
     p.add_argument("--mission", required=True)
     p.add_argument("--task-type", default=DEFAULT_TASK_TYPE)
     p.add_argument("--output", default="INTENT_CONTRACT.yaml")
+    p.add_argument(
+        "--allow-write-root",
+        default=None,
+        help="Directory --output must stay beneath (default: cwd)",
+    )
     args = p.parse_args()
+    write_root = Path(args.allow_write_root) if args.allow_write_root else None
+    out = confined_output_path(args.output, allow_root=write_root)
     intent = ObjectiveDeriver().derive(
         CompileRequest(
             mission=args.mission,
@@ -37,11 +45,11 @@ def main() -> int:
             source_context={"pack": "l9_cognitive_runtime_kernel_pack_clean"},
         )
     )
-    Path(args.output).write_text(
+    out.write_text(
         yaml.safe_dump(intent.to_canonical_dict(), sort_keys=False, allow_unicode=True),
         encoding="utf-8",
     )
-    print(args.output)
+    print(out)
     return 0
 
 

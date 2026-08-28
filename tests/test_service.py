@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from l9_cognitive_runtime.cli import _confined_write_dir
+from l9_cognitive_runtime.cli import _confined_write_dir, confined_output_path
 from l9_cognitive_runtime.cli import main as cli_main
 from l9_cognitive_runtime.models.context import (
     ApplicableLaw,
@@ -155,6 +155,19 @@ def test_write_dir_confined(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     assert allowed == (tmp_path / "out").resolve()
     with pytest.raises(InvalidValueError, match="escapes"):
         _confined_write_dir(Path("/tmp/l9-escape-write-dir"))
+
+
+def test_output_path_confined(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLI --out/--output arguments are validated before any filesystem write."""
+    monkeypatch.chdir(tmp_path)
+    assert confined_output_path("OUT.yaml") == (tmp_path / "OUT.yaml").resolve()
+    assert (
+        confined_output_path("nested/OUT.yaml", allow_root=tmp_path)
+        == (tmp_path / "nested" / "OUT.yaml").resolve()
+    )
+    for escape in ("/etc/l9-escape.yaml", "../l9-escape.yaml", "nested/../../l9-escape.yaml"):
+        with pytest.raises(InvalidValueError, match="escapes"):
+            confined_output_path(escape)
 
 
 # --------------------------------------------------------------------------

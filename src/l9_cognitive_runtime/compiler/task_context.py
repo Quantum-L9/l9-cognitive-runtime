@@ -224,9 +224,19 @@ def _resolve_by_authority(reps: Sequence[ContextItemIdentity]) -> GroupResolutio
     )
 
 
+def _superseded_by_another(item: Any, reps: Sequence[Any], own_key: str) -> bool:
+    """True when a *different* claim in the group names this one as superseded.
+
+    Within one semantic-key group every claim shares the domain id, so a claim
+    that lists its own id must not supersede itself — only a sibling can.
+    A host may name either the item id or the domain id.
+    """
+    names = {item.item_id, getattr(item, own_key)}
+    return any(other is not item and names & set(other.supersedes_refs) for other in reps)
+
+
 def _resolve_law(reps: list[ApplicableLaw]) -> GroupResolution:
-    superseded = {ref for item in reps for ref in item.supersedes_refs}
-    alive = [item for item in reps if item.law_id not in superseded]
+    alive = [item for item in reps if not _superseded_by_another(item, reps, "law_id")]
     if len(alive) == 1:
         return GroupResolution(list(alive), conflict=False)
     candidates: list[ApplicableLaw] = alive or reps
@@ -241,11 +251,11 @@ def _resolve_law(reps: list[ApplicableLaw]) -> GroupResolution:
 
 
 def _resolve_decision(reps: list[PriorDecision]) -> GroupResolution:
-    superseded = {ref for item in reps for ref in item.supersedes_refs}
     alive = [
         item
         for item in reps
-        if item.status is not DecisionStatus.SUPERSEDED and item.decision_id not in superseded
+        if item.status is not DecisionStatus.SUPERSEDED
+        and not _superseded_by_another(item, reps, "decision_id")
     ]
     if len(alive) == 1:
         return GroupResolution(list(alive), conflict=False)

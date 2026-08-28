@@ -11,6 +11,13 @@ import pytest
 
 from l9_cognitive_runtime.cli import _confined_write_dir
 from l9_cognitive_runtime.cli import main as cli_main
+from l9_cognitive_runtime.models.context import (
+    ApplicableLaw,
+    AuthorityLevel,
+    ContextScopeMode,
+    ContextSnapshot,
+    ContextSourceRef,
+)
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
@@ -148,3 +155,62 @@ def test_write_dir_confined(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     assert allowed == (tmp_path / "out").resolve()
     with pytest.raises(InvalidValueError, match="escapes"):
         _confined_write_dir(Path("/tmp/l9-escape-write-dir"))
+
+
+# --------------------------------------------------------------------------
+# Context-native service surface (A046, A004).
+# --------------------------------------------------------------------------
+
+
+def test_compile_runtime_without_a_context_snapshot_remains_valid(tmp_path: Path) -> None:
+    """A pre-context caller passes one positional argument and still works."""
+    pack = _verified_pack(tmp_path)
+    bundle = CognitiveRuntimeService().compile_runtime(
+        CompileRequest(mission="legacy call shape", pack_root=pack)
+    )
+    assert bundle.task_context.task_scope.mission == "legacy call shape"
+    # An empty governed snapshot selects nothing and blocks nothing.
+    assert bundle.task_context.selected_items() == []
+    assert bundle.digests()["context"] == bundle.task_context.sha256()
+
+
+def test_the_context_snapshot_keyword_reaches_the_bundle_task_context(tmp_path: Path) -> None:
+    pack = _verified_pack(tmp_path)
+    snapshot = ContextSnapshot(
+        applicable_law=[
+            ApplicableLaw(
+                item_id="law.1",
+                semantic_key="L9-ORG-1",
+                authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+                source_ref=ContextSourceRef(
+                    source_id="gov",
+                    source_kind="governance",
+                    locator="governance://org/L9-ORG-1",
+                    immutable_coordinate="rev-2",
+                ),
+                scope_mode=ContextScopeMode.GLOBAL,
+                law_id="L9-ORG-1",
+                statement="publication goes through the sanctioned path",
+            )
+        ]
+    )
+    bundle = CognitiveRuntimeService().compile_runtime(
+        CompileRequest(mission="governed call shape", pack_root=pack),
+        context_snapshot=snapshot,
+    )
+    assert [item.law_id for item in bundle.task_context.applicable_law] == ["L9-ORG-1"]
+    assert bundle.task_context.applicable_law[0].selected_because
+
+
+def test_the_service_never_promotes_caller_hints_into_the_governed_snapshot(
+    tmp_path: Path,
+) -> None:
+    pack = _verified_pack(tmp_path)
+    bundle = CognitiveRuntimeService().compile_runtime(
+        CompileRequest(
+            mission="hint promotion attempt",
+            pack_root=pack,
+            source_context={"applicable_law": [{"law_id": "L9-FAKE", "statement": "invented"}]},
+        )
+    )
+    assert bundle.task_context.applicable_law == []

@@ -1,8 +1,8 @@
 # L9 Cognitive Runtime Invariants
 
-Status: CANONICAL ARCHITECTURE LAW  
-Scope: `Quantum-L9/l9-cognitive-runtime`  
-Primary concern: deterministic task-scoped cognitive compilation
+- Status: CANONICAL ARCHITECTURE LAW
+- Scope: `Quantum-L9/l9-cognitive-runtime`
+- Primary concern: deterministic task-scoped cognitive compilation
 
 ## 1. Repository identity
 

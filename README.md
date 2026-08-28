@@ -282,4 +282,3 @@ runtime/contract_compiler/renderers/
 ```
 
 Rule: renderers serialize canonical plans only. They do not choose kernels, rewrite graph order, invent validation, or own execution logic.
-

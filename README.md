@@ -1,6 +1,66 @@
-# L9 Cognitive Runtime Kernel Pack - Clean Superseding Pack
+# L9 Cognitive Runtime
 
-This pack supersedes the uploaded `L9 Cognitive Runtime (kernels).zip` by deduping overlapping kernel material into a smaller kernel-first runtime layout.
+**The L9 Cognitive Runtime deterministically compiles a task plus governed source context into the minimum sufficient, provenance-backed cognitive context and execution packet required to perform that task correctly.**
+
+It is a compiler, not an agent. It does not execute the task, schedule agents, persist world state or memory, route transport, or select a provider — it produces the artifacts a capable host needs in order to do those things correctly. The canonical architecture law is [`INVARIANTS.md`](INVARIANTS.md); this README describes how to use what that law governs.
+
+## The live spine
+
+Exactly one authoritative path compiles a fresh mission (INV-CTX-002):
+
+```text
+CompileRequest + ContextSnapshot
+  -> ObjectiveDeriver          -> IntentContract
+  -> TaskScopeCompiler         -> TaskScope
+  -> ContextDiscoveryCompiler  -> DiscoveryContext
+  -> ActivationPlanner         -> ActivationPlan
+  -> KernelResolver            -> KernelBindings
+  -> ContextRequirementPlanner -> ContextRequirementPlan
+  -> ContextCompiler           -> CompiledTaskContext
+  -> ContextClosureValidator
+  -> ObligationDeriver
+  -> ExecutionContractCompiler / ValidationContractCompiler / HandoffContractCompiler
+  -> ExecutionGraphCompiler
+  -> ExecutionPacket
+  -> BundleSemanticValidator   -> RuntimeBundle
+  -> AdapterRenderer
+```
+
+`CompiledTaskContext` is the canonical context IR: task scope, relevant entities, repository state, architecture constraints, applicable law, prior decisions, dependency context, evidence, memory, selected kernels, capabilities, authority, unresolved unknowns, and provenance. Its digest is computed from the finished artifact and carried *outside* it — by `RuntimeBundle.digests()["context"]` and `ExecutionPacket.compiled_task_context_digest` — so the context never contains a digest of itself.
+
+## Governed context is a separate input
+
+```python
+from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
+from l9_cognitive_runtime.models.context import ContextSnapshot
+
+service = CognitiveRuntimeService()
+
+# No governed context: identical to an empty snapshot, and to every
+# pre-context caller. This keeps working unchanged.
+bundle = service.compile_runtime(CompileRequest(mission="...", pack_root=pack))
+
+# With governed context, supplied by the host as a keyword:
+bundle = service.compile_runtime(
+    CompileRequest(mission="...", pack_root=pack),
+    context_snapshot=ContextSnapshot(repository_state=[...], applicable_law=[...]),
+)
+
+bundle.task_context          # CompiledTaskContext
+bundle.digests()["context"]  # its digest, computed externally
+```
+
+`ContextSnapshot` is deliberately **not** a `CompileRequest` field. `CompileRequest.source_context` remains caller *hints*: a hint may narrow task scope (`target_refs`, `in_scope_refs`, `excluded_refs`), but it can never establish repository truth, governing law, authority, capability availability, decision status, or evidence validity (INV-CTX-006). Anything that must affect execution semantics arrives as a typed, provenance-backed governed item.
+
+That boundary is load-bearing. Architecture materiality, for instance, activates the Global Architect from mission tokens (the caller stating their own intent) plus governed discovery signals — a `GovernedConstraint` carrying an immutable coordinate. A raw `source_context.context_signals` list proves nothing.
+
+## The external source boundary
+
+The compiler defines what governed context *is* and consumes immutable snapshots of it. It does not fetch any of it. There is no GitHub crawler, no Graphiti client, no vector or database client, no network discovery inside the semantic compiler (INV-CTX-009, INV-CTX-033) — `tests/test_architecture_invariants.py` enforces that as a static property of the tree.
+
+An outer host acquires context between phases and injects it. What the compiler does read is the verified runtime pack it already depends on: routing rules, the pipeline definition, kernels, and schemas, all manifest-bound and immutable.
+
+**Explicit non-goals.** Observability is not a concern of this repository — no trace or span lifecycle, no telemetry export, no metrics pipeline, no `l9-observability-core` integration (INV-CTX-034). Neither is world-state or memory-store ownership (INV-CTX-035). A host may observe the runtime; the runtime returns compiler artifacts, digests, provenance, and validation semantics only.
 
 ## Development Setup (Python package baseline)
 

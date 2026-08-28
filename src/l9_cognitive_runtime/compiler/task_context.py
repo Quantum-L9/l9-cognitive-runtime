@@ -112,17 +112,6 @@ _CLAIM_EXCLUDED = frozenset(
     }
 )
 
-_KIND_FIELD = {
-    ContextKind.RELEVANT_ENTITY: "relevant_entities",
-    ContextKind.REPOSITORY_STATE: "repository_state",
-    ContextKind.ARCHITECTURE_CONSTRAINT: "architecture_constraints",
-    ContextKind.APPLICABLE_LAW: "applicable_law",
-    ContextKind.PRIOR_DECISION: "prior_decisions",
-    ContextKind.DEPENDENCY_CONTEXT: "dependency_context",
-    ContextKind.EVIDENCE_REF: "evidence_refs",
-    ContextKind.MEMORY_CONTEXT: "memory_context",
-}
-
 
 def _claim_digest_payload(item: ContextItemIdentity) -> dict[str, Any]:
     data = item.candidate_dict()

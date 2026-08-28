@@ -28,7 +28,6 @@ from pydantic import field_validator, model_validator
 
 from l9_cognitive_runtime.models.base import ArtifactModel
 from l9_cognitive_runtime.models.canonical import canonical_json_bytes, sha256_digest
-from l9_cognitive_runtime.models.errors import InvalidValueError
 
 # Semantics version of the canonical context compiler. Bump this whenever the
 # canonical compiled-context semantics change. It is deliberately explicit and
@@ -789,9 +788,6 @@ class ContextSnapshot(ArtifactModel):
             items.extend(bucket)
         return items
 
-    def items_of_kind(self, kind: ContextKind) -> list[ContextItemIdentity]:
-        return [item for item in self.all_items() if item.context_kind is kind]
-
     def audit_digest(self) -> str:
         """Non-semantic whole-snapshot digest for audit only.
 
@@ -841,18 +837,6 @@ class CompiledTaskContext(ArtifactModel):
         return items
 
 
-def require_no_self_digest(payload: dict[str, Any]) -> None:
-    """Fail closed if a context digest leaked into digest-participating fields."""
-    provenance = payload.get("provenance") or {}
-    for forbidden in ("context_digest", "whole_context_snapshot_digest"):
-        if forbidden in provenance:
-            raise InvalidValueError(
-                "context provenance must not contain a context digest",
-                path="provenance",
-                details={"field": forbidden},
-            )
-
-
 __all__ = [
     "AUTHORITY_RANK",
     "CONTEXT_COMPILER_SEMANTICS_VERSION",
@@ -896,5 +880,4 @@ __all__ = [
     "authority_semantic_key",
     "canonical_cost",
     "derive_id",
-    "require_no_self_digest",
 ]

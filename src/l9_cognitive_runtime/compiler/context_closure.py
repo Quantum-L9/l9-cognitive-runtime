@@ -251,6 +251,13 @@ class ContextClosureValidator:
             {"dangling": dangling, "illegal_policy": blocking_optional},
         )
 
+        # The ladder itself is checked: a check that silently disappears is a
+        # closure failure, not a quietly shorter report.
+        if tuple(executed) != CONTEXT_CHECKS:
+            raise _fail(
+                "context_closure_ladder_is_complete",
+                {"executed": executed, "expected": list(CONTEXT_CHECKS)},
+            )
         return ContextClosureReport(checks=tuple(executed), passed=True)
 
 

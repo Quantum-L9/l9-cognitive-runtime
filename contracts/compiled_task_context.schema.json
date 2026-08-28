@@ -1,0 +1,605 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "L9 Compiled Task Context",
+  "description": "Canonical context IR (INV-CTX-003). The compiled-context digest is computed from this finished artifact and carried outside it (INV-CTX-027), so it never appears in provenance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_scope",
+    "relevant_entities",
+    "repository_state",
+    "architecture_constraints",
+    "applicable_law",
+    "prior_decisions",
+    "dependency_context",
+    "evidence_refs",
+    "memory_context",
+    "selected_kernels",
+    "capabilities",
+    "authority",
+    "unresolved_unknowns",
+    "provenance"
+  ],
+  "properties": {
+    "task_scope": { "$ref": "#/$defs/task_scope" },
+    "relevant_entities": { "type": "array", "items": { "$ref": "#/$defs/entity_context" } },
+    "repository_state": { "type": "array", "items": { "$ref": "#/$defs/repository_state" } },
+    "architecture_constraints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/governed_constraint" }
+    },
+    "applicable_law": { "type": "array", "items": { "$ref": "#/$defs/applicable_law" } },
+    "prior_decisions": { "type": "array", "items": { "$ref": "#/$defs/prior_decision" } },
+    "dependency_context": { "type": "array", "items": { "$ref": "#/$defs/dependency_context" } },
+    "evidence_refs": { "type": "array", "items": { "$ref": "#/$defs/evidence_ref" } },
+    "memory_context": { "type": "array", "items": { "$ref": "#/$defs/memory_context" } },
+    "selected_kernels": { "type": "array", "items": { "$ref": "#/$defs/kernel_binding" } },
+    "capabilities": { "$ref": "#/$defs/capability_context" },
+    "authority": { "$ref": "#/$defs/authority_context" },
+    "unresolved_unknowns": { "type": "array", "items": { "$ref": "#/$defs/context_unknown" } },
+    "provenance": { "$ref": "#/$defs/context_provenance" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "digest_map": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/sha256" }
+    },
+    "context_kind": {
+      "type": "string",
+      "enum": [
+        "relevant_entity",
+        "repository_state",
+        "architecture_constraint",
+        "applicable_law",
+        "prior_decision",
+        "dependency_context",
+        "evidence_ref",
+        "memory_context",
+        "capability_fact",
+        "authority_fact"
+      ]
+    },
+    "authority_level": {
+      "type": "string",
+      "enum": ["governed_authoritative", "governed_verified", "informative", "unverified"]
+    },
+    "scope_mode": { "type": "string", "enum": ["scoped", "global"] },
+    "string_list": { "type": "array", "items": { "type": "string" } },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_kind", "locator", "immutable_coordinate", "content_digest"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "source_kind": { "type": "string", "minLength": 1 },
+        "locator": { "type": "string", "minLength": 1 },
+        "immutable_coordinate": { "type": ["string", "null"] },
+        "content_digest": { "type": ["string", "null"] }
+      }
+    },
+    "entity_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "entity_id",
+        "entity_type",
+        "relation_to_task"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "relevant_entity" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "entity_id": { "type": "string" },
+        "entity_type": { "type": "string" },
+        "relation_to_task": { "type": "string" }
+      }
+    },
+    "repository_state": {
+      "description": "One repository fact claim. Never an opaque multi-fact bag (INV-CTX-010).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "repository_id",
+        "revision",
+        "subject_ref",
+        "fact_type",
+        "value"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "repository_state" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "repository_id": { "type": "string" },
+        "revision": { "type": "string", "minLength": 1 },
+        "subject_ref": { "type": "string", "minLength": 1 },
+        "fact_type": { "type": "string", "minLength": 1 },
+        "value": {}
+      }
+    },
+    "governed_constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "constraint_id",
+        "statement",
+        "applies_because",
+        "evidence_refs"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "architecture_constraint" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "constraint_id": { "type": "string" },
+        "statement": { "type": "string" },
+        "applies_because": { "$ref": "#/$defs/string_list" },
+        "evidence_refs": { "$ref": "#/$defs/string_list" }
+      }
+    },
+    "applicable_law": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "law_id",
+        "statement",
+        "applies_because",
+        "precedence",
+        "supersedes_refs"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "applicable_law" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "law_id": { "type": "string" },
+        "statement": { "type": "string" },
+        "applies_because": { "$ref": "#/$defs/string_list" },
+        "precedence": { "type": ["integer", "null"], "minimum": 0 },
+        "supersedes_refs": { "$ref": "#/$defs/string_list" }
+      }
+    },
+    "prior_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "decision_id",
+        "status",
+        "statement",
+        "supersedes_refs",
+        "superseded_by_refs"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "prior_decision" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "decision_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "superseded", "unknown"] },
+        "statement": { "type": "string" },
+        "supersedes_refs": { "$ref": "#/$defs/string_list" },
+        "superseded_by_refs": { "$ref": "#/$defs/string_list" }
+      }
+    },
+    "dependency_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "dependency_id",
+        "relationship",
+        "direction",
+        "target_ref",
+        "version_or_revision"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "dependency_context" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "dependency_id": { "type": "string" },
+        "relationship": { "type": "string" },
+        "direction": { "type": "string" },
+        "target_ref": { "type": "string" },
+        "version_or_revision": { "type": ["string", "null"] }
+      }
+    },
+    "evidence_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "evidence_id",
+        "evidence_type",
+        "supports_semantic_keys",
+        "digest"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "evidence_ref" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "evidence_id": { "type": "string" },
+        "evidence_type": { "type": "string" },
+        "supports_semantic_keys": { "$ref": "#/$defs/string_list" },
+        "digest": { "type": ["string", "null"] }
+      }
+    },
+    "memory_context": {
+      "description": "Enrichment only; authority is ceilinged at informative (INV-CTX-019).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "memory_id",
+        "memory_kind",
+        "content",
+        "relevance_reason"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "memory_context" },
+        "authority_level": { "type": "string", "enum": ["informative", "unverified"] },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "memory_id": { "type": "string" },
+        "memory_kind": { "type": "string" },
+        "content": {},
+        "relevance_reason": { "type": "string" }
+      }
+    },
+    "capability_fact": {
+      "description": "A proven capability state. A snapshot may never declare 'required' (INV-CTX-021).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "capability_id",
+        "state",
+        "evidence_refs"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "capability_fact" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "capability_id": { "type": "string" },
+        "state": { "type": "string", "enum": ["available", "unavailable", "unknown"] },
+        "evidence_refs": { "$ref": "#/$defs/string_list" }
+      }
+    },
+    "authority_fact": {
+      "description": "A proven authority grant or limit. A snapshot may never declare 'required' (INV-CTX-022).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "semantic_key",
+        "context_kind",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "scope_refs",
+        "selected_because",
+        "authority_id",
+        "state",
+        "subject_ref",
+        "action_scope",
+        "precedence"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "semantic_key": { "type": "string", "minLength": 1 },
+        "context_kind": { "const": "authority_fact" },
+        "authority_level": { "$ref": "#/$defs/authority_level" },
+        "source_ref": { "$ref": "#/$defs/source_ref" },
+        "scope_mode": { "$ref": "#/$defs/scope_mode" },
+        "scope_refs": { "$ref": "#/$defs/string_list" },
+        "selected_because": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "authority_id": { "type": "string" },
+        "state": { "type": "string", "enum": ["granted", "limit", "unknown"] },
+        "subject_ref": { "type": ["string", "null"] },
+        "action_scope": { "$ref": "#/$defs/string_list" },
+        "precedence": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "capability_requirement": {
+      "description": "Compiler-derived requirement, never a snapshot fact (INV-CTX-021).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement_id", "capability_id", "reason", "source_refs"],
+      "properties": {
+        "requirement_id": { "type": "string", "pattern": "^capreq\\.sha256:[0-9a-f]{64}$" },
+        "capability_id": { "type": "string" },
+        "reason": { "type": "string", "minLength": 1 },
+        "source_refs": { "$ref": "#/$defs/string_list" }
+      }
+    },
+    "authority_requirement": {
+      "description": "Compiler-derived requirement, never a snapshot fact (INV-CTX-022).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id",
+        "authority_id",
+        "subject_ref",
+        "action_scope",
+        "reason",
+        "source_refs"
+      ],
+      "properties": {
+        "requirement_id": { "type": "string", "pattern": "^authreq\\.sha256:[0-9a-f]{64}$" },
+        "authority_id": { "type": "string" },
+        "subject_ref": { "type": ["string", "null"] },
+        "action_scope": { "$ref": "#/$defs/string_list" },
+        "reason": { "type": "string", "minLength": 1 },
+        "source_refs": { "$ref": "#/$defs/string_list" }
+      }
+    },
+    "capability_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "available", "unavailable", "unknown"],
+      "properties": {
+        "required": { "type": "array", "items": { "$ref": "#/$defs/capability_requirement" } },
+        "available": { "type": "array", "items": { "$ref": "#/$defs/capability_fact" } },
+        "unavailable": { "type": "array", "items": { "$ref": "#/$defs/capability_fact" } },
+        "unknown": { "type": "array", "items": { "$ref": "#/$defs/capability_fact" } }
+      }
+    },
+    "authority_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "granted",
+        "limits",
+        "unknown",
+        "effective_order",
+        "effective_order_source"
+      ],
+      "properties": {
+        "required": { "type": "array", "items": { "$ref": "#/$defs/authority_requirement" } },
+        "granted": { "type": "array", "items": { "$ref": "#/$defs/authority_fact" } },
+        "limits": { "type": "array", "items": { "$ref": "#/$defs/authority_fact" } },
+        "unknown": { "type": "array", "items": { "$ref": "#/$defs/authority_fact" } },
+        "effective_order": { "$ref": "#/$defs/string_list" },
+        "effective_order_source": {
+          "type": "string",
+          "enum": ["governed_context", "compiler_default"]
+        }
+      }
+    },
+    "context_unknown": {
+      "description": "Identity derives from reason code and canonical details, never prose (INV-CTX-024).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unknown_id",
+        "requirement_ref",
+        "semantic_key",
+        "reason_code",
+        "details",
+        "materiality",
+        "source_refs"
+      ],
+      "properties": {
+        "unknown_id": { "type": "string", "pattern": "^ctxunk\\.sha256:[0-9a-f]{64}$" },
+        "requirement_ref": { "type": ["string", "null"] },
+        "semantic_key": { "type": ["string", "null"] },
+        "reason_code": {
+          "type": "string",
+          "enum": [
+            "ambiguous_scope",
+            "missing_required_context",
+            "conflicting_governed_claims",
+            "missing_revision",
+            "invalid_provenance",
+            "budget_insufficient",
+            "unsupported_capability",
+            "missing_authority",
+            "unknown_supersession",
+            "unresolved_freshness"
+          ]
+        },
+        "details": { "type": "object" },
+        "materiality": { "type": "string", "enum": ["blocking", "non_blocking"] },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/source_ref" } }
+      }
+    },
+    "task_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_id",
+        "mission",
+        "task_type",
+        "target_refs",
+        "in_scope_refs",
+        "excluded_refs",
+        "requested_outputs",
+        "constraints",
+        "unresolved_unknowns"
+      ],
+      "properties": {
+        "scope_id": { "type": "string", "pattern": "^scope\\.sha256:[0-9a-f]{64}$" },
+        "mission": { "type": "string" },
+        "task_type": { "type": "string" },
+        "target_refs": { "$ref": "#/$defs/string_list" },
+        "in_scope_refs": { "$ref": "#/$defs/string_list" },
+        "excluded_refs": { "$ref": "#/$defs/string_list" },
+        "requested_outputs": { "$ref": "#/$defs/string_list" },
+        "constraints": { "$ref": "#/$defs/string_list" },
+        "unresolved_unknowns": { "type": "array", "items": { "$ref": "#/$defs/context_unknown" } }
+      }
+    },
+    "kernel_binding": {
+      "description": "Exactly the downstream KernelBinding projection (INV-CTX-020).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kernel_id", "source_ref", "source_digest", "outputs"],
+      "properties": {
+        "kernel_id": { "type": "string" },
+        "source_ref": { "type": "string" },
+        "source_digest": { "$ref": "#/$defs/sha256" },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "required", "consumer_refs"],
+            "properties": {
+              "id": { "type": "string" },
+              "required": { "type": "boolean" },
+              "consumer_refs": { "$ref": "#/$defs/string_list" }
+            }
+          }
+        }
+      }
+    },
+    "compiler_identity": {
+      "description": "Installed-artifact-safe semantic identity. Never ambient Git state (INV-CTX-032).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_version", "semantics_version"],
+      "properties": {
+        "package_version": { "type": "string", "minLength": 1 },
+        "semantics_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "context_provenance": {
+      "description": "additionalProperties:false is what mechanically forbids context_digest and whole_context_snapshot_digest here (INV-CTX-027, INV-CTX-028).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_scope_digest",
+        "discovery_digest",
+        "context_requirements_digest",
+        "discovery_item_digests",
+        "selected_item_digests",
+        "kernel_digests",
+        "compiler_identity"
+      ],
+      "not": {
+        "anyOf": [
+          { "required": ["context_digest"] },
+          { "required": ["whole_context_snapshot_digest"] }
+        ]
+      },
+      "properties": {
+        "task_scope_digest": { "$ref": "#/$defs/sha256" },
+        "discovery_digest": { "$ref": "#/$defs/sha256" },
+        "context_requirements_digest": { "$ref": "#/$defs/sha256" },
+        "discovery_item_digests": { "$ref": "#/$defs/digest_map" },
+        "selected_item_digests": { "$ref": "#/$defs/digest_map" },
+        "kernel_digests": { "$ref": "#/$defs/digest_map" },
+        "compiler_identity": { "$ref": "#/$defs/compiler_identity" }
+      }
+    }
+  }
+}

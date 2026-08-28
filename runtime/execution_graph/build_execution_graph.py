@@ -5,6 +5,13 @@ All graph semantics live in ``l9_cognitive_runtime.graph.derive_execution_graph`
 This script only loads an execution contract and serializes the derived graph.
 The former hard-coded DEFAULT_PHASES graph is removed: a graph is always a
 deterministic projection of a validated execution contract.
+
+--source-contract is therefore required and has no default. The static
+FINAL_EXECUTION_CONTRACT.yaml is an inert museum artifact (INV-009) that
+carries no structured ``execution_steps``, so it can never derive a graph
+(A0501); defaulting to it would guarantee failure. Pass a contract produced
+by the live spine — e.g. the output of
+``runtime/contract_compiler/compile_execution_contract.py``.
 """
 from __future__ import annotations
 
@@ -33,7 +40,12 @@ def build(source_contract: str, root: Path | None = None) -> dict[str, Any]:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--source-contract", default="FINAL_EXECUTION_CONTRACT.yaml")
+    p.add_argument(
+        "--source-contract",
+        required=True,
+        help="Execution contract with structured execution_steps (no default: the "
+        "static FINAL_EXECUTION_CONTRACT.yaml is an inert museum artifact)",
+    )
     p.add_argument("--root", default=str(ROOT))
     p.add_argument("--output", default="EXECUTION_GRAPH.json")
     p.add_argument(

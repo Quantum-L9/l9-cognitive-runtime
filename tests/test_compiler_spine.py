@@ -138,3 +138,54 @@ def test_legacy_execution_compiler_wraps_same_compiler(tmp_path: Path) -> None:
     assert wrapped.kernel_activation == [
         binding.source_ref for binding in KernelResolver().resolve(plan.active_kernels, ROOT)
     ]
+
+
+def test_graph_cli_requires_a_contract_with_structured_steps(tmp_path: Path) -> None:
+    """A0501: the graph CLI has no default source contract.
+
+    The static FINAL_EXECUTION_CONTRACT.yaml is an inert museum artifact with
+    no execution_steps, so it can never derive a graph; the CLI must demand an
+    explicit contract rather than default to guaranteed failure. Given a
+    contract from the live spine it derives the graph.
+    """
+    from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver
+    from l9_cognitive_runtime.compiler.context import compile_execution_from_plan
+    from l9_cognitive_runtime.types import CompileRequest
+
+    script = ROOT / "runtime" / "execution_graph" / "build_execution_graph.py"
+
+    missing = subprocess.run(
+        [sys.executable, str(script), "--root", str(ROOT)], capture_output=True, text=True
+    )
+    assert missing.returncode != 0
+    assert "--source-contract" in missing.stderr
+
+    intent = ObjectiveDeriver().derive(CompileRequest(mission="compile a kernel contract"))
+    plan = ActivationPlanner().plan(
+        intent,
+        rules_path=ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
+        pipeline_path=ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+    )
+    contract = compile_execution_from_plan(ROOT, plan).to_canonical_dict()
+    assert contract["execution_steps"], "live spine must emit structured steps"
+    (tmp_path / "LIVE.yaml").write_text(yaml.safe_dump(contract, sort_keys=False), encoding="utf-8")
+
+    built = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--root",
+            str(tmp_path),
+            "--source-contract",
+            "LIVE.yaml",
+            "--output",
+            "GRAPH.json",
+            "--allow-write-root",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert built.returncode == 0, built.stdout + built.stderr
+    graph = json.loads((tmp_path / "GRAPH.json").read_text(encoding="utf-8"))
+    assert len(graph["nodes"]) == len(contract["execution_steps"])

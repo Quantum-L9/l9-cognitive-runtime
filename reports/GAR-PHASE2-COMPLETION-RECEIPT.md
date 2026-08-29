@@ -4,6 +4,13 @@
 **Target:** Quantum-L9/l9-cognitive-runtime · branch `agent/claude-code/gar-phase2`
 **Status:** terminal_gate == CONVERGED (DONE-001..021, all evidenced)
 
+> **Re-verification, f7e2edf.** The gate was re-run independently against merged `main`
+> rather than accepted from this receipt (`forbidden_success_claims` bars
+> `validators_green_without_liveness_tests` and `all_files_present`). One real defect was
+> found and fixed — see *adapter_preservation_evidence* below. Every DONE row was then
+> re-evidenced, including from an isolated wheel install against a sealed pack in an empty
+> working directory.
+
 ## source_commit
 
 `f9b2b0f` (style: governance-gate conformance) atop 11 phase commits branched from fetched
@@ -79,18 +86,60 @@ route compiles against the sealed pack; isolated wheel + sealed pack + empty cwd
 Five deterministic adapter projections; packet validation fails closed when obligations,
 delivery, or GAR bindings are weakened (LIVE-007).
 
+**Defect found and fixed on re-verification (`f7e2edf`).** INV-013 had no compile-time
+enforcement, behind a check that reported itself as having run:
+
+- `no_adapter_drops_blocking_obligation` (liveness check 15) appended its name to the
+  executed-check list without evaluating anything, behind a stale comment deferring it to
+  PHASE-07 — a phase that had already landed. The liveness report therefore named a
+  guarantee that was never computed.
+- `_ALL_CHECKS` was declared but never read, so nothing detected the skipped check.
+- `validate_packet` ran only inside `AdapterRenderer.render()`, never on the fresh-compile
+  spine, so a compiled bundle's packet was never validated unless an adapter was rendered.
+
+Fixed: the pipeline now builds the packet, runs `validate_packet`, then runs liveness with
+the packet as a **required** keyword (an optional one reintroduces the silent skip); check 15
+compares required-pending obligations against the packet and fails closed on a drop; and
+check coverage is asserted against `_ALL_CHECKS` before the report returns. Regression tests:
+`tests/test_gar_liveness_packet_gate.py` (4 tests, all failing before the fix).
+
+Compiled semantics are unchanged: intent, execution, graph, handoff and bundle semantic
+digests are byte-identical before and after, compared from an isolated wheel + sealed pack.
+
 ## museum_detector_results
 
 MUSEUM-001..010: all pass (no inert kernel, no unconsumed output, no authoritative static
 fixture, distinct realizations differ, public surfaces share one compiler).
 
+MUSEUM-004 note: the fixed liveness stub was itself of this shape — a declared semantic
+object (`_ALL_CHECKS`, and check 15's reported result) with no consumer. The detectors did
+not catch it because they inspect compiled bundles, not the validator's own coverage;
+coverage is now asserted inside the validator.
+
+Independently re-verified against a sealed pack from an isolated wheel install:
+
+| Probe | Result |
+|---|---|
+| LIVE-001 `Audit` vs `Audit and fix` | ANALYSIS vs MUTATION; intent/execution/graph/handoff digests all differ; delivery obligation only for MUTATION |
+| LIVE-002 async payment worker | GAR active in execution contract + graph; idempotency property reaches validation |
+| LIVE-003 GAR kernel removed + manifest regenerated | fails closed at seal time (`activated kernel missing from pack`); no fallback plan |
+| LIVE-004 GAR semantic content changed, re-sealed | bundle semantic digest changes |
+| provenance discriminator | changing an **inactive** kernel leaves the semantic digest stable while the manifest digest moves — so digest sensitivity is scoped to active kernels, not vacuous |
+| DONE-005 local/non-architectural missions | GAR not activated, while still deriving MUTATION |
+| DONE-014 | CLI and service semantic digests identical |
+| DONE-015 | wheel + sealed pack + empty cwd compiles with no repository checkout |
+
 ## test_results / lint_result / typecheck_result / build_result
 
-- pytest: 182 passed (incl. isolated wheel test)
-- validators: 7/7 passed
-- ruff (target + governance configs): clean
-- mypy: no issues in 66 files
-- python -m build: wheel + sdist build successfully
+Re-run at `f7e2edf` (all five mandatory commands plus the mandatory isolated runtime test):
+
+- pytest: **188 passed** (184 pre-existing + 4 new liveness/packet regression tests)
+- validators (`runtime/kernel_pipeline/run_validators.py`): passed, exit 0
+- ruff (`ruff check src tests`): clean
+- mypy (strict): no issues in 67 source files
+- `python -m build`: wheel + sdist build successfully
+- isolated runtime test: sealed pack + wheel-only venv + empty cwd compiles three distinct
+  missions; semantics identical to the in-repo service
 
 ## residual_unknowns
 
@@ -99,3 +148,9 @@ fixture, distinct realizations differ, public surfaces share one compiler).
   INV-009; deployment pack copies them as museum examples only.
 - `metadata.phase_kernels` on ExecutionContract is now redundant with execution_steps and may
   be retired in a later cleanup.
+- `validate_provider_acceptance` (A0704) is exercised by tests only; no in-repo provider
+  consumes it yet, which is by design — the acceptance receipt is a boundary contract for
+  external hosts. It is defined and tested (DONE-018), not yet exercised by a live provider.
+- The museum detectors inspect compiled bundles, so they cannot see a validator that skips
+  its own check. Coverage assertion inside the liveness validator now closes that class of
+  gap; no equivalent self-reporting gap was found elsewhere in `src/` on sweep.

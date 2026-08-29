@@ -30,3 +30,14 @@ venv/
 # un-ignore the specific paths it owns.
 /.claude/
 /.mcp.json
+
+# Governance session wiring and gate receipts — generated per session by the
+# L9 governance bootstrap and the `make pr` gate, not repository content.
+# .cursor-commands is a symlink into the governance clone (an absolute machine
+# path), and .l9/pr + .l9/autonomy are per-run gate/L4/kernel receipts that
+# describe one machine's run. .l9/deployment.yaml IS repository content and
+# stays tracked, so these are scoped rather than ignoring /.l9/ wholesale.
+/.cursor-commands
+/.cursor/
+/.l9/pr/
+/.l9/autonomy/

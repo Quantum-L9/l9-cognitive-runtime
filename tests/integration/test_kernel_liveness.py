@@ -61,6 +61,7 @@ def test_live005_gar_without_validation_consumer_fails_liveness(valid_pack: Path
             validation=bundle.validation,
             handoff=bundle.handoff,
             graph=bundle.graph,
+            packet=bundle.packet,
         )
 
 
@@ -92,6 +93,7 @@ def test_live005_full_liveness_passes_for_live_bundle(valid_pack: Path) -> None:
         validation=bundle.validation,
         handoff=bundle.handoff,
         graph=bundle.graph,
+        packet=bundle.packet,
     )
     assert report.passed is True
     assert len(report.checks) == 16

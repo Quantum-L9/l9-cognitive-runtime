@@ -44,9 +44,7 @@ def _request(pack: Path) -> CompileRequest:
     return CompileRequest(mission=MISSION, pack_root=pack, source_context=dict(SIGNALS))
 
 
-def _run_liveness(
-    bundle: RuntimeBundle, pack: Path, packet: dict[str, Any]
-) -> LivenessReport:
+def _run_liveness(bundle: RuntimeBundle, pack: Path, packet: dict[str, Any]) -> LivenessReport:
     plan = ActivationPlanner().plan(
         ObjectiveDeriver().derive(
             CompileRequest(mission=MISSION, pack_root=pack, source_context=dict(SIGNALS))

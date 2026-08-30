@@ -92,7 +92,13 @@ def _iter_adapter_sources(root: Path) -> list[str]:
 
 
 def validate_deployment_closure(pack_root: Path) -> dict[str, Any]:
-    """A0802: prove every supported route compiles from the sealed pack."""
+    """A0802: prove every supported route compiles from the sealed pack.
+
+    Routes compile with the default empty governed snapshot (INV-CTX-040), so
+    this also proves the context spine adds no external-context requirement a
+    sealed deployment cannot satisfy. The per-route compiled-context digests
+    are returned as closure evidence.
+    """
     from l9_cognitive_runtime.compiler.activation import ActivationPlanner
     from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
     from l9_cognitive_runtime.pack import PackLoader
@@ -106,6 +112,7 @@ def validate_deployment_closure(pack_root: Path) -> dict[str, Any]:
     deriver = ObjectiveDeriver()
     planner = ActivationPlanner()
     compiled_routes: list[str] = []
+    context_digests: dict[str, str] = {}
     for route_name, route in sorted(routes.items()):
         tokens = route.get("match_any") or []
         if not tokens:
@@ -125,9 +132,14 @@ def validate_deployment_closure(pack_root: Path) -> dict[str, Any]:
             )
         # Full spine compile against the sealed pack: kernel resolution,
         # obligations, liveness, graph, packet — all fail closed.
-        service.compile_runtime(CompileRequest(mission=mission, pack_root=pack_root))
+        bundle = service.compile_runtime(CompileRequest(mission=mission, pack_root=pack_root))
         compiled_routes.append(route_name)
-    return {"routes_compiled": compiled_routes, "count": len(compiled_routes)}
+        context_digests[route_name] = bundle.digests()["context"]
+    return {
+        "routes_compiled": compiled_routes,
+        "count": len(compiled_routes),
+        "context_digests": context_digests,
+    }
 
 
 def build_deployment_pack(

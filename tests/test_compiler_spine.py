@@ -18,9 +18,13 @@ from pathlib import Path
 import pytest
 import yaml
 
+from l9_cognitive_runtime.compiler import CompilePipeline
+from l9_cognitive_runtime.compiler.kernels import KernelResolver
 from l9_cognitive_runtime.models import ExecutionContract
 from l9_cognitive_runtime.models.errors import InvalidValueError
+from l9_cognitive_runtime.pack import PackLoader
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
+from tests.conftest import MINIMAL_EXECUTION, build_pack
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -189,3 +193,38 @@ def test_graph_cli_requires_a_contract_with_structured_steps(tmp_path: Path) -> 
     assert built.returncode == 0, built.stdout + built.stderr
     graph = json.loads((tmp_path / "GRAPH.json").read_text(encoding="utf-8"))
     assert len(graph["nodes"]) == len(contract["execution_steps"])
+
+
+# --------------------------------------------------------------------------
+# A003 / A008: the context stages live on the same one spine.
+# --------------------------------------------------------------------------
+
+
+def test_context_stages_run_on_the_same_compile_pipeline(tmp_path: Path) -> None:
+    """Every context artifact comes from one ``CompilePipeline.compile`` call."""
+    pack = build_pack(tmp_path / "pack", execution=MINIMAL_EXECUTION)
+    request = CompileRequest(mission="single spine context compile", pack_root=pack)
+    bundle = CompilePipeline().compile(request, PackLoader().load(pack))
+
+    # The context exists, is closed, and is bound to this compile's kernels.
+    assert bundle.task_context.provenance.task_scope_digest
+    assert bundle.task_context.selected_kernels == [
+        binding.to_dict()
+        for binding in KernelResolver().resolve(list(bundle.execution.kernel_activation), pack)
+    ]
+    # The digest reached both downstream carriers from that one pass.
+    context_digest = bundle.digests()["context"]
+    assert bundle.packet["compiled_task_context_digest"] == context_digest
+    assert (bundle.execution.metadata or {})["context_digest"] == context_digest
+
+
+def test_no_second_semantic_path_produces_a_context(tmp_path: Path) -> None:
+    """The service adds nothing: it is a facade over the same pipeline."""
+    pack = build_pack(tmp_path / "pack", execution=MINIMAL_EXECUTION)
+    request = CompileRequest(mission="facade equivalence", pack_root=pack)
+    direct = CompilePipeline().compile(request, PackLoader().load(pack))
+    through_service = CognitiveRuntimeService().compile_runtime(request)
+    assert direct.task_context.to_canonical_json() == (
+        through_service.task_context.to_canonical_json()
+    )
+    assert direct.semantic_digest == through_service.semantic_digest

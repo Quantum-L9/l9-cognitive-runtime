@@ -8,7 +8,10 @@ import pytest
 
 from l9_cognitive_runtime.compiler.activation import ActivationPlanner
 from l9_cognitive_runtime.compiler.kernels import KernelResolver
-from l9_cognitive_runtime.compiler.liveness import validate_runtime_semantic_liveness
+from l9_cognitive_runtime.compiler.liveness import (
+    _ALL_CHECKS,
+    validate_runtime_semantic_liveness,
+)
 from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
@@ -94,4 +97,8 @@ def test_live005_full_liveness_passes_for_live_bundle(valid_pack: Path) -> None:
         graph=bundle.graph,
     )
     assert report.passed is True
-    assert len(report.checks) == 16
+    # INV-CTX-039: every pre-context check still executes, and the context
+    # checks execute alongside them. Asserting the set (rather than a count)
+    # keeps this honest if the ladder grows again.
+    assert set(_ALL_CHECKS) <= set(report.checks)
+    assert len(report.checks) == len(_ALL_CHECKS)

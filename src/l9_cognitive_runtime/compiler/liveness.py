@@ -12,8 +12,10 @@ validator is the single place where every check is stated.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from l9_cognitive_runtime.compiler.activation import ActivationPlan
+from l9_cognitive_runtime.compiler.context_closure import ContextClosureReport
 from l9_cognitive_runtime.compiler.kernels import KernelBinding
 from l9_cognitive_runtime.models import (
     ExecutionContract,
@@ -23,6 +25,11 @@ from l9_cognitive_runtime.models import (
     ObligationDisposition,
     ObligationKind,
     ValidationContract,
+)
+from l9_cognitive_runtime.models.context import (
+    GOVERNED_LEVELS,
+    CompiledTaskContext,
+    UnknownMateriality,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
@@ -43,6 +50,15 @@ _ALL_CHECKS = (
     "no_semantic_field_reset_to_default_downstream",
     "no_adapter_drops_blocking_obligation",
     "no_required_obligation_disappears",
+    # Context-native semantic liveness (INV-CTX-039).
+    "every_required_context_requirement_has_legal_disposition",
+    "every_authoritative_selected_item_has_provenance",
+    "every_selected_item_has_relevance_binding",
+    "every_selected_kernel_equals_downstream_kernel_binding",
+    "no_unresolved_equal_authority_conflict_is_silently_selected",
+    "context_digest_participates_in_semantic_identity",
+    "execution_packet_preserves_context_digest",
+    "material_context_unknowns_are_conserved",
 )
 
 
@@ -77,6 +93,11 @@ def validate_runtime_semantic_liveness(
     validation: ValidationContract,
     handoff: HandoffContract,
     graph: ExecutionGraph,
+    task_context: CompiledTaskContext | None = None,
+    context_digest: str | None = None,
+    closure_report: ContextClosureReport | None = None,
+    packet: dict[str, Any] | None = None,
+    semantic_payload: dict[str, Any] | None = None,
 ) -> LivenessReport:
     """Run every compile-time liveness check; fail closed on the first breach."""
     executed_checks: list[str] = []
@@ -230,5 +251,102 @@ def validate_runtime_semantic_liveness(
         required_pending <= handoff_ids,
         {"missing": sorted(required_pending - handoff_ids)},
     )
+
+    # ------------------------------------------------------------------
+    # Context-native semantic liveness (INV-CTX-039). These surfaces arrive
+    # with the compiled context; like the adapter check above, they pass
+    # vacuously only when the surface itself is absent.
+    # ------------------------------------------------------------------
+    # 17. Required context requirements were disposed. Closure already proved
+    # this item by item; liveness asserts closure actually ran.
+    check(
+        "every_required_context_requirement_has_legal_disposition",
+        task_context is None or (closure_report is not None and closure_report.passed),
+        {"closure_report": closure_report.to_dict() if closure_report else None},
+    )
+    if task_context is not None:
+        selected = task_context.selected_items()
+        # 18. Governed claims carry immutable provenance.
+        unprovenanced = [
+            item.item_id
+            for item in selected
+            if item.authority_level in GOVERNED_LEVELS
+            and not item.source_ref.has_immutable_provenance
+        ]
+        check(
+            "every_authoritative_selected_item_has_provenance",
+            not unprovenanced,
+            {"item_ids": unprovenanced},
+        )
+        # 19. Nothing sits in the context without a reason it is there.
+        unbound = [item.item_id for item in selected if not item.selected_because]
+        check("every_selected_item_has_relevance_binding", not unbound, {"item_ids": unbound})
+        # 20. INV-CTX-020: context kernels are the bindings used downstream.
+        check(
+            "every_selected_kernel_equals_downstream_kernel_binding",
+            task_context.selected_kernels == [binding.to_dict() for binding in kernels],
+            {"context": len(task_context.selected_kernels), "downstream": len(kernels)},
+        )
+        # 21. A contradiction that reached the context is visible as an Unknown.
+        conflict_keys = {
+            unknown.semantic_key
+            for unknown in task_context.unresolved_unknowns
+            if unknown.reason_code.value == "conflicting_governed_claims" and unknown.semantic_key
+        }
+        selected_conflicts = [
+            item.semantic_key for item in selected if item.semantic_key in conflict_keys
+        ]
+        check(
+            "no_unresolved_equal_authority_conflict_is_silently_selected",
+            not selected_conflicts,
+            {"semantic_keys": sorted(set(selected_conflicts))},
+        )
+        # 22. INV-CTX-029: the context digest is part of runtime semantic identity.
+        check(
+            "context_digest_participates_in_semantic_identity",
+            semantic_payload is None or semantic_payload.get("context_digest") == context_digest,
+            {
+                "expected": context_digest,
+                "in_payload": (semantic_payload or {}).get("context_digest"),
+            },
+        )
+        # 23. INV-CTX-030: the packet carries the context and its digest intact.
+        check(
+            "execution_packet_preserves_context_digest",
+            packet is None
+            or (
+                packet.get("compiled_task_context_digest") == context_digest
+                and packet.get("compiled_task_context") == task_context.to_canonical_dict()
+            ),
+            {"packet_digest": (packet or {}).get("compiled_task_context_digest")},
+        )
+        # 24. INV-CTX-024: every material context unknown reached an obligation.
+        material = {
+            unknown.unknown_id
+            for unknown in task_context.unresolved_unknowns
+            if unknown.materiality is UnknownMateriality.BLOCKING
+        }
+        conserved = {
+            obligation.obligation_id.removeprefix("OBL.EPISTEMIC.CONTEXT.")
+            for obligation in execution.obligations
+            if obligation.obligation_id.startswith("OBL.EPISTEMIC.CONTEXT.")
+        }
+        check(
+            "material_context_unknowns_are_conserved",
+            material <= conserved,
+            {"missing": sorted(material - conserved)},
+        )
+    else:
+        executed_checks.extend(
+            [
+                "every_authoritative_selected_item_has_provenance",
+                "every_selected_item_has_relevance_binding",
+                "every_selected_kernel_equals_downstream_kernel_binding",
+                "no_unresolved_equal_authority_conflict_is_silently_selected",
+                "context_digest_participates_in_semantic_identity",
+                "execution_packet_preserves_context_digest",
+                "material_context_unknowns_are_conserved",
+            ]
+        )
 
     return LivenessReport(checks=tuple(executed_checks), passed=True)

@@ -33,6 +33,7 @@ class AdapterPacket:
     adapter: str
     source_contract: str
     packet_digest: str
+    context_digest: str
     content: str
     required_obligation_ids: tuple[str, ...]
     unknowns: tuple[str, ...]
@@ -46,6 +47,7 @@ class AdapterPacket:
             "adapter": self.adapter,
             "source_contract": self.source_contract,
             "packet_digest": self.packet_digest,
+            "context_digest": self.context_digest,
             "content": self.content,
             "required_obligation_ids": list(self.required_obligation_ids),
             "unknowns": list(self.unknowns),
@@ -72,6 +74,8 @@ def _require_section(packet: dict[str, Any], key: str) -> Any:
 def validate_packet(packet: dict[str, Any]) -> None:
     """Fail closed on an incomplete or weakened packet (INV-013)."""
     _require_section(packet, "intent")
+    _require_section(packet, "compiled_task_context")
+    _require_section(packet, "compiled_task_context_digest")
     _require_section(packet, "active_kernel_bindings")
     _require_section(packet, "execution_steps")
     _require_section(packet, "required_obligations")
@@ -80,6 +84,18 @@ def validate_packet(packet: dict[str, Any]) -> None:
     _require_section(packet, "unknowns")
     _require_section(packet, "convergence_contract")
     _require_section(packet, "provenance")
+    # INV-CTX-031: the packet's context identity must be internally consistent
+    # before any adapter projects it.
+    provenance_digest = (packet["provenance"] or {}).get("context_digest")
+    if provenance_digest != packet["compiled_task_context_digest"]:
+        raise InvalidValueError(
+            "packet context digest disagrees with packet provenance",
+            path="compiled_task_context_digest",
+            details={
+                "packet": packet["compiled_task_context_digest"],
+                "provenance": provenance_digest,
+            },
+        )
     required_ids = {o["obligation_id"] for o in packet["required_obligations"]}
     # Every validation property must bind a required obligation still present,
     # and every required obligation must keep its validation path (INV-013).
@@ -158,6 +174,9 @@ class AdapterRenderer:
             adapter=adapter,
             source_contract="FINAL_EXECUTION_CONTRACT",
             packet_digest=packet_digest,
+            # INV-CTX-031: the projection carries the compiled-context identity
+            # through unchanged. It is never recomputed from the context body.
+            context_digest=str(packet["compiled_task_context_digest"]),
             content=content,
             required_obligation_ids=required_ids,
             unknowns=tuple(str(u) for u in packet["unknowns"]),

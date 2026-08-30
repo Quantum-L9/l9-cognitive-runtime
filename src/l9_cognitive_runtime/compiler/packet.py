@@ -21,6 +21,7 @@ from l9_cognitive_runtime.models import (
     ObligationDisposition,
     ValidationContract,
 )
+from l9_cognitive_runtime.models.context import CompiledTaskContext
 
 BLOCK_SEMANTICS = {
     "valid_block_types": ["AUTHORITY", "CAPABILITY", "IRREDUCIBLE_REPOSITORY_CONTRADICTION"],
@@ -58,6 +59,8 @@ def build_execution_packet(
     routing_rules_digest: str,
     pipeline_digest: str,
     semantic_digest: str,
+    task_context: CompiledTaskContext,
+    context_digest: str,
 ) -> dict[str, Any]:
     """Build the canonical execution packet from compiled IRs."""
     required_obligations = [
@@ -72,6 +75,11 @@ def build_execution_packet(
     ]
     return {
         "intent": intent.to_canonical_dict(),
+        # INV-CTX-030: a lossless canonical copy of the compiled context plus
+        # its externally computed digest. Adapters project this; they never
+        # rebuild it.
+        "compiled_task_context": task_context.to_canonical_dict(),
+        "compiled_task_context_digest": context_digest,
         "active_kernel_bindings": [binding.to_dict() for binding in kernels],
         "execution_steps": [step.to_canonical_dict() for step in execution.execution_steps],
         "required_obligations": required_obligations,
@@ -79,7 +87,9 @@ def build_execution_packet(
             property.to_canonical_dict() for property in validation.validation_properties
         ],
         "delivery_obligations": delivery_obligations,
-        "unknowns": list(intent.unknowns or []) + list(plan.unknowns),
+        "unknowns": list(intent.unknowns or [])
+        + list(plan.unknowns)
+        + [unknown.unknown_id for unknown in task_context.unresolved_unknowns],
         "block_semantics": dict(BLOCK_SEMANTICS),
         "convergence_contract": dict(CONVERGENCE_CONTRACT),
         "provenance": {
@@ -89,5 +99,6 @@ def build_execution_packet(
             "kernel_digests": {binding.source_ref: binding.source_digest for binding in kernels},
             "graph_digest": graph.sha256(),
             "handoff_digest": handoff.sha256(),
+            "context_digest": context_digest,
         },
     }

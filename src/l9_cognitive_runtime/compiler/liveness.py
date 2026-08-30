@@ -4,14 +4,16 @@
 Runs over the finished compilation products and fails closed on any museum
 state: a required obligation unaccounted for, an activated kernel never bound,
 invoked, or consumed, an orphan graph node, an unresolved reference, or a
-semantic field reset downstream. Checks whose surface arrives in a later phase
-(such as the adapter packet) pass vacuously until that phase exists — the
-validator is the single place where every check is stated.
+semantic field reset downstream, or an execution packet that drops a blocking
+obligation. Every check declared in ``_ALL_CHECKS`` must actually execute: a
+declared-but-skipped check reports a guarantee that was never evaluated, so
+coverage is asserted before the report is returned.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from l9_cognitive_runtime.compiler.activation import ActivationPlan
 from l9_cognitive_runtime.compiler.kernels import KernelBinding
@@ -77,8 +79,14 @@ def validate_runtime_semantic_liveness(
     validation: ValidationContract,
     handoff: HandoffContract,
     graph: ExecutionGraph,
+    packet: dict[str, Any],
 ) -> LivenessReport:
-    """Run every compile-time liveness check; fail closed on the first breach."""
+    """Run every compile-time liveness check; fail closed on the first breach.
+
+    ``packet`` is the canonical execution packet built from the compiled IRs.
+    It is required, not optional: a validator that silently skips a check when
+    an input is absent is the museum state this validator exists to detect.
+    """
     executed_checks: list[str] = []
 
     def check(name: str, condition: bool, details: dict[str, object]) -> None:
@@ -221,9 +229,18 @@ def validate_runtime_semantic_liveness(
         and obligation.disposition is ObligationDisposition.PENDING
     ]
     check("no_semantic_field_reset_to_default_downstream", not reset, {"reset": reset})
-    # 15. Adapter must not drop blocking obligations. The adapter renderer
-    # arrives in PHASE-07; until then there is no adapter IR to weaken.
-    executed_checks.append("no_adapter_drops_blocking_obligation")
+    # 15. The execution packet is the hand-off projection every downstream
+    # provider consumes (INV-013, A0702). A required blocking obligation that
+    # does not survive into it is a silently weakened contract.
+    packet_required = {
+        str(entry.get("obligation_id")) for entry in (packet.get("required_obligations") or [])
+    }
+    dropped = required_pending - packet_required
+    check(
+        "no_adapter_drops_blocking_obligation",
+        not dropped,
+        {"dropped": sorted(dropped)},
+    )
     # 16. No required obligation disappears (conservation across IRs).
     check(
         "no_required_obligation_disappears",
@@ -231,4 +248,13 @@ def validate_runtime_semantic_liveness(
         {"missing": sorted(required_pending - handoff_ids)},
     )
 
+    if tuple(executed_checks) != _ALL_CHECKS:
+        raise _fail(
+            "liveness_check_coverage",
+            {
+                "expected": list(_ALL_CHECKS),
+                "executed": list(executed_checks),
+                "missing": [name for name in _ALL_CHECKS if name not in executed_checks],
+            },
+        )
     return LivenessReport(checks=tuple(executed_checks), passed=True)

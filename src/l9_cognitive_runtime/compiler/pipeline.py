@@ -18,6 +18,7 @@ import hashlib
 from pathlib import Path
 
 from l9_cognitive_runtime.compiler.activation import ActivationPlanner
+from l9_cognitive_runtime.compiler.adapters import validate_packet
 from l9_cognitive_runtime.compiler.execution import ExecutionContractCompiler
 from l9_cognitive_runtime.compiler.handoff import HandoffContractCompiler
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelResolver
@@ -96,16 +97,6 @@ class CompilePipeline:
                 path="execution->graph",
                 details={"expected": required_ids, "got": graph.obligation_refs},
             )
-        # BundleSemanticValidator: compile-time semantic liveness, fail closed.
-        validate_runtime_semantic_liveness(
-            intent=intent,
-            plan=plan,
-            kernels=kernels,
-            execution=execution,
-            validation=validation,
-            handoff=handoff,
-            graph=graph,
-        )
         semantic_digest = self._semantic_digest(
             intent=intent,
             execution=execution,
@@ -127,6 +118,21 @@ class CompilePipeline:
             routing_rules_digest=_file_sha256(rules_path),
             pipeline_digest=_file_sha256(pipeline_path),
             semantic_digest=semantic_digest,
+        )
+        # INV-013: the packet is the hand-off surface, so it is validated on
+        # every fresh compile — not only when an adapter is rendered.
+        validate_packet(packet)
+        # BundleSemanticValidator: compile-time semantic liveness, fail closed.
+        # Runs last so it can judge the packet alongside the compiled IRs.
+        validate_runtime_semantic_liveness(
+            intent=intent,
+            plan=plan,
+            kernels=kernels,
+            execution=execution,
+            validation=validation,
+            handoff=handoff,
+            graph=graph,
+            packet=packet,
         )
         return RuntimeBundle(
             intent=intent,

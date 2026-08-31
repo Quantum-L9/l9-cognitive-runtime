@@ -5,15 +5,12 @@ what outranks what.
 
 ## Source of truth
 
-1. Repository files and executable validators
-2. `FINAL_EXECUTION_CONTRACT.yaml`, `VALIDATION_CONTRACT.yaml`, `HANDOFF_CONTRACT.yaml`
-   and the schemas in `contracts/`
-3. `MANIFEST.json` and `rules/RULES-MANIFEST.*`
-4. `docs/SUPERSEDES.md`, `ROADMAP.md`, `CONVERGENCE.md`
-5. Unknown — say so; never guess
+The ordering lives in [`CLAUDE.md`](CLAUDE.md) and is not repeated here — two files
+ranking the same rungs is how they come to disagree. `ROADMAP.md` and `CONVERGENCE.md`
+sit alongside `docs/SUPERSEDES.md` as context, below the contracts.
 
-An agent that cannot find the answer in that list should report `Unknown` rather than
-invent one. A fabricated contract field is worse than an unanswered question, because
+What this file adds is the terminal rung: **Unknown**. An agent that cannot find the
+answer in that chain should say so rather than invent one. A fabricated contract field is worse than an unanswered question, because
 the ladder will happily validate a shape nobody meant.
 
 ## Before you change anything

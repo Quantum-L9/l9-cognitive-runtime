@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Kernel activation planner CLI — thin wrapper over the typed compiler spine.
+"""Kernel activation planner CLI — a projection over the canonical spine.
 
 All routing, phase ordering, terminal gating, and kernel selection live in
-``l9_cognitive_runtime.compiler.activation.ActivationPlanner``; this script
-only adapts a raw task string into a typed intent, delegates, and emits
-KERNEL_ACTIVATION_PLAN.yaml content. It does not execute kernels.
+``l9_cognitive_runtime.compiler.activation.ActivationPlanner``. This script
+does not sequence compiler stages itself (INV-CTX-002): it delegates to
+``CompilePipeline.compile_from_root`` and projects the activation plan out of
+the result, then emits KERNEL_ACTIVATION_PLAN.yaml content. It does not execute
+kernels.
+
+Composing ``ObjectiveDeriver`` and ``ActivationPlanner`` here would be a second
+semantic composition site, and it would also route with no governed discovery
+plane at all — the exact gap a raw caller hint used to slip through.
 """
 from __future__ import annotations
 
@@ -19,28 +25,20 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver  # noqa: E402
-from l9_cognitive_runtime.types import CompileRequest  # noqa: E402
+from l9_cognitive_runtime.compiler import CompilePipeline  # noqa: E402
 
 PIPELINE_PATH = ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml"
 RULES_PATH = ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml"
 
 
 def build_plan(task: str, include_terminal: bool = False) -> dict[str, Any]:
-    """Build an activation plan for a task (thin delegation to the typed planner)."""
-    intent = ObjectiveDeriver().derive(
-        CompileRequest(
-            mission=task,
-            source_context={"pack": "l9_cognitive_runtime_kernel_pack_clean"},
-        )
-    )
-    plan = ActivationPlanner().plan(
-        intent,
-        rules_path=RULES_PATH,
-        pipeline_path=PIPELINE_PATH,
+    """Build an activation plan for a task by projecting the canonical spine."""
+    result = CompilePipeline().compile_from_root(
+        ROOT,
+        task,
         include_terminal=include_terminal,
     )
-    return plan.to_dict()
+    return result.plan.to_dict()
 
 
 def main() -> int:

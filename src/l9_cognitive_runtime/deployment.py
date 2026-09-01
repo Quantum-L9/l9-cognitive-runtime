@@ -92,9 +92,19 @@ def _iter_adapter_sources(root: Path) -> list[str]:
 
 
 def validate_deployment_closure(pack_root: Path) -> dict[str, Any]:
-    """A0802: prove every supported route compiles from the sealed pack."""
-    from l9_cognitive_runtime.compiler.activation import ActivationPlanner
-    from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
+    """A0802: prove every supported route compiles from the sealed pack.
+
+    Routes compile with the default empty governed snapshot (INV-CTX-040), so
+    this also proves the context spine adds no external-context requirement a
+    sealed deployment cannot satisfy. The per-route compiled-context digests are
+    returned as closure evidence (INV-CTX-044).
+
+    The compile itself is the proof. There is deliberately no separate routing
+    pre-check: composing ``ObjectiveDeriver`` and ``ActivationPlanner`` beside
+    the service would make this module a second composition site
+    (INV-CTX-002), and it would prove nothing the spine does not already fail
+    closed on — a plan with blockers is rejected by the execution compiler.
+    """
     from l9_cognitive_runtime.pack import PackLoader
     from l9_cognitive_runtime.parsing import load_yaml_file
     from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
@@ -103,31 +113,23 @@ def validate_deployment_closure(pack_root: Path) -> dict[str, Any]:
     rules = load_yaml_file(pack.resolve("runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"))
     routes = rules.get("task_routes") or {}
     service = CognitiveRuntimeService()
-    deriver = ObjectiveDeriver()
-    planner = ActivationPlanner()
     compiled_routes: list[str] = []
+    context_digests: dict[str, str] = {}
     for route_name, route in sorted(routes.items()):
         tokens = route.get("match_any") or []
         if not tokens:
             raise InvalidValueError("route without match_any tokens", path=route_name)
         mission = f"Representative {tokens[0]} mission"
-        intent = deriver.derive(CompileRequest(mission=mission))
-        plan = planner.plan(
-            intent,
-            rules_path=pack.resolve("runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"),
-            pipeline_path=pack.resolve("runtime/kernel_pipeline/KERNEL_PIPELINE.yaml"),
-        )
-        if plan.blockers:
-            raise InvalidValueError(
-                "route activation blocked in sealed pack",
-                path=route_name,
-                details={"blockers": plan.blockers},
-            )
-        # Full spine compile against the sealed pack: kernel resolution,
-        # obligations, liveness, graph, packet — all fail closed.
-        service.compile_runtime(CompileRequest(mission=mission, pack_root=pack_root))
+        # Full spine compile against the sealed pack: kernel resolution, context
+        # closure, obligations, graph, packet, liveness — all fail closed.
+        bundle = service.compile_runtime(CompileRequest(mission=mission, pack_root=pack_root))
         compiled_routes.append(route_name)
-    return {"routes_compiled": compiled_routes, "count": len(compiled_routes)}
+        context_digests[route_name] = bundle.digests()["context"]
+    return {
+        "routes_compiled": compiled_routes,
+        "count": len(compiled_routes),
+        "context_digests": context_digests,
+    }
 
 
 def build_deployment_pack(

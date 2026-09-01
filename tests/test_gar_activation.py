@@ -18,31 +18,39 @@ from pathlib import Path
 import pytest
 
 from l9_cognitive_runtime.models import ExecutionGraph
+from l9_cognitive_runtime.models.context import ContextSnapshot
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.parsing import ParseErrorCode, StrictParseError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 from l9_cognitive_runtime.types import RuntimeBundle
+from tests.conftest import discovery_for, governed_signal_snapshot
 
 GAR_REF = "runtime/kernels/architecture/global_architect_kernel.yaml"
 
+# INV-CTX-014: architecture signals are proven by governed constraints, never
+# by a raw ``source_context.context_signals`` hint.
+GOVERNED_SIGNALS = (
+    "message_redelivery_possible",
+    "external_side_effect",
+    "multiple_workers",
+)
 
-def _context_pack_request(pack: Path, **context_signals: object) -> CompileRequest:
-    signals = list(context_signals)
+
+def _governed_snapshot() -> ContextSnapshot:
+    return governed_signal_snapshot(*GOVERNED_SIGNALS)
+
+
+def _context_pack_request(pack: Path) -> CompileRequest:
     return CompileRequest(
         mission="Add safe retry behavior to this asynchronous payment worker.",
         pack_root=pack,
-        source_context={"pack": "l9_cognitive_runtime", "context_signals": signals},
+        source_context={"pack": "l9_cognitive_runtime"},
     )
 
 
 def _live_compile(pack: Path) -> RuntimeBundle:
     return CognitiveRuntimeService().compile_runtime(
-        _context_pack_request(
-            pack,
-            message_redelivery_possible=True,
-            external_side_effect=True,
-            multiple_workers=True,
-        )
+        _context_pack_request(pack), context_snapshot=_governed_snapshot()
     )
 
 
@@ -80,18 +88,12 @@ def test_gar_activation_has_lens_evidence(  # type: ignore[no-untyped-def]
     from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver
 
     pack = pack_builder(tmp_path / "pack")
-    intent = ObjectiveDeriver().derive(
-        _context_pack_request(
-            pack,
-            message_redelivery_possible=True,
-            external_side_effect=True,
-            multiple_workers=True,
-        )
-    )
+    intent = ObjectiveDeriver().derive(_context_pack_request(pack))
     plan = ActivationPlanner().plan(
         intent,
         rules_path=pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
         pipeline_path=pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        discovery=discovery_for(intent, _governed_snapshot()),
     )
     materiality = plan.architecture_materiality
     assert materiality["required"] is True
@@ -105,6 +107,7 @@ def test_gar_developer_execution_active_for_worker_mission(  # type: ignore[no-u
 ) -> None:
     from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver
     from l9_cognitive_runtime.types import CompileRequest as Request
+    from tests.conftest import empty_discovery
 
     pack = pack_builder(tmp_path / "pack")
     intent = ObjectiveDeriver().derive(
@@ -114,6 +117,7 @@ def test_gar_developer_execution_active_for_worker_mission(  # type: ignore[no-u
         intent,
         rules_path=pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
         pipeline_path=pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        discovery=empty_discovery(intent),
     )
     assert plan.matched_route == "feature_development"
     assert any(k.endswith("developer_core_kernel.yaml") for k in plan.active_kernels)
@@ -151,12 +155,7 @@ def test_missing_required_gar_source_fails_compile(  # type: ignore[no-untyped-d
     )
     with pytest.raises(StrictParseError) as excinfo:
         CognitiveRuntimeService().compile_runtime(
-            _context_pack_request(
-                pack,
-                message_redelivery_possible=True,
-                external_side_effect=True,
-                multiple_workers=True,
-            )
+            _context_pack_request(pack), context_snapshot=_governed_snapshot()
         )
     assert excinfo.value.code is ParseErrorCode.UNKNOWN_KERNEL
     assert GAR_REF in str(excinfo.value)

@@ -31,6 +31,8 @@ from l9_cognitive_runtime.compiler.task_context import (
 )
 from l9_cognitive_runtime.compiler.task_scope import TaskScopeCompiler
 from l9_cognitive_runtime.models.context import (
+    APPLICABILITY_FIELDS,
+    CLAIM_EXCLUDED_FIELDS,
     ApplicableLaw,
     AuthorityContext,
     AuthorityFact,
@@ -1297,3 +1299,16 @@ def test_closure_detects_a_selection_that_was_never_eligible() -> None:
             resolution=SnapshotResolution(candidates=(ineligible,)),
             kernels=[],
         )
+
+
+def test_applicability_is_exactly_what_the_claim_excludes_as_scope() -> None:
+    """The claim and its applicability partition the item, with no overlap.
+
+    Two constants describing the same fields can drift apart silently: a field
+    dropped from one and not the other would leave scope either counted twice
+    in identity or missing from it entirely.
+    """
+    assert set(APPLICABILITY_FIELDS) <= CLAIM_EXCLUDED_FIELDS
+    item = law("LAW_P", scope_refs=["src/here"])
+    assert set(item.applicability_payload()) == set(APPLICABILITY_FIELDS)
+    assert not set(item.claim_payload()) & set(APPLICABILITY_FIELDS)

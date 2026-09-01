@@ -281,8 +281,14 @@ class ContextItemIdentity(ArtifactModel):
         return {key: value for key, value in data.items() if key not in CLAIM_EXCLUDED_FIELDS}
 
     def applicability_payload(self) -> dict[str, Any]:
-        """*Where* this item applies, separate from what it asserts."""
-        return {"scope_mode": self.scope_mode.value, "scope_refs": list(self.scope_refs)}
+        """*Where* this item applies, separate from what it asserts.
+
+        Built from ``APPLICABILITY_FIELDS`` rather than naming the fields
+        again, so this and ``CLAIM_EXCLUDED_FIELDS`` cannot drift into
+        disagreeing about which fields are applicability.
+        """
+        data = self.to_canonical_dict()
+        return {field: data[field] for field in APPLICABILITY_FIELDS}
 
     def expected_item_id(self) -> str:
         """The one canonical item-identity recipe (INV-CTX-011).

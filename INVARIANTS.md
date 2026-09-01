@@ -162,6 +162,8 @@ Candidates MUST be canonically normalized and sorted before selection. Semantica
 
 **Eligibility MUST precede destructive resolution.** Supersession eliminates claims and deduplication discards all but one representative; both are destructive. They MUST therefore run over the candidate set a consumer is *eligible* for — the bounded discovery projection over what may route, each `ContextRequirement` over what it matches — and MUST NOT be run once over the whole snapshot with eligibility applied afterwards. Resolving first lets a candidate the consumer may never see decide the fate of one it needs: an unverified law retires an authoritative one and is then itself rejected, or a claim scoped elsewhere carries a claim scoped here. Resolution MUST remain a pure function of (candidate set, eligibility rule), so every consumer resolves the same contradiction the same way.
 
+Whole-snapshot resolution MAY exist as a **diagnostic** — the supersession rule is worth exercising independently of any requirement — but no production module may call it. Its return would be silent: a projection resolving every candidate still compiles and still passes. A static repository guard MUST therefore prove no module of the package calls it.
+
 ### INV-CTX-013: Supersession resolves kind-wide, before same-key conflict resolution
 
 Conflicts exist only between claims of the same context kind that address the same deterministic semantic key. Every context kind MUST define its semantic-key recipe and domain precedence rule.
@@ -229,6 +231,8 @@ Successful parsing, successful retrieval, or file existence MUST NOT be transfor
 
 Memory MUST NOT redefine current repository state, governing law, authority, exact dependencies, or validated evidence, and MUST NOT route. Material conflicts preserve governed truth and record the conflict when useful.
 
+The same truth-tier discipline governs **blocking materiality**, in both directions. A contradiction among governed claims — an unresolvable supersession cycle, or a prior decision whose own status is unknown — blocks whatever surfaced it, and a requirement's optionality does not soften it: that a requirement did not need law says nothing about whether the law is self-consistent. A contradiction among informative or unverified claims does not block: material that could never have decided anything MUST NOT acquire hard-block authority merely by contradicting itself, or an unverified pair could halt a task no governed fact objects to.
+
 ### INV-CTX-020: Kernel selection is part of compiled context, and kernels may demand context
 
 Every selected kernel MUST use the existing fail-closed `KernelBinding` identity, source reference, digest, and typed output model.
@@ -274,6 +278,10 @@ Every required `ContextRequirement` MUST define one missing-data policy:
 - `PRESERVE_UNKNOWN`: compilation may continue only with a stable `ContextUnknown` bound to that requirement;
 - `OPTIONAL`: absence does not block and does not require a semantic Unknown.
 
+`OPTIONAL` governs **absence only** — that taking nothing is legal when nothing was eligible. It is never a waiver of selector correctness: eligible material the selector knew about and did not take is a defect whatever the policy says about absence, and reading `OPTIONAL` as a coverage waiver would exempt from proof exactly the requirements the compiler's own plan uses most.
+
+It follows that budget truncation MUST be recorded under every policy, `OPTIONAL` included. A budget stop is a fact about this compile rather than a statement about absence, and it is the only thing that legalises short coverage — so a policy that swallowed the record would make a legally truncated requirement indistinguishable from a selector that silently dropped candidates.
+
 The compiler MUST NOT decide missing-data behavior ad hoc after selection.
 
 ### INV-CTX-024: Unknowns are conserved
@@ -281,6 +289,10 @@ The compiler MUST NOT decide missing-data behavior ad hoc after selection.
 Material unresolved unknowns MUST remain explicit through `CompiledTaskContext`, obligation derivation, handoff, validation, and the execution packet until legally disposed. Unknown identity MUST be derived from stable reason codes and canonical details, not human prose, random IDs, or timestamps.
 
 Missing information MUST NOT be replaced by semantics-changing defaults.
+
+An unknown derived from a contradiction MUST carry the provenance of the claims that caused it, deterministically ordered by stable source identity and never by input position. A blocking supersession cycle MUST carry a source reference for **every** causal member: a cycle has no innocent participant, and an unknown that names a contradiction without naming who asserted it is a dead end for whoever has to resolve it. Distinct cycles are distinct contradictions and MUST be reported separately — merging them would make each cycle's members provenance for the other.
+
+Provenance MUST NOT participate in unknown identity, so adding it never moves a digest.
 
 ### INV-CTX-025: Context closure precedes execution semantics, and every check proves its name
 
@@ -293,7 +305,7 @@ A named check MUST prove the property it names. Specifically:
 - **conflict disposition** MUST hold over every *eligible* conflicting governed semantic key a requirement would have matched, not merely over keys that also happen to appear in the selected set. A conflict that disappears entirely is the case the check exists to catch;
 - **budget compliance** MUST recompute each requirement's own selected item count and canonical byte cost from the finished context and verify that requirement's `max_items`, `max_bytes`, `min_items`, and coverage mode, **and independently** verify the global unique-item budget. A per-requirement breach that fits inside the global budget MUST be detected;
 - **capability and authority gaps** MUST prove that every compiler-derived required capability and required authority has exactly one explicit disposition — available/granted, unavailable/limited, or explicit unknown. An authority gap MUST be keyed by the requirement's full semantic key, so a gap over one subject or action scope is not closed by a record about another;
-- **coverage modes** MUST be proven against an eligible set the validator recomputes itself from the candidates, using the compiler's own matching rule, rather than against the count the selector happened to reach. `all_eligible` MUST have selected every eligible item, `minimum` MUST have taken the minimum rather than merely at least `min_items`, `semantic_keys` MUST have taken no key it did not require, and nothing ineligible may appear as selected. Under-coverage is legal only where something explicitly said so — a recorded budget stop, or an `OPTIONAL` missing policy. A selection bug that drops one eligible item while leaving enough behind to clear `min_items` is exactly what a budget-only check cannot see.
+- **coverage modes** MUST be proven against an eligible set the validator recomputes itself from the candidates, using the compiler's own matching rule, rather than against the count the selector happened to reach. `all_eligible` MUST have selected every eligible item, `minimum` MUST have taken the minimum rather than merely at least `min_items`, `semantic_keys` MUST have taken no key it did not require, and nothing ineligible may appear as selected. Under-coverage is legal only where a budget stop was **recorded** for that requirement; an `OPTIONAL` missing policy is not a waiver here (INV-CTX-023). For `semantic_keys`, only a required key that actually had an eligible candidate counts as omission — a key nothing could have satisfied is absence, which the missing policy governs. A selection bug that drops one eligible item while leaving enough behind to clear `min_items` is exactly what a budget-only check cannot see.
 
 Closure MUST NOT be handed an already-reduced resolution and treat it as evidence: trusting the step it exists to check makes the check a restatement.
 

@@ -405,11 +405,31 @@ def _undisposed_authorities(context: CompiledTaskContext) -> list[str]:
     return sorted(gaps)
 
 
-def _eligible_item_ids(view: ResolvedCandidates) -> set[str]:
-    """Item identities a requirement was eligible to select, conflicts excluded."""
+def _eligible_items(view: ResolvedCandidates) -> dict[str, str]:
+    """Item identity -> semantic key for what a requirement could select.
+
+    Conflicting groups are excluded: an unresolvable contradiction is disposed,
+    never selected, so it is not material the selector failed to take.
+    """
     return {
-        item.item_id for group in view.groups.values() if not group.conflict for item in group.items
+        item.item_id: item.semantic_key
+        for group in view.groups.values()
+        if not group.conflict
+        for item in group.items
     }
+
+
+def _conflict_disposed_keys(context: CompiledTaskContext) -> dict[str, set[str]]:
+    """Semantic keys each requirement disposed as an unresolvable conflict."""
+    keys: dict[str, set[str]] = {}
+    for unknown in context.unresolved_unknowns:
+        if (
+            unknown.reason_code is UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS
+            and unknown.requirement_ref
+            and unknown.semantic_key
+        ):
+            keys.setdefault(unknown.requirement_ref, set()).add(unknown.semantic_key)
+    return keys
 
 
 def _coverage_breaches(
@@ -419,31 +439,22 @@ def _coverage_breaches(
 ) -> list[dict[str, object]]:
     """Prove every requirement's coverage mode against its own eligible set."""
     selected = context.selected_items()
-    budget_stopped = {
+    truncated = {
         unknown.requirement_ref
         for unknown in context.unresolved_unknowns
         if unknown.reason_code is UnknownReasonCode.BUDGET_INSUFFICIENT and unknown.requirement_ref
     }
+    disposed = _conflict_disposed_keys(context)
     breaches: list[dict[str, object]] = []
     for requirement in requirement_plan.requirements:
-        eligible = _eligible_item_ids(views[requirement.requirement_id])
-        taken = {
-            item.item_id for item in selected if requirement.requirement_id in item.selected_because
-        }
-        taken_keys = {
-            item.semantic_key
-            for item in selected
-            if requirement.requirement_id in item.selected_because
-        }
+        taken = [item for item in selected if requirement.requirement_id in item.selected_because]
         breach = _coverage_breach(
             requirement,
-            eligible=eligible,
-            taken=taken,
-            taken_keys=taken_keys,
-            under_covered_is_legal=(
-                requirement.requirement_id in budget_stopped
-                or requirement.missing_policy is MissingPolicy.OPTIONAL
-            ),
+            eligible=_eligible_items(views[requirement.requirement_id]),
+            taken={item.item_id for item in taken},
+            taken_keys={item.semantic_key for item in taken},
+            disposed_keys=disposed.get(requirement.requirement_id, set()),
+            truncated=requirement.requirement_id in truncated,
         )
         if breach is not None:
             breaches.append(breach)
@@ -453,18 +464,26 @@ def _coverage_breaches(
 def _coverage_breach(
     requirement: ContextRequirement,
     *,
-    eligible: set[str],
+    eligible: dict[str, str],
     taken: set[str],
     taken_keys: set[str],
-    under_covered_is_legal: bool,
+    disposed_keys: set[str],
+    truncated: bool,
 ) -> dict[str, object] | None:
-    """One requirement's coverage mode, judged against the eligible set.
+    """One requirement's coverage mode, judged against its own eligible set.
 
-    Under-coverage is legal only where something explicitly said so: a recorded
-    budget stop, or an OPTIONAL missing policy. Over-coverage — selecting what
-    was never eligible, or more than the mode allows — is never legal.
+    Under-coverage is legal only when a budget stop was **recorded** for this
+    requirement. A missing policy of ``OPTIONAL`` is deliberately not a waiver
+    here: OPTIONAL governs *absence* — that taking nothing is legal when
+    nothing was eligible — and says nothing about selector correctness.
+    Eligible material the selector knew about and did not take is a defect
+    whatever the policy says about absence, and treating OPTIONAL as a waiver
+    would exempt from proof exactly the requirements most of the plan uses.
+
+    Over-coverage — selecting what was never eligible, or more than the mode
+    asks for — is never legal, budget stop or not.
     """
-    ineligible = sorted(taken - eligible)
+    ineligible = sorted(taken - set(eligible))
     if ineligible:
         return {
             "requirement_id": requirement.requirement_id,
@@ -472,8 +491,8 @@ def _coverage_breach(
             "item_ids": ineligible,
         }
     if requirement.coverage_mode is CoverageMode.ALL_ELIGIBLE:
-        missed = sorted(eligible - taken)
-        if missed and not under_covered_is_legal:
+        missed = sorted(set(eligible) - taken)
+        if missed and not truncated:
             return {
                 "requirement_id": requirement.requirement_id,
                 "breach": "all_eligible_incomplete",
@@ -491,7 +510,7 @@ def _coverage_breach(
                 "selected": len(taken),
                 "expected": expected,
             }
-        if len(taken) < expected and not under_covered_is_legal:
+        if len(taken) < expected and not truncated:
             return {
                 "requirement_id": requirement.requirement_id,
                 "breach": "minimum_incomplete",
@@ -499,12 +518,24 @@ def _coverage_breach(
                 "expected": expected,
             }
         return None
-    extra_keys = sorted(taken_keys - set(requirement.required_semantic_keys))
-    if extra_keys:
+    required_keys = set(requirement.required_semantic_keys)
+    unrequested = sorted(taken_keys - required_keys)
+    if unrequested:
         return {
             "requirement_id": requirement.requirement_id,
             "breach": "semantic_keys_exceeded",
-            "unrequested_keys": extra_keys,
+            "unrequested_keys": unrequested,
+        }
+    # Only keys that actually had an eligible candidate. A required key with no
+    # candidate at all is absence, which the missing policy governs and check 9
+    # judges; this check is about candidates the selector saw and skipped.
+    reachable = set(eligible.values()) & required_keys
+    unselected = sorted(reachable - taken_keys - disposed_keys)
+    if unselected and not truncated:
+        return {
+            "requirement_id": requirement.requirement_id,
+            "breach": "semantic_keys_incomplete",
+            "unselected_required_keys": unselected,
         }
     return None
 
@@ -517,14 +548,7 @@ def _budget_breaches(
     """Recompute each requirement's own footprint from the finished context."""
     selected = context.selected_items()
     breaches: list[dict[str, object]] = []
-    conflict_keys: dict[str, set[str]] = {}
-    for unknown in context.unresolved_unknowns:
-        if (
-            unknown.reason_code is UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS
-            and unknown.requirement_ref
-            and unknown.semantic_key
-        ):
-            conflict_keys.setdefault(unknown.requirement_ref, set()).add(unknown.semantic_key)
+    conflict_keys = _conflict_disposed_keys(context)
 
     for requirement in requirement_plan.requirements:
         items = [item for item in selected if requirement.requirement_id in item.selected_because]

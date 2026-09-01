@@ -75,6 +75,7 @@ from l9_cognitive_runtime.models.context import (
     ContextRequirementPlan,
     ContextScopeMode,
     ContextSnapshot,
+    ContextSourceRef,
     ContextUnknown,
     CoverageMode,
     DecisionStatus,
@@ -296,19 +297,77 @@ def _expand_supersession_ref(
     return [], False
 
 
-def _reaches_itself(node: str, adjacency: dict[str, set[str]]) -> bool:
-    """True when ``node`` is reachable from itself along supersession edges."""
+def _reachable_set(node: str, adjacency: dict[str, set[str]]) -> set[str]:
+    """Every node reachable from ``node`` along supersession edges."""
     seen: set[str] = set()
     stack = list(adjacency.get(node, ()))
     while stack:
         current = stack.pop()
-        if current == node:
-            return True
         if current in seen:
             continue
         seen.add(current)
         stack.extend(adjacency.get(current, ()))
-    return False
+    return seen
+
+
+def _cycle_components(adjacency: dict[str, set[str]]) -> list[list[str]]:
+    """Mutually reachable groups: one entry per *distinct* supersession cycle.
+
+    Two unrelated cycles are two contradictions, not one. Reporting them
+    together would make each cycle's members provenance for the other, and
+    would lend an informative cycle the blocking authority of a governed one
+    that merely happened to be in the same snapshot.
+    """
+    reach = {node: _reachable_set(node, adjacency) for node in adjacency}
+    on_cycle = sorted(node for node in adjacency if node in reach[node])
+    components: list[list[str]] = []
+    assigned: set[str] = set()
+    for node in on_cycle:
+        if node in assigned:
+            continue
+        component = [other for other in on_cycle if other in reach[node] and node in reach[other]]
+        assigned.update(component)
+        components.append(component)
+    return components
+
+
+def _source_sort_key(ref: ContextSourceRef) -> tuple[str, str, str, str, str]:
+    return (
+        ref.source_id,
+        ref.source_kind,
+        ref.locator,
+        ref.immutable_coordinate or "",
+        ref.content_digest or "",
+    )
+
+
+def _causal_source_refs(items: Iterable[ContextItemIdentity]) -> list[ContextSourceRef]:
+    """Deterministic, deduplicated provenance for the claims that caused an unknown.
+
+    An unknown that names a contradiction without naming who asserted it is a
+    dead end for whoever has to resolve it. Ordering is by stable source
+    identity, never by input position, so the same contradiction yields the
+    same provenance every time (INV-CTX-024/032).
+    """
+    indexed = {_source_sort_key(item.source_ref): item.source_ref for item in items}
+    return [indexed[key] for key in sorted(indexed)]
+
+
+def _truth_tier_materiality(items: Sequence[ContextItemIdentity]) -> UnknownMateriality:
+    """Blocking only when *governed* truth is what has been put in doubt.
+
+    A contradiction among governed claims is a hole in the law the task must
+    obey, so it blocks whatever surfaced it — the requirement being optional
+    says nothing about whether the law is self-consistent. A contradiction
+    among informative or unverified claims is not: material that could never
+    have decided anything must not acquire hard-block authority merely by
+    contradicting itself (INV-CTX-012/019).
+    """
+    return (
+        UnknownMateriality.BLOCKING
+        if any(item.authority_level in GOVERNED_LEVELS for item in items)
+        else UnknownMateriality.NON_BLOCKING
+    )
 
 
 def _resolve_supersession(
@@ -325,7 +384,9 @@ def _resolve_supersession(
     """
     by_domain, by_item, domain_of = _supersession_index(members, attribute)
     proposed: set[tuple[str, str]] = set()
-    dangling: set[tuple[str, str]] = set()
+    # Keyed by (domain, unresolved ref) and carrying every claim that made the
+    # reference, so the unknown can name who asserted it.
+    dangling: dict[tuple[str, str], list[str]] = {}
 
     for item in members:
         domain = domain_of[item.item_id]
@@ -334,7 +395,7 @@ def _resolve_supersession(
                 str(ref), item, by_domain, by_item, domain_of
             )
             if not resolved:
-                dangling.add((domain, str(ref)))
+                dangling.setdefault((domain, str(ref)), []).append(item.item_id)
                 continue
             proposed.update((item.item_id, target) for target in targets)
         for ref in getattr(item, "superseded_by_refs", []):
@@ -342,7 +403,7 @@ def _resolve_supersession(
                 str(ref), item, by_domain, by_item, domain_of
             )
             if not resolved:
-                dangling.add((domain, str(ref)))
+                dangling.setdefault((domain, str(ref)), []).append(item.item_id)
                 continue
             proposed.update((target, item.item_id) for target in targets)
 
@@ -359,27 +420,38 @@ def _resolve_supersession(
     for superseder, superseded in edges:
         adjacency.setdefault(superseder, set()).add(superseded)
 
-    on_cycle = {node for node in adjacency if _reaches_itself(node, adjacency)}
+    components = _cycle_components(adjacency)
+    on_cycle = {node for component in components for node in component}
     # A claim whose own standing is unresolvable must not silently kill a claim
     # whose standing is resolvable, so cycle members supersede nothing.
     superseded_items = {
         superseded for superseder, superseded in edges if superseder not in on_cycle
     }
 
-    cycle_domains = sorted({domain_of[item_id] for item_id in on_cycle})
-    unknowns: list[ContextUnknown] = [
-        ContextUnknown(
-            semantic_key=domain,
-            reason_code=UnknownReasonCode.UNKNOWN_SUPERSESSION,
-            materiality=UnknownMateriality.BLOCKING,
-            details={
-                "context_kind": kind.value,
-                "reason": "supersession cycle",
-                "cycle_members": cycle_domains,
-            },
+    unknowns: list[ContextUnknown] = []
+    for component in components:
+        # One contradiction, reported once per identifier it touches. Every
+        # member is causal — a cycle has no innocent participant — so each
+        # unknown carries provenance for the whole component, and the whole
+        # component decides whether governed truth is what is in doubt.
+        claims = [by_item[item_id] for item_id in component]
+        domains = sorted({domain_of[item_id] for item_id in component})
+        source_refs = _causal_source_refs(claims)
+        materiality = _truth_tier_materiality(claims)
+        unknowns.extend(
+            ContextUnknown(
+                semantic_key=domain,
+                reason_code=UnknownReasonCode.UNKNOWN_SUPERSESSION,
+                materiality=materiality,
+                details={
+                    "context_kind": kind.value,
+                    "reason": "supersession cycle",
+                    "cycle_members": domains,
+                },
+                source_refs=source_refs,
+            )
+            for domain in domains
         )
-        for domain in cycle_domains
-    ]
     unknowns.extend(
         ContextUnknown(
             semantic_key=domain_of[superseder],
@@ -392,6 +464,7 @@ def _resolve_supersession(
                 "superseded": domain_of[superseded],
                 "superseded_authority": by_item[superseded].authority_level.value,
             },
+            source_refs=_causal_source_refs([by_item[superseder], by_item[superseded]]),
         )
         for superseder, superseded in sorted(refused)
     )
@@ -401,8 +474,9 @@ def _resolve_supersession(
             reason_code=UnknownReasonCode.DANGLING_SUPERSESSION,
             materiality=UnknownMateriality.NON_BLOCKING,
             details={"context_kind": kind.value, "unresolved_ref": ref},
+            source_refs=_causal_source_refs(by_item[item_id] for item_id in referrers),
         )
-        for domain, ref in sorted(dangling)
+        for (domain, ref), referrers in sorted(dangling.items())
     )
 
     survivors: list[ContextItemIdentity] = []
@@ -909,7 +983,16 @@ class ContextCompiler:
                 path=requirement.requirement_id,
                 details={"reason_code": reason.value, **details},
             )
-        if requirement.missing_policy is MissingPolicy.OPTIONAL:
+        if (
+            requirement.missing_policy is MissingPolicy.OPTIONAL
+            and reason is not UnknownReasonCode.BUDGET_INSUFFICIENT
+        ):
+            # OPTIONAL says taking *nothing* is legal when nothing was there to
+            # take. It says nothing about truncation: a budget that stopped the
+            # selector short of known eligible material is a fact about this
+            # compile, and it stays recorded so closure can tell a legal short
+            # selection from a selector that silently dropped candidates
+            # (INV-CTX-023/026).
             return []
         return [
             ContextUnknown(
@@ -926,12 +1009,17 @@ def _materiality_for(requirement: ContextRequirement) -> UnknownMateriality:
 
 
 def _unknown_status_decisions(selected: Sequence[ContextItemIdentity]) -> list[ContextUnknown]:
-    """A decision whose status is itself unknown stays visible (INV-CTX-016)."""
+    """A decision whose status is itself unknown stays visible (INV-CTX-016).
+
+    Visible always; *blocking* only when the decision is governed. An
+    unverified note whose own status nobody established must not halt the task
+    on the strength of its own uncertainty (INV-CTX-019).
+    """
     return [
         ContextUnknown(
             semantic_key=item.semantic_key,
             reason_code=UnknownReasonCode.UNKNOWN_SUPERSESSION,
-            materiality=UnknownMateriality.BLOCKING,
+            materiality=_truth_tier_materiality([item]),
             details={"decision_id": item.decision_id, "reason": "decision status unknown"},
             source_refs=[item.source_ref],
         )

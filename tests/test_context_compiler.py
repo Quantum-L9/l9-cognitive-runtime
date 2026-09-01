@@ -24,7 +24,9 @@ from l9_cognitive_runtime.compiler.context_requirements import ContextRequiremen
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelContextNeed
 from l9_cognitive_runtime.compiler.task_context import (
     AUTHORITY_PROVEN_NEGATIVE,
+    ContextCompiler,
     SnapshotResolution,
+    _unknown_status_decisions,
     authority_disposition,
     matches_requirement,
     resolve_snapshot,
@@ -107,10 +109,11 @@ def decision(
     status: DecisionStatus = DecisionStatus.ACTIVE,
     supersedes: list[str] | None = None,
     superseded_by: list[str] | None = None,
+    authority: AuthorityLevel = AuthorityLevel.GOVERNED_AUTHORITATIVE,
 ) -> PriorDecision:
     return PriorDecision(
         semantic_key=decision_id,
-        authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+        authority_level=authority,
         source_ref=source(decision_id),
         scope_mode=ContextScopeMode.GLOBAL,
         decision_id=decision_id,
@@ -1312,3 +1315,299 @@ def test_applicability_is_exactly_what_the_claim_excludes_as_scope() -> None:
     item = law("LAW_P", scope_refs=["src/here"])
     assert set(item.applicability_payload()) == set(APPLICABILITY_FIELDS)
     assert not set(item.claim_payload()) & set(APPLICABILITY_FIELDS)
+
+
+# ---------------------------------------------------------------------------
+# R20: OPTIONAL governs absence, never selector correctness.
+#
+# `missing_policy=OPTIONAL` says taking nothing is legal when nothing was
+# eligible. Treating it as a coverage waiver would exempt from proof exactly
+# the requirements most of the compiler's own plan uses.
+# ---------------------------------------------------------------------------
+
+
+def _optional(**overrides: Any) -> ContextRequirement:
+    return _requirement(missing_policy=MissingPolicy.OPTIONAL, **overrides)
+
+
+def test_optional_does_not_waive_an_all_eligible_item_the_selector_skipped() -> None:
+    requirement = _optional()
+    assert requirement.missing_policy is MissingPolicy.OPTIONAL
+    kept, skipped = law("LAW_1"), law("LAW_2")
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=_context(laws=[_selected(kept, requirement)]),
+            requirement_plan=_plan([requirement]),
+            resolution=SnapshotResolution(candidates=(kept, skipped)),
+            kernels=[],
+        )
+
+
+def test_optional_still_permits_taking_nothing_when_nothing_was_eligible() -> None:
+    """The discriminator: absence is exactly what OPTIONAL does waive."""
+    requirement = _optional()
+    report = ContextClosureValidator().validate(
+        context=_context(laws=[]),
+        requirement_plan=_plan([requirement]),
+        resolution=SnapshotResolution(),
+        kernels=[],
+    )
+    assert report.passed
+
+
+def test_optional_does_not_waive_a_minimum_the_selector_fell_short_of() -> None:
+    requirement = _optional(coverage_mode=CoverageMode.MINIMUM, min_items=2)
+    first, second = law("LAW_1"), law("LAW_2")
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=_context(laws=[_selected(first, requirement)]),
+            requirement_plan=_plan([requirement]),
+            resolution=SnapshotResolution(candidates=(first, second)),
+            kernels=[],
+        )
+
+
+def _keyed(**overrides: Any) -> ContextRequirement:
+    return _requirement(
+        coverage_mode=CoverageMode.SEMANTIC_KEYS,
+        required_semantic_keys=["LAW_1", "LAW_2"],
+        min_items=2,
+        missing_policy=MissingPolicy.OPTIONAL,
+        **overrides,
+    )
+
+
+def test_optional_does_not_waive_a_required_key_that_had_an_eligible_candidate() -> None:
+    requirement = _keyed()
+    first, second = law("LAW_1"), law("LAW_2")
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=_context(laws=[_selected(first, requirement)]),
+            requirement_plan=_plan([requirement]),
+            resolution=SnapshotResolution(candidates=(first, second)),
+            kernels=[],
+        )
+
+
+def test_a_required_key_with_no_eligible_candidate_is_absence_not_omission() -> None:
+    """The discriminator: this check judges omission, not absence.
+
+    A required key nothing could have satisfied is the missing policy's
+    business, not the selector's.
+    """
+    requirement = _keyed()
+    first = law("LAW_1")
+    report = ContextClosureValidator().validate(
+        context=_context(laws=[_selected(first, requirement)]),
+        requirement_plan=_plan([requirement]),
+        resolution=SnapshotResolution(candidates=(first,)),
+        kernels=[],
+    )
+    assert report.passed
+
+
+def test_a_recorded_budget_stop_is_what_legalises_under_coverage() -> None:
+    requirement = _optional()
+    kept, skipped = law("LAW_1"), law("LAW_2")
+    truncation = ContextUnknown(
+        requirement_ref=requirement.requirement_id,
+        reason_code=UnknownReasonCode.BUDGET_INSUFFICIENT,
+        materiality=UnknownMateriality.NON_BLOCKING,
+        details={"context_kind": "applicable_law"},
+    )
+    report = ContextClosureValidator().validate(
+        context=_context(laws=[_selected(kept, requirement)], unknowns=[truncation]),
+        requirement_plan=_plan([requirement]),
+        resolution=SnapshotResolution(candidates=(kept, skipped)),
+        kernels=[],
+    )
+    assert report.passed
+
+
+def test_an_optional_requirement_records_its_budget_stop(valid_pack: Path) -> None:
+    """The compiler must emit the record closure relies on.
+
+    Without it the waiver above is unreachable and a legally truncated optional
+    requirement would read as a selector defect.
+    """
+    requirement = _optional(max_items=1)
+    unknowns = ContextCompiler._dispose_unsatisfied(
+        requirement,
+        budget_blocked=True,
+        selected_keys={"LAW_1"},
+        disposed_keys=set(),
+    )
+    assert [unknown.reason_code for unknown in unknowns] == [UnknownReasonCode.BUDGET_INSUFFICIENT]
+
+
+def test_an_optional_requirement_still_records_no_missing_context_unknown() -> None:
+    """The discriminator: OPTIONAL keeps waiving the absence case it governs."""
+    assert (
+        ContextCompiler._dispose_unsatisfied(
+            _optional(),
+            budget_blocked=False,
+            selected_keys=set(),
+            disposed_keys=set(),
+        )
+        == []
+    )
+
+
+# ---------------------------------------------------------------------------
+# R21: a supersession-derived unknown names who caused it.
+# ---------------------------------------------------------------------------
+
+
+def _cycle_unknowns(resolution: SnapshotResolution) -> list[ContextUnknown]:
+    return [
+        unknown
+        for unknown in supersession_unknowns(resolution)
+        if unknown.details.get("reason") == "supersession cycle"
+    ]
+
+
+def test_a_blocking_cycle_carries_provenance_for_every_causal_member() -> None:
+    resolution = SnapshotResolution(
+        candidates=(
+            law("LAW_A", supersedes=["LAW_B"]),
+            law("LAW_B", supersedes=["LAW_C"]),
+            law("LAW_C", supersedes=["LAW_A"]),
+        )
+    )
+    cycles = _cycle_unknowns(resolution)
+    assert {unknown.semantic_key for unknown in cycles} == {"LAW_A", "LAW_B", "LAW_C"}
+    # Every member is causal — a cycle has no innocent participant — so each
+    # report names all three, not only the identifier it is keyed by.
+    for unknown in cycles:
+        assert {ref.source_id for ref in unknown.source_refs} == {"LAW_A", "LAW_B", "LAW_C"}
+
+
+def test_cycle_provenance_is_deterministic_under_input_reordering() -> None:
+    members = [
+        law("LAW_A", supersedes=["LAW_B"]),
+        law("LAW_B", supersedes=["LAW_A"]),
+    ]
+    forward = _cycle_unknowns(SnapshotResolution(candidates=tuple(members)))
+    inverse = _cycle_unknowns(SnapshotResolution(candidates=tuple(reversed(members))))
+    assert [[ref.to_canonical_dict() for ref in unknown.source_refs] for unknown in forward] == [
+        [ref.to_canonical_dict() for ref in unknown.source_refs] for unknown in inverse
+    ]
+    assert [unknown.unknown_id for unknown in forward] == [
+        unknown.unknown_id for unknown in inverse
+    ]
+
+
+def test_two_unrelated_cycles_do_not_become_each_other_s_provenance() -> None:
+    """The discriminator: distinct contradictions stay distinct."""
+    resolution = SnapshotResolution(
+        candidates=(
+            law("LAW_A", supersedes=["LAW_B"]),
+            law("LAW_B", supersedes=["LAW_A"]),
+            law("LAW_Y", supersedes=["LAW_Z"]),
+            law("LAW_Z", supersedes=["LAW_Y"]),
+        )
+    )
+    by_key = {unknown.semantic_key: unknown for unknown in _cycle_unknowns(resolution)}
+    assert set(by_key) == {"LAW_A", "LAW_B", "LAW_Y", "LAW_Z"}
+    assert {ref.source_id for ref in by_key["LAW_A"].source_refs} == {"LAW_A", "LAW_B"}
+    assert {ref.source_id for ref in by_key["LAW_Y"].source_refs} == {"LAW_Y", "LAW_Z"}
+    assert by_key["LAW_A"].details["cycle_members"] == ["LAW_A", "LAW_B"]
+
+
+def test_a_refused_supersession_names_both_claims() -> None:
+    resolution = SnapshotResolution(
+        candidates=(
+            law("LAW_1"),
+            law("LAW_2", supersedes=["LAW_1"], authority=AuthorityLevel.UNVERIFIED),
+        )
+    )
+    refused = [
+        unknown
+        for unknown in supersession_unknowns(resolution)
+        if str(unknown.details.get("reason", "")).startswith("weaker authority")
+    ]
+    assert [{ref.source_id for ref in unknown.source_refs} for unknown in refused] == [
+        {"LAW_1", "LAW_2"}
+    ]
+
+
+def test_a_dangling_reference_names_the_claim_that_made_it() -> None:
+    resolution = SnapshotResolution(candidates=(law("LAW_1", supersedes=["LAW_GHOST"]),))
+    dangling = [
+        unknown
+        for unknown in supersession_unknowns(resolution)
+        if unknown.reason_code is UnknownReasonCode.DANGLING_SUPERSESSION
+    ]
+    assert [{ref.source_id for ref in unknown.source_refs} for unknown in dangling] == [{"LAW_1"}]
+
+
+# ---------------------------------------------------------------------------
+# R22: blocking follows the truth tier, not the requirement's optionality.
+# ---------------------------------------------------------------------------
+
+
+def _materiality_of_cycle(resolution: SnapshotResolution) -> set[UnknownMateriality]:
+    return {unknown.materiality for unknown in _cycle_unknowns(resolution)}
+
+
+def test_a_governed_cycle_blocks() -> None:
+    resolution = SnapshotResolution(
+        candidates=(
+            law("LAW_A", supersedes=["LAW_B"]),
+            law("LAW_B", supersedes=["LAW_A"]),
+        )
+    )
+    assert _materiality_of_cycle(resolution) == {UnknownMateriality.BLOCKING}
+
+
+def test_an_unverified_cycle_does_not_acquire_blocking_authority() -> None:
+    """The discriminator: contradicting itself is not a route to hard-block."""
+    resolution = SnapshotResolution(
+        candidates=(
+            law("LAW_A", supersedes=["LAW_B"], authority=AuthorityLevel.UNVERIFIED),
+            law("LAW_B", supersedes=["LAW_A"], authority=AuthorityLevel.UNVERIFIED),
+        )
+    )
+    assert _materiality_of_cycle(resolution) == {UnknownMateriality.NON_BLOCKING}
+
+
+def test_a_governed_cycle_blocks_even_where_the_requirement_is_optional(
+    valid_pack: Path,
+) -> None:
+    """Optionality of a requirement says nothing about the law's consistency."""
+    bundle = _compile(
+        valid_pack,
+        NEUTRAL_MISSION,
+        ContextSnapshot(applicable_law=_cycle("LAW_ON", ["src/greeting"])),
+        target_refs=["src/greeting"],
+    )
+    cycles = [
+        unknown
+        for unknown in bundle.task_context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.UNKNOWN_SUPERSESSION
+    ]
+    assert cycles
+    # Bound to no requirement at all, so no requirement's `required` flag could
+    # have set this materiality — the truth tier of the claims did.
+    assert all(unknown.requirement_ref is None for unknown in cycles)
+    blocking = {
+        unknown.unknown_id
+        for unknown in cycles
+        if unknown.materiality is UnknownMateriality.BLOCKING
+    }
+    assert blocking
+    obligations = {obligation.obligation_id for obligation in bundle.execution.obligations}
+    assert {f"OBL.EPISTEMIC.CONTEXT.{unknown_id}" for unknown_id in blocking} <= obligations
+
+
+def test_an_unverified_prior_decision_of_unknown_status_does_not_block() -> None:
+    unverified = decision(
+        "ADR_U", status=DecisionStatus.UNKNOWN, authority=AuthorityLevel.UNVERIFIED
+    )
+    governed = decision("ADR_G", status=DecisionStatus.UNKNOWN)
+    materiality = {
+        unknown.semantic_key: unknown.materiality
+        for unknown in _unknown_status_decisions([unverified, governed])
+    }
+    assert materiality["ADR_G"] is UnknownMateriality.BLOCKING
+    assert materiality["ADR_U"] is UnknownMateriality.NON_BLOCKING

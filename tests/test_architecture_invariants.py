@@ -125,6 +125,21 @@ def instantiated_stage_owners(path: Path) -> set[str]:
     return found
 
 
+def attribute_references(path: Path, name: str) -> list[int]:
+    """Line numbers where this file names ``.<name>`` on any object.
+
+    Matched on the attribute rather than the receiver's type, because a
+    resolution passed in as a parameter has no visible type at the call site —
+    and it is precisely the parameter case that would slip past a guard keyed
+    on a local variable's name.
+    """
+    return sorted(
+        node.lineno
+        for node in ast.walk(_tree(path))
+        if isinstance(node, ast.Attribute) and node.attr == name
+    )
+
+
 # --------------------------------------------------------------------------
 # INV-CTX-033/034/035: no acquisition, no observability, no world state.
 # --------------------------------------------------------------------------
@@ -243,6 +258,47 @@ def test_the_compatibility_surface_owns_no_semantics() -> None:
 def test_the_service_delegates_to_that_one_pipeline() -> None:
     service = (PACKAGE / "service.py").read_text(encoding="utf-8")
     assert "CompilePipeline().compile(" in service
+
+
+# --------------------------------------------------------------------------
+# INV-CTX-012: whole-snapshot resolution is a diagnostic, never a projection.
+# --------------------------------------------------------------------------
+
+
+def test_no_production_module_resolves_the_whole_snapshot() -> None:
+    """``SnapshotResolution.resolve_all()`` is diagnostics-only.
+
+    Resolution is destructive, so a projection that resolved every candidate
+    would let claims it is not eligible to consume eliminate ones it needs, and
+    would charge it with contradictions among claims it may never look at. That
+    is the exact defect the deferred-resolution repair removed, and nothing at
+    runtime would announce its return: a module that called ``resolve_all()``
+    would compile, pass, and be wrong in the same way as before.
+
+    The method stays public because the supersession rule itself is worth
+    exercising independently of any requirement — tests do that. Production
+    code has no such need, so its use anywhere under the package is the drift.
+    """
+    offenders = {
+        path.relative_to(ROOT).as_posix(): lines
+        for path in PACKAGE.rglob("*.py")
+        if (lines := attribute_references(path, "resolve_all"))
+    }
+    assert offenders == {}
+
+
+def test_that_guard_detects_a_resolve_all_call(tmp_path: Path) -> None:
+    """The discriminator: an empty offender set means absence, not a blind check.
+
+    The planted call is on a *parameter*, which is the shape a real regression
+    would take and the one a guard keyed on a known receiver would miss.
+    """
+    planted = tmp_path / "planted.py"
+    planted.write_text(
+        "def compile_context(resolution):\n    return resolution.resolve_all().groups\n",
+        encoding="utf-8",
+    )
+    assert attribute_references(planted, "resolve_all") == [2]
     assert instantiated_stage_owners(PACKAGE / "service.py") == set()
 
 

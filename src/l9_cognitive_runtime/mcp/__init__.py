@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 
 from l9_cognitive_runtime import __version__
 from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore
@@ -120,10 +121,22 @@ def build_server(pack_root: Path) -> MCPServer:
         task_type: str = DEFAULT_TASK_TYPE,
         context_snapshot: dict[str, Any] | None = None,
     ) -> Any:
-        return service.compile_runtime(
-            CompileRequest(mission=mission, task_type=task_type, pack_root=root),
-            context_snapshot=parse_context_snapshot(context_snapshot),
-        )
+        # ``ModelValidationError`` is this runtime's typed *anticipated* failure:
+        # the caller supplied something the contract refuses. The SDK classifies
+        # any exception that is not ``ToolError`` as a server crash, replacing the
+        # message with "Error executing tool <name>" and logging a traceback — so
+        # without this translation a malformed ``context_snapshot`` still fails
+        # closed (INV-CTX-043) but stops saying *what* was wrong. Re-raising as
+        # ``ToolError`` restores the diagnosis to the caller and keeps genuine
+        # bugs classified as crashes, which is stricter than the 2.0.0 surface
+        # that passed every exception's text through.
+        try:
+            return service.compile_runtime(
+                CompileRequest(mission=mission, task_type=task_type, pack_root=root),
+                context_snapshot=parse_context_snapshot(context_snapshot),
+            )
+        except ModelValidationError as exc:
+            raise ToolError(str(exc)) from exc
 
     def _require_bound_pack(requested: str) -> None:
         if requested != pack_ref:

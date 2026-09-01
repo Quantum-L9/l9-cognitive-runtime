@@ -12,6 +12,7 @@ Composing ``ObjectiveDeriver`` and ``ActivationPlanner`` here would be a second
 semantic composition site, and it would also route with no governed discovery
 plane at all — the exact gap a raw caller hint used to slip through.
 """
+
 from __future__ import annotations
 
 import argparse

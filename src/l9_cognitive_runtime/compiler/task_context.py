@@ -447,6 +447,10 @@ def _resolve_supersession(
                     "context_kind": kind.value,
                     "reason": "supersession cycle",
                     "cycle_members": domains,
+                    # Instance ids belong in identity so two SCCs over the
+                    # same domain identifiers cannot collapse (INV-CTX-024).
+                    # source_refs stay provenance and stay out of the recipe.
+                    "cycle_item_ids": sorted(component),
                 },
                 source_refs=source_refs,
             )
@@ -738,6 +742,30 @@ def _candidate_sort_key(item: ContextItemIdentity) -> tuple[int, int, str, str]:
     )
 
 
+def _budget_stop_record(
+    *,
+    bound: str,
+    blocked: ContextItemIdentity,
+    observed_count: int,
+    observed_bytes: int,
+    limit: int,
+) -> dict[str, Any]:
+    """Deterministic witness that a named bound blocked the next candidate.
+
+    Closure recomputes the eligible frontier and proves this record, so a
+    forged ``BUDGET_INSUFFICIENT`` unknown cannot legalise under-coverage
+    (INV-CTX-025/026).
+    """
+    return {
+        "bound": bound,
+        "blocked_item_id": blocked.item_id,
+        "observed_count": observed_count,
+        "observed_bytes": observed_bytes,
+        "candidate_cost": canonical_cost(blocked),
+        "limit": limit,
+    }
+
+
 class _Selection:
     """Mutable selection state shared across requirements in one compile."""
 
@@ -890,7 +918,7 @@ class ContextCompiler:
         selected_keys: set[str] = set()
         selected_count = 0
         requirement_bytes = 0
-        budget_blocked = False
+        budget_stop: dict[str, Any] | None = None
 
         for item in eligible:
             if (
@@ -905,22 +933,48 @@ class ContextCompiler:
                 continue
             cost = canonical_cost(item)
             if requirement.max_items is not None and selected_count + 1 > requirement.max_items:
-                budget_blocked = True
+                budget_stop = _budget_stop_record(
+                    bound="requirement_max_items",
+                    blocked=item,
+                    observed_count=selected_count,
+                    observed_bytes=requirement_bytes,
+                    limit=requirement.max_items,
+                )
                 break
             if (
                 requirement.max_bytes is not None
                 and requirement_bytes + cost > requirement.max_bytes
             ):
-                budget_blocked = True
+                budget_stop = _budget_stop_record(
+                    bound="requirement_max_bytes",
+                    blocked=item,
+                    observed_count=selected_count,
+                    observed_bytes=requirement_bytes,
+                    limit=requirement.max_bytes,
+                )
                 break
             if selection.would_exceed_global(item, cost):
-                budget_blocked = True
+                budget = selection.plan.global_budget
+                if len(selection.by_item) + 1 > budget.max_total_items:
+                    bound = "global_max_items"
+                    limit = budget.max_total_items
+                else:
+                    bound = "global_max_bytes"
+                    limit = budget.max_total_bytes
+                budget_stop = _budget_stop_record(
+                    bound=bound,
+                    blocked=item,
+                    observed_count=len(selection.by_item),
+                    observed_bytes=selection.total_bytes,
+                    limit=limit,
+                )
                 break
             selection.admit(item, cost, requirement.requirement_id)
             selected_keys.add(item.semantic_key)
             selected_count += 1
             requirement_bytes += cost
 
+        budget_blocked = budget_stop is not None
         satisfied = self._satisfied(
             requirement, selected_count, selected_keys, disposed_keys, budget_blocked
         )
@@ -929,6 +983,7 @@ class ContextCompiler:
                 self._dispose_unsatisfied(
                     requirement,
                     budget_blocked=budget_blocked,
+                    budget_stop=budget_stop,
                     selected_keys=selected_keys,
                     disposed_keys=disposed_keys,
                 )
@@ -961,7 +1016,13 @@ class ContextCompiler:
         budget_blocked: bool,
         selected_keys: set[str],
         disposed_keys: set[str],
+        budget_stop: dict[str, Any] | None = None,
     ) -> list[ContextUnknown]:
+        if budget_blocked and budget_stop is None:
+            raise InvalidValueError(
+                "budget stop recorded without a deterministic witness",
+                path=requirement.requirement_id,
+            )
         reason = (
             UnknownReasonCode.BUDGET_INSUFFICIENT
             if budget_blocked
@@ -973,6 +1034,8 @@ class ContextCompiler:
             "min_items": requirement.min_items,
             "selected": len(selected_keys),
         }
+        if budget_stop is not None:
+            details.update(budget_stop)
         if requirement.coverage_mode is CoverageMode.SEMANTIC_KEYS:
             details["missing_semantic_keys"] = sorted(
                 set(requirement.required_semantic_keys) - selected_keys - disposed_keys

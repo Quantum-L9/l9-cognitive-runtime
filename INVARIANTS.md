@@ -282,6 +282,8 @@ Every required `ContextRequirement` MUST define one missing-data policy:
 
 It follows that budget truncation MUST be recorded under every policy, `OPTIONAL` included. A budget stop is a fact about this compile rather than a statement about absence, and it is the only thing that legalises short coverage — so a policy that swallowed the record would make a legally truncated requirement indistinguishable from a selector that silently dropped candidates.
 
+A recorded budget stop is not itself proof. The record MUST carry a deterministic witness naming the affected requirement, the blocked candidate identity, the bound that stopped admission (`requirement_max_items`, `requirement_max_bytes`, `global_max_items`, or `global_max_bytes`), the observed count and bytes before the attempted admission, the candidate's canonical cost, and the configured limit. Closure MUST recompute the eligible deterministic selection frontier and prove that admitting the blocked next candidate would actually violate that bound. A bare `BUDGET_INSUFFICIENT` reason code MUST NOT waive under-coverage.
+
 The compiler MUST NOT decide missing-data behavior ad hoc after selection.
 
 ### INV-CTX-024: Unknowns are conserved
@@ -292,7 +294,9 @@ Missing information MUST NOT be replaced by semantics-changing defaults.
 
 An unknown derived from a contradiction MUST carry the provenance of the claims that caused it, deterministically ordered by stable source identity and never by input position. A blocking supersession cycle MUST carry a source reference for **every** causal member: a cycle has no innocent participant, and an unknown that names a contradiction without naming who asserted it is a dead end for whoever has to resolve it. Distinct cycles are distinct contradictions and MUST be reported separately — merging them would make each cycle's members provenance for the other.
 
-Provenance MUST NOT participate in unknown identity, so adding it never moves a digest.
+Cycle unknown identity MUST bind to the causal claim instances of that component (`cycle_item_ids` in canonical details), not only to domain identifiers. Two mutually-reachable components that share domain IDs — a governed `LAW_A ↔ LAW_B` and an informative `LAW_A ↔ LAW_B` — MUST produce distinct `unknown_id`s. Deduplicating by identity MUST NOT erase a governed blocker in favor of an informative component that happens to name the same domains.
+
+Provenance MUST NOT participate in unknown identity, so adding it never moves a digest. `cycle_item_ids` are identity, not provenance; `source_refs` remain provenance only. `materiality` stays outside the identity recipe.
 
 ### INV-CTX-025: Context closure precedes execution semantics, and every check proves its name
 
@@ -305,7 +309,7 @@ A named check MUST prove the property it names. Specifically:
 - **conflict disposition** MUST hold over every *eligible* conflicting governed semantic key a requirement would have matched, not merely over keys that also happen to appear in the selected set. A conflict that disappears entirely is the case the check exists to catch;
 - **budget compliance** MUST recompute each requirement's own selected item count and canonical byte cost from the finished context and verify that requirement's `max_items`, `max_bytes`, `min_items`, and coverage mode, **and independently** verify the global unique-item budget. A per-requirement breach that fits inside the global budget MUST be detected;
 - **capability and authority gaps** MUST prove that every compiler-derived required capability and required authority has exactly one explicit disposition — available/granted, unavailable/limited, or explicit unknown. An authority gap MUST be keyed by the requirement's full semantic key, so a gap over one subject or action scope is not closed by a record about another;
-- **coverage modes** MUST be proven against an eligible set the validator recomputes itself from the candidates, using the compiler's own matching rule, rather than against the count the selector happened to reach. `all_eligible` MUST have selected every eligible item, `minimum` MUST have taken the minimum rather than merely at least `min_items`, `semantic_keys` MUST have taken no key it did not require, and nothing ineligible may appear as selected. Under-coverage is legal only where a budget stop was **recorded** for that requirement; an `OPTIONAL` missing policy is not a waiver here (INV-CTX-023). For `semantic_keys`, only a required key that actually had an eligible candidate counts as omission — a key nothing could have satisfied is absence, which the missing policy governs. A selection bug that drops one eligible item while leaving enough behind to clear `min_items` is exactly what a budget-only check cannot see.
+- **coverage modes** MUST be proven against an eligible set the validator recomputes itself from the candidates, using the compiler's own matching rule, rather than against the count the selector happened to reach. `all_eligible` MUST have selected every eligible item, `minimum` MUST have taken the minimum rather than merely at least `min_items`, `semantic_keys` MUST have taken no key it did not require, and nothing ineligible may appear as selected. Under-coverage is legal only where a budget stop was **independently proven** for that requirement (INV-CTX-023/026); an `OPTIONAL` missing policy is not a waiver here, and a bare `BUDGET_INSUFFICIENT` receipt is not proof. For `semantic_keys`, only a required key that actually had an eligible candidate counts as omission — a key nothing could have satisfied is absence, which the missing policy governs. A selection bug that drops one eligible item while leaving enough behind to clear `min_items` is exactly what a budget-only check cannot see.
 
 Closure MUST NOT be handed an already-reduced resolution and treat it as evidence: trusting the step it exists to check makes the check a restatement.
 
@@ -316,6 +320,8 @@ Closure MUST enforce exact executed-check coverage the same way runtime liveness
 The requirement plan MUST define a global item and byte budget for the union of unique selected snapshot items. Each requirement MUST also define explicit coverage mode, minimum coverage (`min_items`), and at least one finite per-requirement bound across `max_items` or `max_bytes`. `max_items`, when present, MUST be at least `min_items`.
 
 Byte cost MUST be computed from canonical UTF-8 JSON bytes of the candidate's canonical semantic representation. `minimum` coverage stops at sufficient eligible material, `all_eligible` requires every eligible non-conflicting semantic key, and `semantic_keys` requires every declared key to be selected or legally disposed. Selection order and tie-breaking MUST be deterministic. A reused item counts once against the global budget. Required material MUST never be silently truncated. Per-requirement or global budget exhaustion follows the affected requirement's missing-data policy in canonical priority order.
+
+When a bound stops admission, the compiler MUST emit the witness INV-CTX-023 requires. Closure MUST treat that witness as a claim to be proven, not as evidence: recomputing the eligible frontier and showing that the next deterministic candidate would violate the named bound is what legalises under-coverage. Reordering snapshot input MUST NOT change the witness or the resulting semantic identity.
 
 ### INV-CTX-027: Compiled-context digest is acyclic
 

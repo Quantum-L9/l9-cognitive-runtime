@@ -22,7 +22,10 @@ verifies almost nothing:
   ``all_eligible`` coverage: a selection bug that silently drops one eligible
   item while leaving enough behind to clear ``min_items`` passes it. Coverage
   modes are therefore proven against an independently recomputed eligible set,
-  not against the count the selector happened to reach.
+  not against the count the selector happened to reach. A bare
+  ``BUDGET_INSUFFICIENT`` receipt is not a waiver either: under-coverage is
+  legal only when a deterministic witness proves the next eligible candidate
+  would actually violate the recorded bound.
 
 Each is therefore recomputed from the finished artifact.
 
@@ -34,11 +37,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from l9_cognitive_runtime.compiler.kernels import KernelBinding
 from l9_cognitive_runtime.compiler.task_context import (
     ResolvedCandidates,
     SnapshotResolution,
+    _candidate_sort_key,
     authority_disposition,
     capability_disposition,
     matches_requirement,
@@ -432,6 +437,120 @@ def _conflict_disposed_keys(context: CompiledTaskContext) -> dict[str, set[str]]
     return keys
 
 
+_BUDGET_WITNESS_KEYS = (
+    "bound",
+    "blocked_item_id",
+    "observed_count",
+    "observed_bytes",
+    "candidate_cost",
+    "limit",
+)
+
+
+def _eligible_frontier(
+    requirement: ContextRequirement,
+    view: ResolvedCandidates,
+) -> list[ContextItemIdentity]:
+    """The deterministic candidates the selector was entitled to consider."""
+    items = [item for group in view.groups.values() if not group.conflict for item in group.items]
+    items.sort(key=_candidate_sort_key)
+    frontier: list[ContextItemIdentity] = []
+    for item in items:
+        if (
+            requirement.coverage_mode is CoverageMode.MINIMUM
+            and len(frontier) >= requirement.min_items
+        ):
+            break
+        if (
+            requirement.coverage_mode is CoverageMode.SEMANTIC_KEYS
+            and item.semantic_key not in requirement.required_semantic_keys
+        ):
+            continue
+        frontier.append(item)
+    return frontier
+
+
+def _budget_witness(unknown: Any) -> dict[str, Any] | None:
+    details = unknown.details
+    if not all(key in details for key in _BUDGET_WITNESS_KEYS):
+        return None
+    return {key: details[key] for key in _BUDGET_WITNESS_KEYS}
+
+
+def _budget_stop_independently_proven(
+    context: CompiledTaskContext,
+    requirement: ContextRequirement,
+    view: ResolvedCandidates,
+    requirement_plan: ContextRequirementPlan,
+) -> bool:
+    """True only when a budget-stop witness independently verifies.
+
+    A bare ``BUDGET_INSUFFICIENT`` reason code is not a waiver. Closure
+    recomputes the eligible frontier and proves that admitting the blocked
+    next candidate would violate the recorded bound (INV-CTX-025/026).
+    """
+    unknown = next(
+        (
+            item
+            for item in context.unresolved_unknowns
+            if item.reason_code is UnknownReasonCode.BUDGET_INSUFFICIENT
+            and item.requirement_ref == requirement.requirement_id
+        ),
+        None,
+    )
+    if unknown is None:
+        return False
+    witness = _budget_witness(unknown)
+    if witness is None:
+        return False
+    taken_ids = {
+        item.item_id
+        for item in context.selected_items()
+        if requirement.requirement_id in item.selected_because
+    }
+    frontier = _eligible_frontier(requirement, view)
+    admitted = [item for item in frontier if item.item_id in taken_ids]
+    blocked = next((item for item in frontier if item.item_id not in taken_ids), None)
+    if blocked is None or blocked.item_id != witness["blocked_item_id"]:
+        return False
+    if canonical_cost(blocked) != witness["candidate_cost"]:
+        return False
+    bound = witness["bound"]
+    if bound == "requirement_max_items":
+        return (
+            requirement.max_items is not None
+            and witness["limit"] == requirement.max_items
+            and witness["observed_count"] == len(admitted)
+            and len(admitted) + 1 > requirement.max_items
+        )
+    if bound == "requirement_max_bytes":
+        observed = sum(canonical_cost(item) for item in admitted)
+        return (
+            requirement.max_bytes is not None
+            and witness["limit"] == requirement.max_bytes
+            and witness["observed_bytes"] == observed
+            and observed + canonical_cost(blocked) > requirement.max_bytes
+        )
+    unique = {item.item_id: item for item in context.selected_items()}
+    if blocked.item_id in unique:
+        return False
+    budget = requirement_plan.global_budget
+    if bound == "global_max_items":
+        return (
+            witness["limit"] == budget.max_total_items
+            and witness["observed_count"] == len(unique)
+            and len(unique) + 1 > budget.max_total_items
+        )
+    if bound == "global_max_bytes":
+        observed = sum(canonical_cost(item) for item in unique.values())
+        return (
+            witness["limit"] == budget.max_total_bytes
+            and witness["observed_bytes"] == observed
+            and observed + canonical_cost(blocked) > budget.max_total_bytes
+        )
+    return False
+
+
 def _coverage_breaches(
     context: CompiledTaskContext,
     requirement_plan: ContextRequirementPlan,
@@ -439,22 +558,20 @@ def _coverage_breaches(
 ) -> list[dict[str, object]]:
     """Prove every requirement's coverage mode against its own eligible set."""
     selected = context.selected_items()
-    truncated = {
-        unknown.requirement_ref
-        for unknown in context.unresolved_unknowns
-        if unknown.reason_code is UnknownReasonCode.BUDGET_INSUFFICIENT and unknown.requirement_ref
-    }
     disposed = _conflict_disposed_keys(context)
     breaches: list[dict[str, object]] = []
     for requirement in requirement_plan.requirements:
         taken = [item for item in selected if requirement.requirement_id in item.selected_because]
+        view = views[requirement.requirement_id]
         breach = _coverage_breach(
             requirement,
-            eligible=_eligible_items(views[requirement.requirement_id]),
+            eligible=_eligible_items(view),
             taken={item.item_id for item in taken},
             taken_keys={item.semantic_key for item in taken},
             disposed_keys=disposed.get(requirement.requirement_id, set()),
-            truncated=requirement.requirement_id in truncated,
+            truncated=_budget_stop_independently_proven(
+                context, requirement, view, requirement_plan
+            ),
         )
         if breach is not None:
             breaches.append(breach)
@@ -472,8 +589,8 @@ def _coverage_breach(
 ) -> dict[str, object] | None:
     """One requirement's coverage mode, judged against its own eligible set.
 
-    Under-coverage is legal only when a budget stop was **recorded** for this
-    requirement. A missing policy of ``OPTIONAL`` is deliberately not a waiver
+    Under-coverage is legal only when a budget stop was **independently
+    proven** for this requirement. A missing policy of ``OPTIONAL`` is deliberately not a waiver
     here: OPTIONAL governs *absence* — that taking nothing is legal when
     nothing was eligible — and says nothing about selector correctness.
     Eligible material the selector knew about and did not take is a defect

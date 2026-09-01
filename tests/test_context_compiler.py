@@ -26,6 +26,7 @@ from l9_cognitive_runtime.compiler.task_context import (
     AUTHORITY_PROVEN_NEGATIVE,
     ContextCompiler,
     SnapshotResolution,
+    _Selection,
     _unknown_status_decisions,
     authority_disposition,
     matches_requirement,
@@ -65,6 +66,7 @@ from l9_cognitive_runtime.models.context import (
     UnknownMateriality,
     UnknownReasonCode,
     authority_semantic_key,
+    canonical_cost,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
@@ -1406,7 +1408,8 @@ def test_a_required_key_with_no_eligible_candidate_is_absence_not_omission() -> 
     assert report.passed
 
 
-def test_a_recorded_budget_stop_is_what_legalises_under_coverage() -> None:
+def test_a_forged_budget_stop_does_not_legalise_under_coverage() -> None:
+    """A bare BUDGET_INSUFFICIENT receipt is not proof of truncation."""
     requirement = _optional()
     kept, skipped = law("LAW_1"), law("LAW_2")
     truncation = ContextUnknown(
@@ -1415,29 +1418,160 @@ def test_a_recorded_budget_stop_is_what_legalises_under_coverage() -> None:
         materiality=UnknownMateriality.NON_BLOCKING,
         details={"context_kind": "applicable_law"},
     )
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=_context(laws=[_selected(kept, requirement)], unknowns=[truncation]),
+            requirement_plan=_plan([requirement]),
+            resolution=SnapshotResolution(candidates=(kept, skipped)),
+            kernels=[],
+        )
+
+
+def _select_requirement(
+    requirement: ContextRequirement,
+    items: tuple[Any, ...],
+    *,
+    plan: ContextRequirementPlan | None = None,
+) -> tuple[CompiledTaskContext, ContextRequirementPlan, SnapshotResolution]:
+    plan = plan or _plan([requirement])
+    resolution = SnapshotResolution(candidates=items)
+    selection = _Selection(plan)
+    unknowns = ContextCompiler()._select_for(requirement, resolution, selection)
+    selected = [
+        item.model_copy(update={"selected_because": sorted(selection.reasons[item_id])})
+        for item_id, item in sorted(selection.by_item.items())
+        if isinstance(item, ApplicableLaw)
+    ]
+    return _context(laws=selected, unknowns=unknowns), plan, resolution
+
+
+def _budget_unknowns(context: CompiledTaskContext) -> list[ContextUnknown]:
+    return [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.BUDGET_INSUFFICIENT
+    ]
+
+
+def test_a_truthful_requirement_item_ceiling_legalises_under_coverage() -> None:
+    requirement = _optional(max_items=1)
+    kept, skipped = law("LAW_1"), law("LAW_2")
+    context, plan, resolution = _select_requirement(requirement, (kept, skipped))
+    unknowns = _budget_unknowns(context)
+    assert len(unknowns) == 1
+    assert unknowns[0].details["bound"] == "requirement_max_items"
+    assert unknowns[0].details["blocked_item_id"] == skipped.item_id
     report = ContextClosureValidator().validate(
-        context=_context(laws=[_selected(kept, requirement)], unknowns=[truncation]),
-        requirement_plan=_plan([requirement]),
-        resolution=SnapshotResolution(candidates=(kept, skipped)),
-        kernels=[],
+        context=context, requirement_plan=plan, resolution=resolution, kernels=[]
     )
     assert report.passed
 
 
+def test_a_truthful_requirement_byte_ceiling_legalises_under_coverage() -> None:
+    kept, skipped = law("LAW_1"), law("LAW_2")
+    requirement = _optional(max_bytes=canonical_cost(kept), max_items=8)
+    context, plan, resolution = _select_requirement(requirement, (kept, skipped))
+    unknowns = _budget_unknowns(context)
+    assert len(unknowns) == 1
+    assert unknowns[0].details["bound"] == "requirement_max_bytes"
+    assert unknowns[0].details["blocked_item_id"] == skipped.item_id
+    report = ContextClosureValidator().validate(
+        context=context, requirement_plan=plan, resolution=resolution, kernels=[]
+    )
+    assert report.passed
+
+
+def test_a_truthful_global_item_ceiling_legalises_under_coverage() -> None:
+    requirement = _optional()
+    kept, skipped = law("LAW_1"), law("LAW_2")
+    plan = ContextRequirementPlan(
+        task_scope_digest="s" * 64,
+        matched_route="pack_review",
+        global_budget=ContextBudget(max_total_items=1, max_total_bytes=262_144),
+        requirements=[requirement],
+    )
+    context, plan, resolution = _select_requirement(requirement, (kept, skipped), plan=plan)
+    unknowns = _budget_unknowns(context)
+    assert len(unknowns) == 1
+    assert unknowns[0].details["bound"] == "global_max_items"
+    assert unknowns[0].details["blocked_item_id"] == skipped.item_id
+    report = ContextClosureValidator().validate(
+        context=context, requirement_plan=plan, resolution=resolution, kernels=[]
+    )
+    assert report.passed
+
+
+def test_a_truthful_global_byte_ceiling_legalises_under_coverage() -> None:
+    requirement = _optional()
+    kept, skipped = law("LAW_1"), law("LAW_2")
+    plan = ContextRequirementPlan(
+        task_scope_digest="s" * 64,
+        matched_route="pack_review",
+        global_budget=ContextBudget(max_total_items=64, max_total_bytes=canonical_cost(kept)),
+        requirements=[requirement],
+    )
+    context, plan, resolution = _select_requirement(requirement, (kept, skipped), plan=plan)
+    unknowns = _budget_unknowns(context)
+    assert len(unknowns) == 1
+    assert unknowns[0].details["bound"] == "global_max_bytes"
+    assert unknowns[0].details["blocked_item_id"] == skipped.item_id
+    report = ContextClosureValidator().validate(
+        context=context, requirement_plan=plan, resolution=resolution, kernels=[]
+    )
+    assert report.passed
+
+
+def test_budget_witness_is_stable_under_input_reordering() -> None:
+    requirement = _optional(max_items=1)
+    first, second = law("LAW_1"), law("LAW_2")
+    forward, plan, _ = _select_requirement(requirement, (first, second))
+    inverse, _, _ = _select_requirement(requirement, (second, first))
+    assert [unknown.unknown_id for unknown in _budget_unknowns(forward)] == [
+        unknown.unknown_id for unknown in _budget_unknowns(inverse)
+    ]
+    assert [unknown.details for unknown in _budget_unknowns(forward)] == [
+        unknown.details for unknown in _budget_unknowns(inverse)
+    ]
+    assert [item.item_id for item in forward.selected_items()] == [
+        item.item_id for item in inverse.selected_items()
+    ]
+    assert (
+        ContextClosureValidator()
+        .validate(
+            context=forward,
+            requirement_plan=plan,
+            resolution=SnapshotResolution(candidates=(first, second)),
+            kernels=[],
+        )
+        .passed
+    )
+
+
 def test_an_optional_requirement_records_its_budget_stop(valid_pack: Path) -> None:
-    """The compiler must emit the record closure relies on.
+    """The compiler must emit the witness closure relies on.
 
     Without it the waiver above is unreachable and a legally truncated optional
     requirement would read as a selector defect.
     """
     requirement = _optional(max_items=1)
+    blocked = law("LAW_2")
     unknowns = ContextCompiler._dispose_unsatisfied(
         requirement,
         budget_blocked=True,
+        budget_stop={
+            "bound": "requirement_max_items",
+            "blocked_item_id": blocked.item_id,
+            "observed_count": 1,
+            "observed_bytes": 0,
+            "candidate_cost": canonical_cost(blocked),
+            "limit": 1,
+        },
         selected_keys={"LAW_1"},
         disposed_keys=set(),
     )
     assert [unknown.reason_code for unknown in unknowns] == [UnknownReasonCode.BUDGET_INSUFFICIENT]
+    assert unknowns[0].details["bound"] == "requirement_max_items"
+    assert unknowns[0].details["blocked_item_id"] == blocked.item_id
 
 
 def test_an_optional_requirement_still_records_no_missing_context_unknown() -> None:
@@ -1512,6 +1646,128 @@ def test_two_unrelated_cycles_do_not_become_each_other_s_provenance() -> None:
     assert {ref.source_id for ref in by_key["LAW_A"].source_refs} == {"LAW_A", "LAW_B"}
     assert {ref.source_id for ref in by_key["LAW_Y"].source_refs} == {"LAW_Y", "LAW_Z"}
     assert by_key["LAW_A"].details["cycle_members"] == ["LAW_A", "LAW_B"]
+    assert by_key["LAW_A"].details["cycle_item_ids"] != by_key["LAW_Y"].details["cycle_item_ids"]
+
+
+def _same_domain_cycle_pair() -> tuple[tuple[Any, ...], tuple[Any, ...]]:
+    governed = (
+        law("LAW_A", supersedes=["LAW_B"], source_id="gov-A"),
+        law("LAW_B", supersedes=["LAW_A"], source_id="gov-B"),
+    )
+    informative = (
+        law(
+            "LAW_A",
+            supersedes=["LAW_B"],
+            authority=AuthorityLevel.INFORMATIVE,
+            source_id="info-A",
+        ),
+        law(
+            "LAW_B",
+            supersedes=["LAW_A"],
+            authority=AuthorityLevel.INFORMATIVE,
+            source_id="info-B",
+        ),
+    )
+    return governed, informative
+
+
+def test_governed_and_informative_cycles_over_the_same_domains_keep_distinct_identities() -> None:
+    governed, informative = _same_domain_cycle_pair()
+    cycles = _cycle_unknowns(SnapshotResolution(candidates=governed + informative))
+    assert len(cycles) == 4
+    assert len({unknown.unknown_id for unknown in cycles}) == 4
+    blocking = [unknown for unknown in cycles if unknown.materiality is UnknownMateriality.BLOCKING]
+    advisory = [
+        unknown for unknown in cycles if unknown.materiality is UnknownMateriality.NON_BLOCKING
+    ]
+    assert {unknown.semantic_key for unknown in blocking} == {"LAW_A", "LAW_B"}
+    assert {unknown.semantic_key for unknown in advisory} == {"LAW_A", "LAW_B"}
+    for unknown in cycles:
+        assert unknown.details["cycle_item_ids"] == sorted(unknown.details["cycle_item_ids"])
+        assert unknown.details["cycle_members"] == ["LAW_A", "LAW_B"]
+    blocking_items = {
+        item_id for unknown in blocking for item_id in unknown.details["cycle_item_ids"]
+    }
+    advisory_items = {
+        item_id for unknown in advisory for item_id in unknown.details["cycle_item_ids"]
+    }
+    assert blocking_items == {item.item_id for item in governed}
+    assert advisory_items == {item.item_id for item in informative}
+    assert {ref.source_id for unknown in blocking for ref in unknown.source_refs} == {
+        "gov-A",
+        "gov-B",
+    }
+    assert {ref.source_id for unknown in advisory for ref in unknown.source_refs} == {
+        "info-A",
+        "info-B",
+    }
+
+
+def test_same_domain_cycle_identities_are_stable_under_input_reordering() -> None:
+    governed, informative = _same_domain_cycle_pair()
+    members = list(governed + informative)
+    forward = _cycle_unknowns(SnapshotResolution(candidates=tuple(members)))
+    inverse = _cycle_unknowns(SnapshotResolution(candidates=tuple(reversed(members))))
+    assert [unknown.unknown_id for unknown in forward] == [
+        unknown.unknown_id for unknown in inverse
+    ]
+    assert [unknown.details["cycle_item_ids"] for unknown in forward] == [
+        unknown.details["cycle_item_ids"] for unknown in inverse
+    ]
+    assert [[ref.to_canonical_dict() for ref in unknown.source_refs] for unknown in forward] == [
+        [ref.to_canonical_dict() for ref in unknown.source_refs] for unknown in inverse
+    ]
+
+
+def test_a_governed_same_domain_cycle_still_derives_its_epistemic_obligation(
+    valid_pack: Path,
+) -> None:
+    scoped = [
+        law("LAW_A", supersedes=["LAW_B"], scope_refs=["src/greeting"], source_id="gov-A"),
+        law("LAW_B", supersedes=["LAW_A"], scope_refs=["src/greeting"], source_id="gov-B"),
+        law(
+            "LAW_A",
+            supersedes=["LAW_B"],
+            scope_refs=["src/greeting"],
+            authority=AuthorityLevel.INFORMATIVE,
+            source_id="info-A",
+        ),
+        law(
+            "LAW_B",
+            supersedes=["LAW_A"],
+            scope_refs=["src/greeting"],
+            authority=AuthorityLevel.INFORMATIVE,
+            source_id="info-B",
+        ),
+    ]
+    bundle = _compile(
+        valid_pack,
+        NEUTRAL_MISSION,
+        ContextSnapshot(applicable_law=scoped),
+        target_refs=["src/greeting"],
+    )
+    cycles = [
+        unknown
+        for unknown in bundle.task_context.unresolved_unknowns
+        if unknown.details.get("reason") == "supersession cycle"
+    ]
+    blocking = {
+        unknown.unknown_id
+        for unknown in cycles
+        if unknown.materiality is UnknownMateriality.BLOCKING
+    }
+    advisory = {
+        unknown.unknown_id
+        for unknown in cycles
+        if unknown.materiality is UnknownMateriality.NON_BLOCKING
+    }
+    assert blocking
+    assert advisory
+    obligations = {obligation.obligation_id for obligation in bundle.execution.obligations}
+    assert {f"OBL.EPISTEMIC.CONTEXT.{unknown_id}" for unknown_id in blocking} <= obligations
+    assert {f"OBL.EPISTEMIC.CONTEXT.{unknown_id}" for unknown_id in advisory}.isdisjoint(
+        obligations
+    )
 
 
 def test_a_refused_supersession_names_both_claims() -> None:

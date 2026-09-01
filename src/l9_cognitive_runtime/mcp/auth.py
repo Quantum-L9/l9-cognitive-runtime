@@ -35,6 +35,7 @@ import os
 import urllib.request
 from dataclasses import dataclass
 from typing import Any, Final, Protocol
+from urllib.parse import urlparse
 
 import anyio.to_thread
 import jwt
@@ -62,6 +63,7 @@ DEFAULT_ALGORITHMS: Final = (
 )
 _FORBIDDEN_ALGORITHM_PREFIXES: Final = ("HS", "none", "NONE")
 
+_LOOPBACK_HOSTS: Final = ("127.0.0.1", "localhost", "::1", "[::1]")
 _OIDC_DISCOVERY_PATH: Final = "/.well-known/openid-configuration"
 _OAUTH_AS_DISCOVERY_PATH: Final = "/.well-known/oauth-authorization-server"
 _DISCOVERY_TIMEOUT_SECONDS: Final = 10.0
@@ -70,6 +72,25 @@ _JWKS_CACHE_LIFESPAN_SECONDS: Final = 300.0
 
 class HostedAuthConfigurationError(RuntimeError):
     """Hosted auth was requested but its configuration is incomplete or unsafe."""
+
+
+def require_secure_transport(url: str, *, what: str) -> None:
+    """Refuse plaintext HTTP except to a loopback host.
+
+    Key material fetched over plaintext can be swapped in transit, and a swapped
+    JWKS is a signing key: every downstream signature check would then pass on a
+    forged token. HTTPS is therefore mandatory, with the usual loopback exception
+    for a sidecar or a test that has no network to intercept.
+    """
+    lowered = url.lower()
+    if lowered.startswith("https://"):
+        return
+    host = urlparse(url).hostname or ""
+    if lowered.startswith("http://") and host in _LOOPBACK_HOSTS:
+        return
+    raise HostedAuthConfigurationError(
+        f"refusing non-HTTPS {what} URL: {url} (only loopback may use plain HTTP)"
+    )
 
 
 def _split_csv(raw: str | None) -> tuple[str, ...]:
@@ -165,9 +186,8 @@ class HostedAuthConfig:
 
 
 def _fetch_json(url: str, timeout: float = _DISCOVERY_TIMEOUT_SECONDS) -> dict[str, Any]:
+    require_secure_transport(url, what="discovery")
     request = urllib.request.Request(url, headers={"Accept": "application/json"})  # noqa: S310
-    if not url.lower().startswith("https://"):
-        raise HostedAuthConfigurationError(f"refusing non-HTTPS discovery URL: {url}")
     with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
         payload = json.loads(response.read().decode("utf-8"))
     if not isinstance(payload, dict):
@@ -269,6 +289,7 @@ class JwtTokenVerifier:
         if self._jwks_client is None:
             if self._jwks_uri is None:
                 self._jwks_uri = discover_jwks_uri(self._config.issuer)
+            require_secure_transport(self._jwks_uri, what="JWKS")
             self._jwks_client = PyJWKClient(
                 self._jwks_uri,
                 cache_keys=True,

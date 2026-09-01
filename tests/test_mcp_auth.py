@@ -33,6 +33,7 @@ from l9_cognitive_runtime.mcp.auth import (
     HostedAuthConfig,
     HostedAuthConfigurationError,
     JwtTokenVerifier,
+    require_secure_transport,
 )
 from l9_cognitive_runtime.mcp.http import create_http_app, resolve_hosted_auth
 
@@ -205,6 +206,37 @@ def test_algorithm_confusion_token_rejected(
 
 
 # --- configuration -----------------------------------------------------------
+
+
+def test_key_material_is_refused_over_plaintext_http() -> None:
+    # A swapped JWKS is a signing key: every downstream signature check would then
+    # pass on a forged token. Loopback keeps sidecar and test setups workable.
+    for insecure in (
+        "http://issuer.example.com/jwks",
+        "http://10.0.0.5/.well-known/jwks.json",
+        "ftp://issuer.example.com/jwks",
+    ):
+        with pytest.raises(HostedAuthConfigurationError):
+            require_secure_transport(insecure, what="JWKS")
+    for allowed in (
+        "https://issuer.example.com/jwks",
+        "http://127.0.0.1:9/jwks",
+        "http://localhost:9/jwks",
+    ):
+        require_secure_transport(allowed, what="JWKS")
+
+
+def test_a_plaintext_jwks_uri_rejects_every_token(
+    config: HostedAuthConfig, signing_key: rsa.RSAPrivateKey
+) -> None:
+    insecure = HostedAuthConfig(
+        issuer=config.issuer,
+        audience=config.audience,
+        resource_url=config.resource_url,
+        jwks_uri="http://issuer.example.com/jwks",
+    )
+    # No stub client: the verifier must reach for the real URI and refuse it.
+    assert verify(JwtTokenVerifier(insecure), mint(signing_key)) is None
 
 
 def test_partial_configuration_fails_loudly_rather_than_downgrading() -> None:

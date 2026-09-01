@@ -3,10 +3,18 @@
 Serves MCP over Streamable HTTP at ``/v1/mcp`` with ``/healthz`` / ``/readyz``.
 Bounded by request-size, origin-allowlist, concurrency, and timeout controls.
 
-This transport performs and claims **no authentication** — hosted OAuth
-resource-server protection is a separate contract (MCP-011). There is no
+Hosted OAuth 2.0 / OIDC resource-server protection (MCP-011) is applied here, at
+the ingress boundary, when deployment configuration supplies an issuer, audience
+and resource URL (see ``l9_cognitive_runtime.mcp.auth``). Authentication
+terminates here and establishes principal identity; the compiler below is
+unaware of it and produces identical output with or without a token. There is no
 local-development identity bypass. Health responses carry no principal or
 credential data. The legacy SSE transport is intentionally not mounted.
+
+When no OAuth configuration is present the transport serves unprotected, which is
+what the local and CI smokes rely on. A hosted deployment asserts protection with
+``L9_REQUIRE_AUTH=true``, which refuses to start unprotected rather than trusting
+an operator to remember the other three variables.
 """
 
 from __future__ import annotations
@@ -19,6 +27,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+from mcp.server.auth.provider import TokenVerifier
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -28,6 +38,11 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
 from l9_cognitive_runtime.mcp import READ_ONLY_TOOLS, build_server
+from l9_cognitive_runtime.mcp.auth import (
+    HostedAuthConfig,
+    HostedAuthConfigurationError,
+    JwtTokenVerifier,
+)
 
 MCP_PATH = "/v1/mcp"
 MAX_BODY_BYTES = 1_048_576  # 1 MiB
@@ -119,6 +134,29 @@ def _allowed_hosts() -> frozenset[str]:
     return frozenset(hosts or {"127.0.0.1", "localhost"})
 
 
+def resolve_hosted_auth(
+    env: dict[str, str] | None = None,
+) -> tuple[TokenVerifier | None, AuthSettings | None]:
+    """Resolve the hosted resource-server wiring from deployment configuration.
+
+    Returns ``(None, None)`` when no OAuth configuration is present. Raises when
+    ``L9_REQUIRE_AUTH`` asserts protection that the configuration cannot deliver:
+    a deployment that means to be protected must fail to start rather than come
+    up open.
+    """
+    source = dict(os.environ) if env is None else env
+    config = HostedAuthConfig.from_env(source)
+    required = source.get("L9_REQUIRE_AUTH", "").strip().lower() in {"1", "true", "yes"}
+    if config is None:
+        if required:
+            raise HostedAuthConfigurationError(
+                "L9_REQUIRE_AUTH is set but no OAuth configuration is present; "
+                "set L9_OAUTH_ISSUER, L9_OAUTH_AUDIENCE and L9_MCP_RESOURCE_URL"
+            )
+        return None, None
+    return JwtTokenVerifier(config), config.to_auth_settings()
+
+
 def create_http_app(
     pack_root: Path,
     *,
@@ -126,9 +164,11 @@ def create_http_app(
     allowed_hosts: frozenset[str] | None = None,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     concurrency_limit: int = COMPILE_CONCURRENCY_LIMIT,
+    token_verifier: TokenVerifier | None = None,
+    auth_settings: AuthSettings | None = None,
 ) -> Starlette:
     """Build the Streamable HTTP app for the read-only MCP server."""
-    server = build_server(pack_root)
+    server = build_server(pack_root, token_verifier=token_verifier, auth_settings=auth_settings)
     origins = _allowed_origins() if allowed_origins is None else allowed_origins
     hosts = _allowed_hosts() if allowed_hosts is None else allowed_hosts
     # DNS-rebinding protection at the transport layer (defense in depth alongside
@@ -142,6 +182,19 @@ def create_http_app(
         transport_security=security,
         max_request_body_size=MAX_BODY_BYTES,
     )
+
+    # RFC 9728 §3.1 puts protected-resource metadata at
+    # /.well-known/oauth-protected-resource<resource-path>, an absolute path on the
+    # host. The SDK registers it on the inner app, which we mount under /v1 — so
+    # left alone it would only answer at /v1/.well-known/..., where no client looks
+    # and where the WWW-Authenticate pointer the SDK itself emits does not point.
+    # Lifting the SDK's own route (handler included, so the document is not
+    # re-implemented) onto the parent restores the advertised location.
+    well_known_routes = [
+        route
+        for route in mcp_asgi.routes
+        if isinstance(route, Route) and route.path.startswith("/.well-known/")
+    ]
 
     async def healthz(_: Request) -> JSONResponse:
         # No principal or credential data.
@@ -166,6 +219,7 @@ def create_http_app(
         routes=[
             Route("/healthz", healthz, methods=["GET"]),
             Route("/readyz", readyz, methods=["GET"]),
+            *well_known_routes,
             Mount("/v1", app=mcp_asgi),  # mcp_asgi "/mcp" -> "/v1/mcp"
         ],
         middleware=middleware,
@@ -184,7 +238,17 @@ def main() -> None:
     if not pack_root:
         print("error: L9_PACK_ROOT is required", file=sys.stderr)
         raise SystemExit(2)
-    app = create_http_app(Path(pack_root))
+    token_verifier, auth_settings = resolve_hosted_auth()
+    if token_verifier is None:
+        print(
+            "warning: serving MCP over HTTP without authentication; "
+            "set L9_OAUTH_ISSUER/L9_OAUTH_AUDIENCE/L9_MCP_RESOURCE_URL to protect it, "
+            "and L9_REQUIRE_AUTH=true to make an unprotected start a failure",
+            file=sys.stderr,
+        )
+    app = create_http_app(
+        Path(pack_root), token_verifier=token_verifier, auth_settings=auth_settings
+    )
     uvicorn.run(
         app,
         host=os.environ.get("L9_BIND_HOST", DEFAULT_BIND),

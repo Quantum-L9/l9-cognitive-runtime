@@ -4,7 +4,7 @@ This pack supersedes the uploaded `L9 Cognitive Runtime (kernels).zip` by dedupi
 
 ## Development Setup (Python package baseline)
 
-The repository is an installable Python project. The `src/l9_cognitive_runtime` package is a baseline namespace only; existing `runtime/` semantics are unchanged and are not relocated by this baseline.
+The repository is an installable Python project. The `src/l9_cognitive_runtime` package owns the live compiler; the `runtime/` tree is the verified semantic pack it compiles against, and the `runtime/` CLIs are compatibility surfaces over the same spine.
 
 ```bash
 # Isolated install (editable + dev tools)
@@ -24,6 +24,43 @@ python -m build
 ```
 
 Build artifacts (`dist/`, `*.egg-info/`, caches) must not be committed.
+
+## Context-Native Compilation
+
+The runtime is a deterministic task-to-cognitive-execution compiler. A mission
+plus a governed `ContextSnapshot` compiles into a `CompiledTaskContext` — the
+minimum sufficient, provenance-backed context for that task — and then into an
+execution packet that carries it.
+
+```text
+CompileRequest + ContextSnapshot
+  -> ObjectiveDeriver -> TaskScopeCompiler -> ContextDiscoveryCompiler
+  -> ActivationPlanner -> KernelResolver -> ContextRequirementPlanner
+  -> ContextCompiler -> CompiledTaskContext -> ContextClosureValidator
+  -> ObligationDeriver -> Execution / Validation / Handoff / Graph
+  -> semantic digest -> ExecutionPacket -> validate_packet
+  -> runtime semantic liveness -> RuntimeBundle -> AdapterRenderer
+```
+
+`CompilePipeline` is the only production composition owner. Governed context is
+a separate input from `CompileRequest.source_context`: caller hints may narrow
+task scope, but only a provenance-backed snapshot item establishes a fact about
+the world outside the request. Passing no snapshot means the empty governed
+snapshot, so callers that predate this input compile exactly as before.
+
+Every public surface can supply it:
+
+```bash
+# CLI
+l9-cognitive-runtime --mission "..." --pack-root ./pack \
+  --context-snapshot ./snapshot.json
+
+# MCP: compile_runtime / plan_kernel_activation / validate_runtime_bundle
+#      accept an optional `context_snapshot` payload.
+```
+
+The architecture law these obey is `INVARIANTS.md`; the machine schema for the
+compiled context is `contracts/compiled_task_context.schema.json`.
 
 ## Canonical Tree
 

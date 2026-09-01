@@ -30,9 +30,6 @@ from l9_cognitive_runtime.models import (
 )
 from l9_cognitive_runtime.models.context import CompiledTaskContext
 
-RULES_REL = "runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"
-PIPELINE_REL = "runtime/kernel_pipeline/KERNEL_PIPELINE.yaml"
-
 
 @dataclass(frozen=True)
 class CompiledContracts:
@@ -85,8 +82,6 @@ def compile_from_root(
 
 
 __all__ = [
-    "PIPELINE_REL",
-    "RULES_REL",
     "CompiledContracts",
     "compile_execution_from_plan",
     "compile_from_root",

@@ -454,3 +454,36 @@ def test_http_does_not_reinterpret_context() -> None:
     ).read_text(encoding="utf-8")
     for forbidden in ("ContextSnapshot", "parse_context_snapshot", "compiled_task_context"):
         assert forbidden not in source
+
+
+def test_host_surfaces_reject_an_oversized_payload_before_typing_it(
+    valid_pack: Path, tmp_path: Path
+) -> None:
+    """Typing a candidate hashes it, so the ceiling applies to the raw payload."""
+    from l9_cognitive_runtime.cli import main as cli_main
+    from l9_cognitive_runtime.mcp import parse_context_snapshot
+    from l9_cognitive_runtime.models.context import SNAPSHOT_MAX_ITEMS
+
+    oversized = {
+        "relevant_entities": [
+            {"not": "even a valid candidate"} for _ in range(SNAPSHOT_MAX_ITEMS + 1)
+        ]
+    }
+    # The payload is not merely oversized, it is unparseable — so a surface that
+    # typed first would fail on shape rather than on the ceiling.
+    with pytest.raises(InvalidValueError, match="maximum item count"):
+        parse_context_snapshot(oversized)
+
+    payload = tmp_path / "oversized.json"
+    payload.write_text(json.dumps(oversized), encoding="utf-8")
+    with pytest.raises(InvalidValueError, match="maximum item count"):
+        cli_main(
+            [
+                "--mission",
+                MISSION,
+                "--pack-root",
+                str(valid_pack),
+                "--context-snapshot",
+                str(payload),
+            ]
+        )

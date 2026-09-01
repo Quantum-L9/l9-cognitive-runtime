@@ -14,7 +14,11 @@ import json
 import sys
 from pathlib import Path
 
-from l9_cognitive_runtime.models.context import ContextSnapshot
+from l9_cognitive_runtime.models.context import (
+    SNAPSHOT_MAX_ITEMS,
+    ContextSnapshot,
+    payload_item_count,
+)
 from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
@@ -64,6 +68,15 @@ def load_context_snapshot(path: Path) -> ContextSnapshot:
         ) from exc
     if not isinstance(payload, dict):
         raise InvalidValueError("context snapshot root must be an object", path=str(resolved))
+    # Counted before typing: deriving a candidate's identity hashes it, so an
+    # oversized payload must be refused before any of it is typed (INV-CTX-007).
+    count = payload_item_count(payload)
+    if count > SNAPSHOT_MAX_ITEMS:
+        raise InvalidValueError(
+            "context snapshot exceeds the maximum item count",
+            path=str(resolved),
+            details={"items": count, "max_items": SNAPSHOT_MAX_ITEMS},
+        )
     try:
         return ContextSnapshot.from_mapping(payload)
     except ModelValidationError as exc:

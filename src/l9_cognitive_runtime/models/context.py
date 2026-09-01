@@ -49,6 +49,36 @@ SNAPSHOT_MAX_ITEMS = 256
 SNAPSHOT_MAX_BYTES = 1_048_576
 
 
+# The snapshot's candidate buckets, in canonical order. Named once so the raw
+# payload can be counted before it is typed (see ``payload_item_count``).
+SNAPSHOT_BUCKETS = (
+    "relevant_entities",
+    "repository_state",
+    "architecture_constraints",
+    "applicable_law",
+    "prior_decisions",
+    "dependency_context",
+    "evidence_refs",
+    "memory_context",
+    "capability_facts",
+    "authority_facts",
+)
+
+
+def payload_item_count(payload: dict[str, Any]) -> int:
+    """Count candidates in a *raw* snapshot payload, without typing any of them.
+
+    Typing a candidate derives its identity, which hashes it. A host that types
+    first would therefore hash every item of an oversized payload before the
+    item ceiling could reject it, so the ceiling is applied to this count at the
+    ingress boundary — before ``ContextSnapshot.from_mapping`` runs at all
+    (INV-CTX-007).
+    """
+    return sum(
+        len(value) for key in SNAPSHOT_BUCKETS if isinstance(value := payload.get(key), list)
+    )
+
+
 class ContextKind(StrEnum):
     RELEVANT_ENTITY = "relevant_entity"
     REPOSITORY_STATE = "repository_state"
@@ -953,6 +983,7 @@ __all__ = [
     "CLAIM_EXCLUDED_FIELDS",
     "CONTEXT_COMPILER_SEMANTICS_VERSION",
     "GOVERNED_LEVELS",
+    "SNAPSHOT_BUCKETS",
     "SNAPSHOT_MAX_BYTES",
     "SNAPSHOT_MAX_ITEMS",
     "ApplicableLaw",
@@ -994,4 +1025,5 @@ __all__ = [
     "authority_semantic_key",
     "canonical_cost",
     "derive_id",
+    "payload_item_count",
 ]

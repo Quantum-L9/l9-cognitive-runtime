@@ -22,7 +22,11 @@ from mcp.server.mcpserver import MCPServer
 
 from l9_cognitive_runtime import __version__
 from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore
-from l9_cognitive_runtime.models.context import ContextSnapshot
+from l9_cognitive_runtime.models.context import (
+    SNAPSHOT_MAX_ITEMS,
+    ContextSnapshot,
+    payload_item_count,
+)
 from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
 from l9_cognitive_runtime.pack import PackLoader, RuntimePack
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
@@ -81,6 +85,16 @@ def parse_context_snapshot(payload: dict[str, Any] | None) -> ContextSnapshot | 
         return None
     if not isinstance(payload, dict):
         raise InvalidValueError("context_snapshot must be an object", path="context_snapshot")
+    # The item ceiling is applied to the untyped payload: typing a candidate
+    # derives its identity, which hashes it, so counting first is what keeps an
+    # oversized payload from being hashed before it is refused (INV-CTX-007).
+    count = payload_item_count(payload)
+    if count > SNAPSHOT_MAX_ITEMS:
+        raise InvalidValueError(
+            "context_snapshot exceeds the maximum item count",
+            path="context_snapshot",
+            details={"items": count, "max_items": SNAPSHOT_MAX_ITEMS},
+        )
     try:
         return ContextSnapshot.from_mapping(payload)
     except ModelValidationError as exc:

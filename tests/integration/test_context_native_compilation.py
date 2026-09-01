@@ -384,13 +384,17 @@ def test_the_mcp_surface_fails_closed_on_a_malformed_snapshot(valid_pack: Path) 
     from l9_cognitive_runtime.mcp import build_server
 
     server = build_server(valid_pack)
-    with pytest.raises(Exception):  # noqa: B017 - the SDK wraps it as a tool error
+    # The SDK wraps a tool failure in its own error type, so the assertion is on
+    # the message: it must name the context snapshot rather than fail for some
+    # unrelated reason that would pass a bare `raises(Exception)`.
+    with pytest.raises(Exception, match="context_snapshot") as excinfo:  # noqa: B017
         _run(
             server.call_tool(
                 "compile_runtime",
                 {"mission": MISSION, "context_snapshot": {"applicable_law": [{"nope": 1}]}},
             )
         )
+    assert "context_snapshot" in str(excinfo.value)
 
 
 def test_mcp_activation_planning_accepts_context_because_context_routes(

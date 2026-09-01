@@ -172,6 +172,9 @@ class FreshnessRequirement(StrEnum):
 # --------------------------------------------------------------------------
 
 
+_NON_EMPTY = "must be non-empty"
+
+
 def derive_id(prefix: str, payload: Any) -> str:
     """Return ``<prefix>.sha256:<64 hex>`` over the canonical JSON payload."""
     return f"{prefix}.sha256:{sha256_digest(payload)}"
@@ -216,7 +219,7 @@ class ContextSourceRef(ArtifactModel):
     @classmethod
     def _non_empty(cls, value: str) -> str:
         if not value.strip():
-            raise ValueError("must be non-empty")
+            raise ValueError(_NON_EMPTY)
         return value
 
     @property
@@ -254,7 +257,7 @@ class ContextItemIdentity(ArtifactModel):
     @classmethod
     def _non_empty_identity(cls, value: str) -> str:
         if not value.strip():
-            raise ValueError("must be non-empty")
+            raise ValueError(_NON_EMPTY)
         return value
 
     @field_validator("scope_refs", "selected_because")
@@ -360,7 +363,7 @@ class RepositoryState(ContextItemIdentity):
     @classmethod
     def _non_empty_fact(cls, value: str) -> str:
         if not value.strip():
-            raise ValueError("must be non-empty")
+            raise ValueError(_NON_EMPTY)
         return value
 
     def expected_semantic_key(self) -> str:
@@ -842,7 +845,7 @@ class CompilerIdentity(ArtifactModel):
     @classmethod
     def _non_empty(cls, value: str) -> str:
         if not value.strip():
-            raise ValueError("must be non-empty")
+            raise ValueError(_NON_EMPTY)
         return value
 
 

@@ -196,7 +196,7 @@ def governed_signal_snapshot(*signals: str) -> ContextSnapshot:
 def discovery_for(intent: IntentContract, snapshot: ContextSnapshot) -> DiscoveryContext:
     """Run the real bounded discovery projection for a direct planner call."""
     scope = TaskScopeCompiler().compile(intent)
-    return ContextDiscoveryCompiler().compile(scope, snapshot, resolve_snapshot(snapshot))
+    return ContextDiscoveryCompiler().compile(scope, resolve_snapshot(snapshot))
 
 
 def empty_discovery(intent: IntentContract) -> DiscoveryContext:

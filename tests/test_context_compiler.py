@@ -217,7 +217,8 @@ def test_a_dangling_supersession_reference_stays_visible() -> None:
         for u in resolution.supersession_unknowns
         if u.reason_code is UnknownReasonCode.DANGLING_SUPERSESSION
     ]
-    assert dangling and dangling[0].details["unresolved_ref"] == "LAW_GHOST"
+    assert dangling
+    assert dangling[0].details["unresolved_ref"] == "LAW_GHOST"
 
 
 def test_a_claim_never_supersedes_itself() -> None:
@@ -392,7 +393,7 @@ def _plan_for(kernels: list[KernelBinding], *, target_refs: list[str] | None = N
         unknowns=[],
         next_phase="P0_UNPACK",
     )
-    return ContextRequirementPlanner().plan(intent, scope, discovery, activation, kernels)
+    return ContextRequirementPlanner().plan(scope, discovery, activation, kernels)
 
 
 LAW_NEED = KernelContextNeed(
@@ -537,7 +538,8 @@ def test_an_empty_snapshot_never_marks_a_required_capability_available(
         if unknown.reason_code is UnknownReasonCode.UNSUPPORTED_CAPABILITY
         and unknown.details.get("capability_id") == "workspace_mutation"
     ]
-    assert absent and absent[0].details["state"] == "absent"
+    assert absent
+    assert absent[0].details["state"] == "absent"
     assert absent[0].materiality is UnknownMateriality.NON_BLOCKING
 
 
@@ -560,7 +562,8 @@ def test_a_capability_proven_unavailable_is_blocking(valid_pack: Path) -> None:
         for unknown in bundle.task_context.unresolved_unknowns
         if unknown.details.get("capability_id") == "workspace_mutation"
     ]
-    assert blocking and blocking[0].materiality is UnknownMateriality.BLOCKING
+    assert blocking
+    assert blocking[0].materiality is UnknownMateriality.BLOCKING
     # A blocking context unknown is conserved as a required obligation.
     assert any(
         obligation.obligation_id == f"OBL.EPISTEMIC.CONTEXT.{blocking[0].unknown_id}"
@@ -592,7 +595,8 @@ def test_the_compiler_default_order_is_not_an_authority_grant(valid_pack: Path) 
         for unknown in context.unresolved_unknowns
         if unknown.details.get("authority_id") == "repository_write"
     ]
-    assert absent and absent[0].details["state"] == "absent"
+    assert absent
+    assert absent[0].details["state"] == "absent"
 
 
 def test_a_proven_grant_closes_the_authority_gap(valid_pack: Path) -> None:
@@ -636,7 +640,8 @@ def test_a_limit_without_a_grant_is_blocking(valid_pack: Path) -> None:
         for unknown in context.unresolved_unknowns
         if unknown.details.get("authority_id") == "repository_write"
     ]
-    assert limited and limited[0].materiality is UnknownMateriality.BLOCKING
+    assert limited
+    assert limited[0].materiality is UnknownMateriality.BLOCKING
     assert limited[0].details["state"] == "limited_without_grant"
 
 
@@ -708,12 +713,14 @@ def test_a_per_requirement_item_breach_is_detected_while_the_global_budget_passe
         law("LAW_2").model_copy(update={"selected_because": [requirement.requirement_id]}),
     ]
     context = _context(laws=laws)
+    plan = _plan([requirement])
     # The global budget is nowhere near exhausted; only the requirement's own is.
     assert len(context.selected_items()) < 64
+    # Every fixture is built before the block, so only the validator can raise.
     with pytest.raises(InvalidValueError, match="per_requirement_and_global_budgets"):
         ContextClosureValidator().validate(
             context=context,
-            requirement_plan=_plan([requirement]),
+            requirement_plan=plan,
             resolution=SnapshotResolution(groups={}),
             kernels=[],
         )
@@ -722,10 +729,12 @@ def test_a_per_requirement_item_breach_is_detected_while_the_global_budget_passe
 def test_a_per_requirement_byte_breach_is_detected_while_the_global_budget_passes() -> None:
     requirement = _requirement(max_bytes=64)
     laws = [law("LAW_1").model_copy(update={"selected_because": [requirement.requirement_id]})]
+    context = _context(laws=laws)
+    plan = _plan([requirement])
     with pytest.raises(InvalidValueError, match="per_requirement_and_global_budgets"):
         ContextClosureValidator().validate(
-            context=_context(laws=laws),
-            requirement_plan=_plan([requirement]),
+            context=context,
+            requirement_plan=plan,
             resolution=SnapshotResolution(groups={}),
             kernels=[],
         )
@@ -740,7 +749,8 @@ def test_a_within_budget_context_passes_the_same_check() -> None:
         resolution=SnapshotResolution(groups={}),
         kernels=[],
     )
-    assert report.passed and report.checks == CONTEXT_CHECKS
+    assert report.passed
+    assert report.checks == CONTEXT_CHECKS
 
 
 def test_a_conflict_that_vanished_entirely_is_still_detected() -> None:
@@ -757,10 +767,11 @@ def test_a_conflict_that_vanished_entirely_is_still_detected() -> None:
     )
     context = _context(laws=[])
     assert not any(item.semantic_key == "LAW_X" for item in context.selected_items())
+    plan = _plan([requirement])
     with pytest.raises(InvalidValueError, match="no_equal_authority_conflict_is_silently_selected"):
         ContextClosureValidator().validate(
             context=context,
-            requirement_plan=_plan([requirement]),
+            requirement_plan=plan,
             resolution=resolution,
             kernels=[],
         )
@@ -822,13 +833,15 @@ def test_removing_a_closure_check_from_execution_is_detected(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A declared check that does not run is a failure, not a shorter report."""
+    context = _context(laws=[])
+    plan = _plan([_requirement()])
     monkeypatch.setattr(
         closure_module, "CONTEXT_CHECKS", (*CONTEXT_CHECKS, "a_check_nobody_implemented")
     )
     with pytest.raises(InvalidValueError, match="context_closure_ladder_is_complete"):
         ContextClosureValidator().validate(
-            context=_context(laws=[]),
-            requirement_plan=_plan([_requirement()]),
+            context=context,
+            requirement_plan=plan,
             resolution=SnapshotResolution(groups={}),
             kernels=[],
         )
@@ -845,20 +858,23 @@ def test_a_stale_item_identity_is_detected_by_closure() -> None:
     item = law("LAW_1").model_copy(update={"selected_because": [requirement.requirement_id]})
     context = _context(laws=[item])
     context.applicable_law[0].__dict__["statement"] = "quietly rewritten after identity was derived"
+    plan = _plan([requirement])
     with pytest.raises(InvalidValueError, match="every_selected_item_identity_matches_kind_recipe"):
         ContextClosureValidator().validate(
             context=context,
-            requirement_plan=_plan([requirement]),
+            requirement_plan=plan,
             resolution=SnapshotResolution(groups={}),
             kernels=[],
         )
 
 
 def test_an_unbound_selected_item_is_detected_by_closure() -> None:
+    context = _context(laws=[law("LAW_1")])
+    plan = _plan([_requirement()])
     with pytest.raises(InvalidValueError, match="every_selected_item_has_relevance_binding"):
         ContextClosureValidator().validate(
-            context=_context(laws=[law("LAW_1")]),
-            requirement_plan=_plan([_requirement()]),
+            context=context,
+            requirement_plan=plan,
             resolution=SnapshotResolution(groups={}),
             kernels=[],
         )
@@ -881,10 +897,11 @@ def test_an_undisposed_required_capability_is_detected_by_closure(valid_pack: Pa
         }
     )
     assert stripped.capabilities.required
+    plan = _plan([_requirement()])
     with pytest.raises(InvalidValueError, match="capability_and_authority_gaps_are_explicit"):
         ContextClosureValidator().validate(
             context=stripped,
-            requirement_plan=_plan([_requirement()]),
+            requirement_plan=plan,
             resolution=SnapshotResolution(groups={}),
             kernels=kernels,
         )

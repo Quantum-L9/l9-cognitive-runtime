@@ -201,7 +201,7 @@ class CompilePipeline:
         # One resolution pass over the snapshot, shared by both projections, so
         # a contradiction resolves identically wherever it is consumed.
         resolution = resolve_snapshot(snapshot)
-        discovery = ContextDiscoveryCompiler().compile(scope, snapshot, resolution)
+        discovery = ContextDiscoveryCompiler().compile(scope, resolution)
 
         plan = activation_plan or ActivationPlanner().plan(
             intent,
@@ -215,11 +215,10 @@ class CompilePipeline:
 
         # Requirements are planned from scope/route/kernels only — never from
         # obligations, which are derived below.
-        requirement_plan = ContextRequirementPlanner().plan(intent, scope, discovery, plan, kernels)
+        requirement_plan = ContextRequirementPlanner().plan(scope, discovery, plan, kernels)
         task_context = ContextCompiler().compile(
             intent=intent,
             scope=scope,
-            snapshot=snapshot,
             resolution=resolution,
             discovery=discovery,
             requirement_plan=requirement_plan,

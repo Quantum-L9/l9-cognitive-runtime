@@ -426,12 +426,15 @@ class ContextDiscoveryCompiler:
 
     The output is the *only* legal external proof of architecture materiality.
     Raw ``source_context.context_signals`` never reaches this far.
+
+    It consumes the *resolved* snapshot, never the raw one: taking the raw
+    snapshot as well would let a later edit route from candidates that
+    supersession and deduplication had already removed.
     """
 
     def compile(
         self,
         scope: TaskScope,
-        snapshot: ContextSnapshot,
         resolution: SnapshotResolution,
     ) -> DiscoveryContext:
         scoped_refs = scope_reference_set(scope)
@@ -550,14 +553,18 @@ class _Selection:
 
 
 class ContextCompiler:
-    """Bounded projection #2: the requirement-bound canonical context IR."""
+    """Bounded projection #2: the requirement-bound canonical context IR.
+
+    Like discovery, it selects from the *resolved* snapshot only. The raw
+    snapshot is deliberately out of reach so nothing here can select a
+    candidate that supersession or deduplication already removed.
+    """
 
     def compile(
         self,
         *,
         intent: IntentContract,
         scope: TaskScope,
-        snapshot: ContextSnapshot,
         resolution: SnapshotResolution,
         discovery: DiscoveryContext,
         requirement_plan: ContextRequirementPlan,

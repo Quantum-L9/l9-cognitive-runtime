@@ -39,7 +39,6 @@ from __future__ import annotations
 from l9_cognitive_runtime.compiler.activation import ActivationPlan
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelContextNeed
 from l9_cognitive_runtime.compiler.task_scope import scope_reference_set
-from l9_cognitive_runtime.models import IntentContract
 from l9_cognitive_runtime.models.context import (
     AuthorityLevel,
     ContextBudget,
@@ -113,7 +112,6 @@ class ContextRequirementPlanner:
 
     def plan(
         self,
-        intent: IntentContract,
         scope: TaskScope,
         discovery: DiscoveryContext,
         plan: ActivationPlan,

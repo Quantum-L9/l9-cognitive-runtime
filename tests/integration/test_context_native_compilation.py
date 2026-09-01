@@ -221,6 +221,34 @@ def test_the_adapter_projection_preserves_law_authority_and_gaps(valid_pack: Pat
     assert "LAW_RETRY" in rendered.content
 
 
+def test_mutating_the_adapter_projection_cannot_reach_the_validated_packet(
+    valid_pack: Path,
+) -> None:
+    """A shallow copy would leave every nested list shared with the packet.
+
+    The projection is meant to carry the context, not to hand a downstream
+    consumer a handle onto the packet that ``validate_packet`` already checked:
+    an edit through the projection would otherwise change the body behind its
+    own declared digest.
+    """
+    bundle = CognitiveRuntimeService().compile_runtime(
+        request_for(valid_pack), context_snapshot=snapshot()
+    )
+    before = copy.deepcopy(bundle.packet)
+    rendered = AdapterRenderer().render(bundle.packet, "claude_code")
+
+    context = rendered.compiled_task_context
+    assert context["architecture_constraints"], "fixture must carry a nested list to mutate"
+    context["architecture_constraints"].clear()
+    context["task_scope"]["mission"] = "rewritten by a downstream consumer"
+    rendered.validation_properties[0]["name"] = "rewritten"
+    rendered.delivery_obligations[0]["obligation_id"] = "rewritten"
+
+    assert bundle.packet == before
+    # And the untouched packet still satisfies the check the projection passed.
+    validate_packet(bundle.packet)
+
+
 def test_no_adapter_reselects_or_recomputes_context() -> None:
     """The renderer reads the packet's context; it never rebuilds one."""
     source = (

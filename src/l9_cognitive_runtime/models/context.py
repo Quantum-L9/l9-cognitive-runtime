@@ -196,6 +196,12 @@ CLAIM_EXCLUDED_FIELDS = frozenset(
     }
 )
 
+# Applicability is excluded from the *claim* but is part of *identity*. Two
+# byte-identical statements that apply in different places are two different
+# items, and collapsing them would let a claim eligible nowhere near the task
+# stand in for one that is (INV-CTX-011).
+APPLICABILITY_FIELDS = ("scope_mode", "scope_refs")
+
 
 def _sorted_unique(values: list[str]) -> list[str]:
     return sorted(dict.fromkeys(values))
@@ -274,14 +280,24 @@ class ContextItemIdentity(ArtifactModel):
         data = self.to_canonical_dict()
         return {key: value for key, value in data.items() if key not in CLAIM_EXCLUDED_FIELDS}
 
+    def applicability_payload(self) -> dict[str, Any]:
+        """*Where* this item applies, separate from what it asserts."""
+        return {"scope_mode": self.scope_mode.value, "scope_refs": list(self.scope_refs)}
+
     def expected_item_id(self) -> str:
-        """The one canonical item-identity recipe (INV-CTX-011)."""
+        """The one canonical item-identity recipe (INV-CTX-011).
+
+        Applicability is a first-class component beside the claim. Without it
+        two laws with the same text at different scopes share one identity, and
+        deduplication then lets the wrong one carry the pair.
+        """
         return derive_id(
             "ctxitem",
             {
                 "context_kind": self.context_kind.value,
                 "semantic_key": self.semantic_key,
                 "claim": self.claim_payload(),
+                "applicability": self.applicability_payload(),
                 "source_identity": self.source_ref.identity_payload(),
             },
         )
@@ -499,6 +515,74 @@ def authority_semantic_key(
 ) -> str:
     """Canonical authority semantic key: id + subject + canonical action scope."""
     return f"{authority_id}:{subject_ref or ''}:{','.join(_sorted_unique(action_scope))}"
+
+
+# --------------------------------------------------------------------------
+# Authority coverage (INV-CTX-022).
+#
+# An authority requirement names three things — the authority, the subject it
+# is needed over, and the actions it must permit. Matching on ``authority_id``
+# alone would let a grant for one subject or one action close a gap it never
+# covers, which is the precise shape of a permission nobody proved.
+#
+# Two directions are needed and they are not the same relation:
+#
+# * a **grant** must *contain* the requirement — everything required is
+#   permitted, so an absent field on the grant reads as unrestricted;
+# * a **limit** need only *intersect* the requirement — a limit narrower than
+#   what is required still bears on it, so an absent field on either side
+#   cannot be assumed disjoint.
+#
+# Both fail closed: an unstated subject on a grant does not silently become
+# the required subject, and an unstated field on a limit does not silently
+# make the limit irrelevant.
+# --------------------------------------------------------------------------
+
+
+def _grant_subject_covers(grant_subject: str | None, required_subject: str | None) -> bool:
+    """A grant naming no subject is unrestricted; otherwise it must match."""
+    if grant_subject is None:
+        return True
+    return grant_subject == required_subject
+
+
+def _grant_actions_cover(grant_actions: list[str], required_actions: list[str]) -> bool:
+    """A grant naming no actions is unrestricted; otherwise it must contain."""
+    if not grant_actions:
+        return True
+    return set(required_actions) <= set(grant_actions)
+
+
+def _limit_subject_bears(limit_subject: str | None, required_subject: str | None) -> bool:
+    """An unstated subject on either side cannot be proven disjoint."""
+    if limit_subject is None or required_subject is None:
+        return True
+    return limit_subject == required_subject
+
+
+def _limit_actions_bear(limit_actions: list[str], required_actions: list[str]) -> bool:
+    """An unstated action scope on either side cannot be proven disjoint."""
+    if not limit_actions or not required_actions:
+        return True
+    return bool(set(limit_actions) & set(required_actions))
+
+
+def grant_covers_requirement(fact: AuthorityFact, requirement: AuthorityRequirement) -> bool:
+    """True when this granted fact covers everything the requirement needs."""
+    return (
+        fact.authority_id == requirement.authority_id
+        and _grant_subject_covers(fact.subject_ref, requirement.subject_ref)
+        and _grant_actions_cover(fact.action_scope, requirement.action_scope)
+    )
+
+
+def limit_bears_on_requirement(fact: AuthorityFact, requirement: AuthorityRequirement) -> bool:
+    """True when this limit fact bears on what the requirement asks for."""
+    return (
+        fact.authority_id == requirement.authority_id
+        and _limit_subject_bears(fact.subject_ref, requirement.subject_ref)
+        and _limit_actions_bear(fact.action_scope, requirement.action_scope)
+    )
 
 
 class ContextUnknown(ArtifactModel):

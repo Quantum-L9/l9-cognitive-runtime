@@ -17,7 +17,12 @@ verifies almost nothing:
   one requirement blew its own item or byte bound;
 - a capability/authority check that verifies internal consistency proves
   nothing about whether each *required* capability or authority actually
-  reached a disposition.
+  reached a disposition;
+- a budget check that verifies ceilings and ``min_items`` proves nothing about
+  ``all_eligible`` coverage: a selection bug that silently drops one eligible
+  item while leaving enough behind to clear ``min_items`` passes it. Coverage
+  modes are therefore proven against an independently recomputed eligible set,
+  not against the count the selector happened to reach.
 
 Each is therefore recomputed from the finished artifact.
 
@@ -27,10 +32,12 @@ every listed check actually executed.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from l9_cognitive_runtime.compiler.kernels import KernelBinding
 from l9_cognitive_runtime.compiler.task_context import (
+    ResolvedCandidates,
     SnapshotResolution,
     authority_disposition,
     capability_disposition,
@@ -40,6 +47,7 @@ from l9_cognitive_runtime.models.context import (
     GOVERNED_LEVELS,
     AuthorityLevel,
     CompiledTaskContext,
+    ContextItemIdentity,
     ContextKind,
     ContextRequirement,
     ContextRequirementPlan,
@@ -62,7 +70,20 @@ CONTEXT_CHECKS = (
     "no_memory_item_is_used_as_authoritative_resolution",
     "capability_and_authority_gaps_are_explicit",
     "per_requirement_and_global_budgets_are_respected",
+    "every_coverage_mode_is_independently_proven",
     "unresolved_unknowns_are_stable_and_bound",
+)
+
+
+# Reason codes that actually *dispose* of a requirement's coverage. An advisory
+# unknown that merely happens to be bound to a requirement — a dangling
+# supersession reference, say — is not a licence to leave it uncovered.
+DISPOSING_REASON_CODES = frozenset(
+    {
+        UnknownReasonCode.MISSING_REQUIRED_CONTEXT,
+        UnknownReasonCode.BUDGET_INSUFFICIENT,
+        UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS,
+    }
 )
 
 
@@ -73,6 +94,17 @@ class ContextClosureReport:
 
     def to_dict(self) -> dict[str, object]:
         return {"checks": list(self.checks), "passed": self.passed}
+
+
+def _eligibility_of(
+    requirement: ContextRequirement,
+) -> Callable[[ContextItemIdentity], bool]:
+    """Bind the compiler's own matching rule to one requirement."""
+
+    def eligible(item: ContextItemIdentity) -> bool:
+        return matches_requirement(requirement, item)
+
+    return eligible
 
 
 def _fail(check: str, details: dict[str, object]) -> InvalidValueError:
@@ -106,7 +138,17 @@ class ContextClosureValidator:
         unknown_requirements: set[str] = {
             unknown.requirement_ref
             for unknown in context.unresolved_unknowns
-            if unknown.requirement_ref is not None
+            if unknown.requirement_ref is not None and unknown.reason_code in DISPOSING_REASON_CODES
+        }
+
+        # Independently recomputed per-requirement eligible views. Closure never
+        # trusts a resolution someone else already reduced: it re-runs the
+        # compiler's own eligibility rule over the candidates and resolves each
+        # requirement's set itself, which is what makes the coverage proofs
+        # below evidence rather than restatement.
+        views: dict[str, ResolvedCandidates] = {
+            requirement.requirement_id: resolution.resolve(_eligibility_of(requirement))
+            for requirement in requirement_plan.requirements
         }
 
         # 1. Every required requirement is satisfied or legally disposed. An
@@ -188,10 +230,10 @@ class ContextClosureValidator:
         }
         silent: list[str] = []
         for requirement in requirement_plan.requirements:
-            for (kind_value, semantic_key), group in sorted(resolution.groups.items()):
-                if not group.conflict or kind_value != requirement.context_kind.value:
-                    continue
-                if not any(matches_requirement(requirement, item) for item in group.sources):
+            for (kind_value, semantic_key), group in sorted(
+                views[requirement.requirement_id].groups.items()
+            ):
+                if not group.conflict:
                     continue
                 if (requirement.requirement_id, semantic_key) not in disposed_pairs:
                     silent.append(f"{requirement.requirement_id}:{kind_value}:{semantic_key}")
@@ -261,7 +303,18 @@ class ContextClosureValidator:
             },
         )
 
-        # 10. Unknown identity is deterministic and every bound reference
+        # 10. Each coverage mode means what it says, proven against the eligible
+        # set recomputed here rather than against the count the selector
+        # reached. `all_eligible` that quietly dropped one item while still
+        # clearing `min_items` is exactly what check 9 cannot see.
+        coverage = _coverage_breaches(context, requirement_plan, views)
+        check(
+            "every_coverage_mode_is_independently_proven",
+            not coverage,
+            {"breaches": coverage},
+        )
+
+        # 11. Unknown identity is deterministic and every bound reference
         # resolves to a planned requirement.
         requirement_ids = {
             requirement.requirement_id for requirement in requirement_plan.requirements
@@ -330,22 +383,130 @@ def _undisposed_authorities(context: CompiledTaskContext) -> list[str]:
     The compiler default order never appears here: precedence is not permission
     (INV-CTX-022), so a required authority is satisfied only by a proven grant.
     """
-    granted = {fact.authority_id for fact in context.authority.granted}
-    limits = {fact.authority_id for fact in context.authority.limits}
-    unknown_facts = {fact.authority_id for fact in context.authority.unknown}
     recorded = {
-        str(unknown.details.get("authority_id"))
+        str(unknown.semantic_key)
         for unknown in context.unresolved_unknowns
         if unknown.reason_code is UnknownReasonCode.MISSING_AUTHORITY
     }
     gaps: list[str] = []
     for requirement in context.authority.required:
-        state = authority_disposition(requirement.authority_id, granted, limits, unknown_facts)
+        state = authority_disposition(
+            requirement,
+            context.authority.granted,
+            context.authority.limits,
+            context.authority.unknown,
+        )
         if state == "granted":
             continue
-        if requirement.authority_id not in recorded:
-            gaps.append(requirement.authority_id)
+        # Keyed by the requirement's full semantic key, so a gap over one
+        # subject or action scope is not closed by a record about another.
+        if requirement.semantic_key not in recorded:
+            gaps.append(requirement.semantic_key)
     return sorted(gaps)
+
+
+def _eligible_item_ids(view: ResolvedCandidates) -> set[str]:
+    """Item identities a requirement was eligible to select, conflicts excluded."""
+    return {
+        item.item_id for group in view.groups.values() if not group.conflict for item in group.items
+    }
+
+
+def _coverage_breaches(
+    context: CompiledTaskContext,
+    requirement_plan: ContextRequirementPlan,
+    views: dict[str, ResolvedCandidates],
+) -> list[dict[str, object]]:
+    """Prove every requirement's coverage mode against its own eligible set."""
+    selected = context.selected_items()
+    budget_stopped = {
+        unknown.requirement_ref
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.BUDGET_INSUFFICIENT and unknown.requirement_ref
+    }
+    breaches: list[dict[str, object]] = []
+    for requirement in requirement_plan.requirements:
+        eligible = _eligible_item_ids(views[requirement.requirement_id])
+        taken = {
+            item.item_id for item in selected if requirement.requirement_id in item.selected_because
+        }
+        taken_keys = {
+            item.semantic_key
+            for item in selected
+            if requirement.requirement_id in item.selected_because
+        }
+        breach = _coverage_breach(
+            requirement,
+            eligible=eligible,
+            taken=taken,
+            taken_keys=taken_keys,
+            under_covered_is_legal=(
+                requirement.requirement_id in budget_stopped
+                or requirement.missing_policy is MissingPolicy.OPTIONAL
+            ),
+        )
+        if breach is not None:
+            breaches.append(breach)
+    return breaches
+
+
+def _coverage_breach(
+    requirement: ContextRequirement,
+    *,
+    eligible: set[str],
+    taken: set[str],
+    taken_keys: set[str],
+    under_covered_is_legal: bool,
+) -> dict[str, object] | None:
+    """One requirement's coverage mode, judged against the eligible set.
+
+    Under-coverage is legal only where something explicitly said so: a recorded
+    budget stop, or an OPTIONAL missing policy. Over-coverage — selecting what
+    was never eligible, or more than the mode allows — is never legal.
+    """
+    ineligible = sorted(taken - eligible)
+    if ineligible:
+        return {
+            "requirement_id": requirement.requirement_id,
+            "breach": "ineligible_selection",
+            "item_ids": ineligible,
+        }
+    if requirement.coverage_mode is CoverageMode.ALL_ELIGIBLE:
+        missed = sorted(eligible - taken)
+        if missed and not under_covered_is_legal:
+            return {
+                "requirement_id": requirement.requirement_id,
+                "breach": "all_eligible_incomplete",
+                "unselected_eligible": missed,
+            }
+        return None
+    if requirement.coverage_mode is CoverageMode.MINIMUM:
+        # `minimum` means the minimum, not "at least min_items": taking more
+        # than the mode asks for is unbounded context growth by another name.
+        expected = min(requirement.min_items, len(eligible))
+        if len(taken) > expected:
+            return {
+                "requirement_id": requirement.requirement_id,
+                "breach": "minimum_exceeded",
+                "selected": len(taken),
+                "expected": expected,
+            }
+        if len(taken) < expected and not under_covered_is_legal:
+            return {
+                "requirement_id": requirement.requirement_id,
+                "breach": "minimum_incomplete",
+                "selected": len(taken),
+                "expected": expected,
+            }
+        return None
+    extra_keys = sorted(taken_keys - set(requirement.required_semantic_keys))
+    if extra_keys:
+        return {
+            "requirement_id": requirement.requirement_id,
+            "breach": "semantic_keys_exceeded",
+            "unrequested_keys": extra_keys,
+        }
+    return None
 
 
 def _budget_breaches(
@@ -432,4 +593,9 @@ def _requirement_breach(
     return None
 
 
-__all__ = ["CONTEXT_CHECKS", "ContextClosureReport", "ContextClosureValidator"]
+__all__ = [
+    "CONTEXT_CHECKS",
+    "DISPOSING_REASON_CODES",
+    "ContextClosureReport",
+    "ContextClosureValidator",
+]

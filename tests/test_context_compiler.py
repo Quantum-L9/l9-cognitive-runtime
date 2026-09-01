@@ -23,8 +23,10 @@ from l9_cognitive_runtime.compiler.context_closure import (
 from l9_cognitive_runtime.compiler.context_requirements import ContextRequirementPlanner
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelContextNeed
 from l9_cognitive_runtime.compiler.task_context import (
-    GroupResolution,
+    AUTHORITY_PROVEN_NEGATIVE,
     SnapshotResolution,
+    authority_disposition,
+    matches_requirement,
     resolve_snapshot,
 )
 from l9_cognitive_runtime.compiler.task_scope import TaskScopeCompiler
@@ -33,6 +35,7 @@ from l9_cognitive_runtime.models.context import (
     AuthorityContext,
     AuthorityFact,
     AuthorityLevel,
+    AuthorityRequirement,
     CapabilityContext,
     CapabilityFact,
     CompiledTaskContext,
@@ -57,6 +60,7 @@ from l9_cognitive_runtime.models.context import (
     PriorDecision,
     UnknownMateriality,
     UnknownReasonCode,
+    authority_semantic_key,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
@@ -78,15 +82,18 @@ def law(
     supersedes: list[str] | None = None,
     precedence: int | None = None,
     scope_refs: list[str] | None = None,
+    statement: str | None = None,
+    authority: AuthorityLevel = AuthorityLevel.GOVERNED_AUTHORITATIVE,
+    source_id: str | None = None,
 ) -> ApplicableLaw:
     return ApplicableLaw(
         semantic_key=law_id,
-        authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
-        source_ref=source(law_id),
+        authority_level=authority,
+        source_ref=source(source_id or law_id),
         scope_mode=ContextScopeMode.SCOPED if scope_refs else ContextScopeMode.GLOBAL,
         scope_refs=scope_refs or [],
         law_id=law_id,
-        statement=f"{law_id} applies",
+        statement=statement or f"{law_id} applies",
         precedence=precedence,
         supersedes_refs=supersedes or [],
     )
@@ -125,12 +132,22 @@ def constraint(constraint_id: str, *, scope_refs: list[str] | None = None) -> Go
 
 
 def surviving(resolution: SnapshotResolution, kind: ContextKind) -> set[str]:
-    """Semantic keys of the given kind that survived into resolvable groups."""
+    """Semantic keys of the given kind that survive resolution over *every*
+    candidate.
+
+    ``resolve_all`` is the diagnostic view. No projection uses it: each resolves
+    over the candidates it is eligible for. These supersession tests want the
+    rule itself, independent of any requirement, so they ask for it explicitly.
+    """
     return {
         semantic_key
-        for (kind_value, semantic_key), group in resolution.groups.items()
+        for (kind_value, semantic_key), group in resolution.resolve_all().groups.items()
         if kind_value == kind.value and group.items
     }
+
+
+def supersession_unknowns(resolution: SnapshotResolution) -> list[ContextUnknown]:
+    return list(resolution.resolve_all().supersession_unknowns)
 
 
 # ---------------------------------------------------------------------------
@@ -192,9 +209,10 @@ def test_a_supersession_cycle_selects_no_arbitrary_winner() -> None:
     )
     resolution = resolve_snapshot(snapshot)
     assert surviving(resolution, ContextKind.APPLICABLE_LAW) == set()
-    reasons = {u.reason_code for u in resolution.supersession_unknowns}
+    unknowns = supersession_unknowns(resolution)
+    reasons = {u.reason_code for u in unknowns}
     assert UnknownReasonCode.UNKNOWN_SUPERSESSION in reasons
-    assert {u.semantic_key for u in resolution.supersession_unknowns} == {"LAW_A", "LAW_B"}
+    assert {u.semantic_key for u in unknowns} == {"LAW_A", "LAW_B"}
 
 
 def test_a_cycle_does_not_supersede_a_resolvable_claim_outside_it() -> None:
@@ -214,7 +232,7 @@ def test_a_dangling_supersession_reference_stays_visible() -> None:
     assert surviving(resolution, ContextKind.APPLICABLE_LAW) == {"LAW_1"}
     dangling = [
         u
-        for u in resolution.supersession_unknowns
+        for u in supersession_unknowns(resolution)
         if u.reason_code is UnknownReasonCode.DANGLING_SUPERSESSION
     ]
     assert dangling
@@ -721,7 +739,7 @@ def test_a_per_requirement_item_breach_is_detected_while_the_global_budget_passe
         ContextClosureValidator().validate(
             context=context,
             requirement_plan=plan,
-            resolution=SnapshotResolution(groups={}),
+            resolution=SnapshotResolution(),
             kernels=[],
         )
 
@@ -735,7 +753,7 @@ def test_a_per_requirement_byte_breach_is_detected_while_the_global_budget_passe
         ContextClosureValidator().validate(
             context=context,
             requirement_plan=plan,
-            resolution=SnapshotResolution(groups={}),
+            resolution=SnapshotResolution(),
             kernels=[],
         )
 
@@ -746,25 +764,34 @@ def test_a_within_budget_context_passes_the_same_check() -> None:
     report = ContextClosureValidator().validate(
         context=_context(laws=laws),
         requirement_plan=_plan([requirement]),
-        resolution=SnapshotResolution(groups={}),
+        # The candidate the context selected from: closure recomputes
+        # eligibility itself, so the pair has to be consistent.
+        resolution=SnapshotResolution(candidates=(law("LAW_1"),)),
         kernels=[],
     )
     assert report.passed
     assert report.checks == CONTEXT_CHECKS
 
 
+def _contested(law_id: str, **kwargs: Any) -> list[ContextItemIdentity]:
+    """Two equal-authority claims on one key: a genuine unresolvable conflict.
+
+    Built from real candidates rather than a hand-made ``GroupResolution`` so
+    the closure test exercises the resolution rule it is meant to police. A
+    validator handed a pre-reduced groups mapping is trusting the very step it
+    exists to check.
+    """
+    return [
+        law(law_id, statement=f"{law_id} says A", source_id=f"{law_id}-a", **kwargs),
+        law(law_id, statement=f"{law_id} says B", source_id=f"{law_id}-b", **kwargs),
+    ]
+
+
 def test_a_conflict_that_vanished_entirely_is_still_detected() -> None:
     """The conflicting key is in *no* selected item — the case a selected-set
     check cannot see."""
     requirement = _requirement()
-    contenders: list[ContextItemIdentity] = [law("LAW_X"), law("LAW_X")]
-    resolution = SnapshotResolution(
-        groups={
-            ("applicable_law", "LAW_X"): GroupResolution(
-                [], conflict=True, details={"claims": 2}, sources=contenders
-            )
-        }
-    )
+    resolution = SnapshotResolution(candidates=tuple(_contested("LAW_X")))
     context = _context(laws=[])
     assert not any(item.semantic_key == "LAW_X" for item in context.selected_items())
     plan = _plan([requirement])
@@ -779,13 +806,7 @@ def test_a_conflict_that_vanished_entirely_is_still_detected() -> None:
 
 def test_a_conflict_disposed_as_an_unknown_passes() -> None:
     requirement = _requirement()
-    resolution = SnapshotResolution(
-        groups={
-            ("applicable_law", "LAW_X"): GroupResolution(
-                [], conflict=True, details={"claims": 2}, sources=[law("LAW_X"), law("LAW_X")]
-            )
-        }
-    )
+    resolution = SnapshotResolution(candidates=tuple(_contested("LAW_X")))
     disposition = ContextUnknown(
         requirement_ref=requirement.requirement_id,
         semantic_key="LAW_X",
@@ -804,14 +825,8 @@ def test_a_conflict_disposed_as_an_unknown_passes() -> None:
 
 def test_a_conflict_no_requirement_would_have_matched_is_not_charged() -> None:
     """Eligibility is judged with the compiler's own matching rule."""
-    requirement = _requirement(minimum_authority=AuthorityLevel.GOVERNED_AUTHORITATIVE)
-    off_scope = law("LAW_Y", scope_refs=["src/elsewhere"])
     resolution = SnapshotResolution(
-        groups={
-            ("applicable_law", "LAW_Y"): GroupResolution(
-                [], conflict=True, details={"claims": 2}, sources=[off_scope, off_scope]
-            )
-        }
+        candidates=tuple(_contested("LAW_Y", scope_refs=["src/elsewhere"]))
     )
     report = ContextClosureValidator().validate(
         context=_context(laws=[]),
@@ -819,7 +834,7 @@ def test_a_conflict_no_requirement_would_have_matched_is_not_charged() -> None:
             [
                 _requirement(
                     scope_mode=ContextScopeMode.GLOBAL,
-                    minimum_authority=requirement.minimum_authority,
+                    minimum_authority=AuthorityLevel.GOVERNED_AUTHORITATIVE,
                 )
             ]
         ),
@@ -842,7 +857,7 @@ def test_removing_a_closure_check_from_execution_is_detected(
         ContextClosureValidator().validate(
             context=context,
             requirement_plan=plan,
-            resolution=SnapshotResolution(groups={}),
+            resolution=SnapshotResolution(),
             kernels=[],
         )
 
@@ -863,7 +878,7 @@ def test_a_stale_item_identity_is_detected_by_closure() -> None:
         ContextClosureValidator().validate(
             context=context,
             requirement_plan=plan,
-            resolution=SnapshotResolution(groups={}),
+            resolution=SnapshotResolution(),
             kernels=[],
         )
 
@@ -875,7 +890,7 @@ def test_an_unbound_selected_item_is_detected_by_closure() -> None:
         ContextClosureValidator().validate(
             context=context,
             requirement_plan=plan,
-            resolution=SnapshotResolution(groups={}),
+            resolution=SnapshotResolution(),
             kernels=[],
         )
 
@@ -902,6 +917,383 @@ def test_an_undisposed_required_capability_is_detected_by_closure(valid_pack: Pa
         ContextClosureValidator().validate(
             context=stripped,
             requirement_plan=plan,
-            resolution=SnapshotResolution(groups={}),
+            resolution=SnapshotResolution(),
             kernels=kernels,
+        )
+
+
+# ---------------------------------------------------------------------------
+# R15: eligibility precedes destructive resolution.
+#
+# Supersession eliminates claims and deduplication keeps one representative.
+# Both are destructive, so both must run over the candidates a consumer is
+# eligible for. Run first over the whole snapshot, a claim the consumer may
+# never see decides the fate of one it needs.
+# ---------------------------------------------------------------------------
+
+
+def test_two_identical_claims_at_different_scopes_are_two_identities() -> None:
+    here = law("LAW_S", scope_refs=["src/here"])
+    elsewhere = law("LAW_S", scope_refs=["src/elsewhere"])
+    # Same words, same source: applicability is the only thing separating them.
+    assert here.claim_payload() == elsewhere.claim_payload()
+    assert here.source_ref == elsewhere.source_ref
+    assert here.item_id != elsewhere.item_id
+
+
+def test_two_identical_claims_at_the_same_scope_are_one_identity() -> None:
+    """The discriminator: a true duplicate still collapses to one identity."""
+    assert law("LAW_S", scope_refs=["src/here"]).item_id == (
+        law("LAW_S", scope_refs=["src/here"]).item_id
+    )
+
+
+def test_a_claim_scoped_elsewhere_cannot_stand_in_for_the_one_in_scope(
+    valid_pack: Path,
+) -> None:
+    """Deduplication ran before scope was known, and the wrong one carried."""
+    here = law("LAW_S", scope_refs=["src/here"])
+    elsewhere = law("LAW_S", scope_refs=["src/elsewhere"])
+    bundle = _compile(
+        valid_pack,
+        NEUTRAL_MISSION,
+        # Ordered so a position-sensitive representative picks the wrong one.
+        ContextSnapshot(applicable_law=[elsewhere, here]),
+        target_refs=["src/here"],
+    )
+    selected = {item.item_id for item in bundle.task_context.applicable_law}
+    assert here.item_id in selected
+    assert elsewhere.item_id not in selected
+
+
+def test_a_weaker_claim_may_not_supersede_a_stronger_one() -> None:
+    resolution = SnapshotResolution(
+        candidates=(
+            law("LAW_1"),
+            law("LAW_2", supersedes=["LAW_1"], authority=AuthorityLevel.UNVERIFIED),
+        )
+    )
+    assert surviving(resolution, ContextKind.APPLICABLE_LAW) == {"LAW_1", "LAW_2"}
+    refused = [
+        unknown
+        for unknown in supersession_unknowns(resolution)
+        if str(unknown.details.get("reason", "")).startswith("weaker authority")
+    ]
+    # The refusal is recorded rather than dropped: the attempt stays visible.
+    assert [unknown.materiality for unknown in refused] == [UnknownMateriality.NON_BLOCKING]
+
+
+def test_an_equally_strong_claim_still_supersedes() -> None:
+    """The discriminator: the authority gate is not a blanket refusal."""
+    resolution = SnapshotResolution(candidates=(law("LAW_1"), law("LAW_2", supersedes=["LAW_1"])))
+    assert surviving(resolution, ContextKind.APPLICABLE_LAW) == {"LAW_2"}
+
+
+def test_an_ineligible_claim_cannot_retire_the_eligible_one() -> None:
+    """The unverified superseder is filtered out before it can eliminate."""
+    resolution = SnapshotResolution(
+        candidates=(
+            law("LAW_1"),
+            law("LAW_2", supersedes=["LAW_1"], authority=AuthorityLevel.UNVERIFIED),
+        )
+    )
+    requirement = _requirement(minimum_authority=AuthorityLevel.GOVERNED_AUTHORITATIVE)
+    view = resolution.resolve(lambda item: matches_requirement(requirement, item))
+    assert {item.semantic_key for group in view.groups.values() for item in group.items} == {
+        "LAW_1"
+    }
+
+
+def _two_readings(law_id: str) -> tuple[ApplicableLaw, ApplicableLaw]:
+    return (
+        law(law_id, statement=f"{law_id} first reading", source_id=f"{law_id}-a"),
+        law(law_id, statement=f"{law_id} second reading", source_id=f"{law_id}-b"),
+    )
+
+
+def test_an_item_specific_supersession_retires_only_that_claim() -> None:
+    first, second = _two_readings("LAW_1")
+    resolution = SnapshotResolution(
+        candidates=(first, second, law("LAW_2", supersedes=[first.item_id]))
+    )
+    kept = {
+        item.item_id for group in resolution.resolve_all().groups.values() for item in group.items
+    }
+    assert first.item_id not in kept
+    assert second.item_id in kept
+
+
+def test_a_domain_supersession_retires_every_claim_of_that_domain() -> None:
+    """The discriminator: naming the domain still means the whole domain."""
+    first, second = _two_readings("LAW_1")
+    resolution = SnapshotResolution(candidates=(first, second, law("LAW_2", supersedes=["LAW_1"])))
+    kept = {
+        item.item_id for group in resolution.resolve_all().groups.values() for item in group.items
+    }
+    assert first.item_id not in kept
+    assert second.item_id not in kept
+
+
+# ---------------------------------------------------------------------------
+# R16: a contradiction outside the task is semantically inert.
+# ---------------------------------------------------------------------------
+
+
+def _cycle(prefix: str, scope_refs: list[str]) -> list[ApplicableLaw]:
+    return [
+        law(f"{prefix}_A", supersedes=[f"{prefix}_B"], scope_refs=scope_refs),
+        law(f"{prefix}_B", supersedes=[f"{prefix}_A"], scope_refs=scope_refs),
+    ]
+
+
+def _supersession_unknowns_of(bundle: Any) -> set[str | None]:
+    return {
+        unknown.semantic_key
+        for unknown in bundle.task_context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.UNKNOWN_SUPERSESSION
+    }
+
+
+def test_an_unrelated_supersession_cycle_moves_nothing(valid_pack: Path) -> None:
+    base = _compile(valid_pack, NEUTRAL_MISSION, target_refs=["src/greeting"])
+    noisy = _compile(
+        valid_pack,
+        NEUTRAL_MISSION,
+        ContextSnapshot(applicable_law=_cycle("LAW_OFF", ["src/elsewhere"])),
+        target_refs=["src/greeting"],
+    )
+    assert noisy.digests()["context"] == base.digests()["context"]
+    assert noisy.digests()["semantic"] == base.digests()["semantic"]
+    assert not _supersession_unknowns_of(noisy)
+    # Identical obligations, so the cycle raised none of its own. Compared
+    # against the base rather than asserted empty: the neutral mission already
+    # carries an unrelated epistemic obligation, and asserting emptiness would
+    # be asserting something this test does not mean.
+    assert [obligation.obligation_id for obligation in noisy.execution.obligations] == [
+        obligation.obligation_id for obligation in base.execution.obligations
+    ]
+
+
+def test_a_cycle_inside_the_task_scope_blocks(valid_pack: Path) -> None:
+    """The discriminator: relevance is what changed, not the detection."""
+    bundle = _compile(
+        valid_pack,
+        NEUTRAL_MISSION,
+        ContextSnapshot(applicable_law=_cycle("LAW_ON", ["src/greeting"])),
+        target_refs=["src/greeting"],
+    )
+    assert _supersession_unknowns_of(bundle) == {"LAW_ON_A", "LAW_ON_B"}
+    blocking = {
+        unknown.unknown_id
+        for unknown in bundle.task_context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.UNKNOWN_SUPERSESSION
+        and unknown.materiality is UnknownMateriality.BLOCKING
+    }
+    assert blocking
+    obligations = {obligation.obligation_id for obligation in bundle.execution.obligations}
+    assert {f"OBL.EPISTEMIC.CONTEXT.{unknown_id}" for unknown_id in blocking} <= obligations
+
+
+# ---------------------------------------------------------------------------
+# R17: an authority grant satisfies a requirement only where it covers it.
+#
+# The requirement names an authority, a subject, and an action scope. Matching
+# on the identifier alone lets a grant over one subject or one action close a
+# gap it never covers — a permission nobody proved.
+# ---------------------------------------------------------------------------
+
+
+def _authority_fact(
+    authority_id: str,
+    state: str,
+    *,
+    subject: str | None = None,
+    actions: list[str] | None = None,
+) -> AuthorityFact:
+    return AuthorityFact(
+        semantic_key=authority_semantic_key(authority_id, subject, actions or []),
+        authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+        source_ref=source(f"{authority_id}:{state}:{subject or ''}"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id=authority_id,
+        state=state,  # type: ignore[arg-type]
+        subject_ref=subject,
+        action_scope=actions or [],
+    )
+
+
+def _authority_requirement(
+    authority_id: str,
+    *,
+    subject: str | None = None,
+    actions: list[str] | None = None,
+) -> AuthorityRequirement:
+    return AuthorityRequirement(
+        authority_id=authority_id,
+        subject_ref=subject,
+        action_scope=actions or [],
+        reason="required by the compiled objective",
+        source_refs=["intent:test"],
+    )
+
+
+def test_a_grant_over_another_action_scope_does_not_satisfy_the_requirement() -> None:
+    assert (
+        authority_disposition(
+            _authority_requirement("repository_write", actions=["src/here"]),
+            [_authority_fact("repository_write", "granted", actions=["src/elsewhere"])],
+            [],
+            [],
+        )
+        == "insufficient_scope"
+    )
+
+
+def test_a_grant_over_another_subject_does_not_satisfy_the_requirement() -> None:
+    assert (
+        authority_disposition(
+            _authority_requirement("delivery", subject="repo-a"),
+            [_authority_fact("delivery", "granted", subject="repo-b")],
+            [],
+            [],
+        )
+        == "insufficient_scope"
+    )
+
+
+def test_a_grant_covering_the_required_scope_satisfies_it() -> None:
+    """The discriminator: coverage is a real relation, not a blanket refusal."""
+    assert (
+        authority_disposition(
+            _authority_requirement("repository_write", actions=["src/here"]),
+            [_authority_fact("repository_write", "granted", actions=["src/here", "src/other"])],
+            [],
+            [],
+        )
+        == "granted"
+    )
+
+
+def test_an_unrestricted_grant_covers_a_narrower_requirement() -> None:
+    assert (
+        authority_disposition(
+            _authority_requirement("repository_write", actions=["src/here"]),
+            [_authority_fact("repository_write", "granted")],
+            [],
+            [],
+        )
+        == "granted"
+    )
+
+
+def test_an_insufficient_grant_is_distinct_from_no_fact_at_all() -> None:
+    """Absence is non-blocking; a grant that provably falls short is not."""
+    requirement = _authority_requirement("repository_write", actions=["src/here"])
+    assert authority_disposition(requirement, [], [], []) == "absent"
+    assert "absent" not in AUTHORITY_PROVEN_NEGATIVE
+    assert "insufficient_scope" in AUTHORITY_PROVEN_NEGATIVE
+
+
+def test_a_limit_narrower_than_the_requirement_still_bears_on_it() -> None:
+    assert (
+        authority_disposition(
+            _authority_requirement("repository_write", actions=["src/here", "src/there"]),
+            [],
+            [_authority_fact("repository_write", "limit", actions=["src/here"])],
+            [],
+        )
+        == "limited_without_grant"
+    )
+
+
+def test_a_limit_over_a_disjoint_action_scope_does_not_bear_on_it() -> None:
+    """The discriminator: a limit elsewhere is not this requirement's problem."""
+    assert (
+        authority_disposition(
+            _authority_requirement("repository_write", actions=["src/here"]),
+            [],
+            [_authority_fact("repository_write", "limit", actions=["src/elsewhere"])],
+            [],
+        )
+        == "absent"
+    )
+
+
+# ---------------------------------------------------------------------------
+# R18: closure proves each coverage mode against a recomputed eligible set.
+# ---------------------------------------------------------------------------
+
+
+def _selected(item: ApplicableLaw, requirement: ContextRequirement) -> ApplicableLaw:
+    return item.model_copy(update={"selected_because": [requirement.requirement_id]})
+
+
+def test_closure_detects_an_all_eligible_requirement_that_dropped_one_item() -> None:
+    """The case check 9 cannot see: min_items is still met, coverage is not."""
+    requirement = _requirement(missing_policy=MissingPolicy.PRESERVE_UNKNOWN)
+    kept, dropped = law("LAW_1"), law("LAW_2")
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=_context(laws=[_selected(kept, requirement)]),
+            requirement_plan=_plan([requirement]),
+            resolution=SnapshotResolution(candidates=(kept, dropped)),
+            kernels=[],
+        )
+
+
+def test_a_complete_all_eligible_selection_passes_the_same_check() -> None:
+    requirement = _requirement(missing_policy=MissingPolicy.PRESERVE_UNKNOWN)
+    first, second = law("LAW_1"), law("LAW_2")
+    report = ContextClosureValidator().validate(
+        context=_context(laws=[_selected(first, requirement), _selected(second, requirement)]),
+        requirement_plan=_plan([requirement]),
+        resolution=SnapshotResolution(candidates=(first, second)),
+        kernels=[],
+    )
+    assert report.passed
+    assert report.checks == CONTEXT_CHECKS
+
+
+def test_closure_detects_a_minimum_requirement_that_took_more_than_the_minimum() -> None:
+    """`minimum` means the minimum, not "at least min_items"."""
+    requirement = _requirement(
+        coverage_mode=CoverageMode.MINIMUM,
+        min_items=1,
+        missing_policy=MissingPolicy.PRESERVE_UNKNOWN,
+    )
+    first, second = law("LAW_1"), law("LAW_2")
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=_context(laws=[_selected(first, requirement), _selected(second, requirement)]),
+            requirement_plan=_plan([requirement]),
+            resolution=SnapshotResolution(candidates=(first, second)),
+            kernels=[],
+        )
+
+
+def test_a_minimum_requirement_that_took_exactly_the_minimum_passes() -> None:
+    requirement = _requirement(
+        coverage_mode=CoverageMode.MINIMUM,
+        min_items=1,
+        missing_policy=MissingPolicy.PRESERVE_UNKNOWN,
+    )
+    first, second = law("LAW_1"), law("LAW_2")
+    report = ContextClosureValidator().validate(
+        context=_context(laws=[_selected(first, requirement)]),
+        requirement_plan=_plan([requirement]),
+        resolution=SnapshotResolution(candidates=(first, second)),
+        kernels=[],
+    )
+    assert report.passed
+
+
+def test_closure_detects_a_selection_that_was_never_eligible() -> None:
+    requirement = _requirement(minimum_authority=AuthorityLevel.GOVERNED_AUTHORITATIVE)
+    ineligible = law("LAW_W", authority=AuthorityLevel.UNVERIFIED)
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=_context(laws=[_selected(ineligible, requirement)]),
+            requirement_plan=_plan([requirement]),
+            resolution=SnapshotResolution(candidates=(ineligible,)),
+            kernels=[],
         )

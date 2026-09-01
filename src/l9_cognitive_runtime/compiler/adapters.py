@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -237,12 +238,16 @@ class AdapterRenderer:
             # through unchanged, and the body losslessly beside it. It is never
             # recomputed, reselected, or summarized.
             context_digest=str(packet["compiled_task_context_digest"]),
-            compiled_task_context=dict(packet["compiled_task_context"]),
+            # Deep, not shallow: a shallow copy leaves every nested list and
+            # mapping shared with the packet that was just validated, so a
+            # downstream consumer editing the projection would edit the
+            # validated packet behind its own digest (INV-CTX-031).
+            compiled_task_context=deepcopy(packet["compiled_task_context"]),
             content=content,
-            required_obligation_ids=required_ids,
             unknowns=tuple(str(u) for u in packet["unknowns"]),
-            validation_properties=tuple(dict(p) for p in packet["validation_properties"]),
-            delivery_obligations=tuple(dict(o) for o in packet["delivery_obligations"]),
+            required_obligation_ids=required_ids,
+            validation_properties=tuple(deepcopy(p) for p in packet["validation_properties"]),
+            delivery_obligations=tuple(deepcopy(o) for o in packet["delivery_obligations"]),
             gar_output_refs=gar_output_refs(packet),
             applicable_law_refs=applicable_law_refs(packet),
             authority_limit_refs=authority_limit_refs(packet),

@@ -150,7 +150,7 @@ Every material context item MUST have:
 - authority/truth classification appropriate to its domain;
 - compiler-generated relevance binding when selected.
 
-Item identity is **compiler-owned, not caller-chosen**. `item_id` MUST be derived from — or validated against — exactly one canonical recipe binding at least the context kind, the semantic key, the canonical claim content, the stable source identity, and the immutable source coordinate or content digest when present. A supplied `item_id` that disagrees with the recipe MUST fail closed. Random UUIDs, timestamps, branch names, working directories, process identity, and caller-arbitrary identifiers MUST NOT determine identity, and MUST NOT participate in canonical semantic output.
+Item identity is **compiler-owned, not caller-chosen**. `item_id` MUST be derived from — or validated against — exactly one canonical recipe binding at least the context kind, the semantic key, the canonical claim content, the item's **applicability** (scope mode and scope references), the stable source identity, and the immutable source coordinate or content digest when present. Applicability is part of identity even though it is not part of the claim: two byte-identical statements that apply in different places are two items, and one identity for both lets the claim that applies elsewhere stand in for the one that applies here. A supplied `item_id` that disagrees with the recipe MUST fail closed. Random UUIDs, timestamps, branch names, working directories, process identity, and caller-arbitrary identifiers MUST NOT determine identity, and MUST NOT participate in canonical semantic output.
 
 Snapshot candidates MUST enter with empty selection bindings. The compiler MUST populate `selected_because` only after selection. Repository-state items MUST represent one semantic claim each rather than an opaque multi-fact map.
 
@@ -158,7 +158,9 @@ Snapshot candidates MUST enter with empty selection bindings. The compiler MUST 
 
 Input list order MUST NOT change compiled semantic output.
 
-Candidates MUST be canonically normalized and sorted before selection. Semantically identical duplicate candidates MUST collapse deterministically. Authority rank, immutable coordinate, content digest, stable semantic key, and stable item ID MUST provide explicit canonical tie-breaking. Enum declaration order and input list position MUST NOT provide hidden precedence.
+Candidates MUST be canonically normalized and sorted before selection. Semantically identical duplicate candidates MUST collapse deterministically, where "identical" binds applicability as well as the claim (INV-CTX-011). Authority rank, immutable coordinate, content digest, stable semantic key, and stable item ID MUST provide explicit canonical tie-breaking. Enum declaration order and input list position MUST NOT provide hidden precedence.
+
+**Eligibility MUST precede destructive resolution.** Supersession eliminates claims and deduplication discards all but one representative; both are destructive. They MUST therefore run over the candidate set a consumer is *eligible* for — the bounded discovery projection over what may route, each `ContextRequirement` over what it matches — and MUST NOT be run once over the whole snapshot with eligibility applied afterwards. Resolving first lets a candidate the consumer may never see decide the fate of one it needs: an unverified law retires an authoritative one and is then itself rejected, or a claim scoped elsewhere carries a claim scoped here. Resolution MUST remain a pure function of (candidate set, eligibility rule), so every consumer resolves the same contradiction the same way.
 
 ### INV-CTX-013: Supersession resolves kind-wide, before same-key conflict resolution
 
@@ -168,10 +170,11 @@ Explicit supersession, however, is **not** confined to one semantic key. A law t
 
 The supersession pass MUST:
 
-- support `supersedes_refs` naming either an item identity or a domain identifier;
+- support `supersedes_refs` naming either an item identity or a domain identifier, and MUST keep the two distinct: a reference naming an **item identity** supersedes exactly that claim, while a reference naming a **domain identifier** supersedes every claim of that domain. Widening an item reference to its domain retires instances the supersession never named;
 - support `PriorDecision.superseded_by_refs` in the inverse direction;
 - never let an explicit `SUPERSEDED` status remain active;
 - ignore self-reference: only a claim with a different domain identifier may supersede another;
+- **obey authority**: supersession is a governed act of retiring a claim, so a claim MUST NOT supersede one of stronger authority. A refused edge MUST stay visible as a non-blocking `UNKNOWN_SUPERSESSION` rather than being silently dropped;
 - be order-independent, so inverse input order yields the same surviving set;
 - fail closed on a supersession cycle, or record an explicit `UNKNOWN_SUPERSESSION` for its members, and never arbitrarily select a winner from a cycle;
 - keep dangling supersession references visible rather than silently accepting them.
@@ -191,6 +194,8 @@ Evidence supports claims; evidence itself is not a generic truth-precedence laye
 Architecture materiality MAY consume mission text as a candidate signal, but external architecture facts MUST be established by typed discovery facts with provenance.
 
 Kernel file presence and raw `source_context.context_signals` MUST NOT directly prove architecture materiality. A host proves an architecture signal by supplying a provenance-backed governed constraint whose identifier is the signal name; the bounded discovery projection is the only legal path from governed context to materiality.
+
+**Irrelevant governed context MUST be semantically inert.** A contradiction — an unresolvable same-key conflict, or a supersession cycle — among claims that no projection of this task was eligible to consume MUST NOT enter discovery or the compiled context, MUST NOT move the discovery digest or compiled-context identity, and MUST NOT raise an epistemic obligation. The same contradiction among claims the task *is* eligible for MUST stay visible with its own materiality. Relevance is what separates them; detection is unchanged.
 
 ### INV-CTX-015: Applicable law is selected, not dumped — and scoped law survives selection
 
@@ -250,6 +255,13 @@ Required MUST NOT imply granted. Absence of a grant is an explicit state:
 - a required authority proven **limited** MUST produce a blocking `ContextUnknown`;
 - a required authority with **no** proven grant MUST produce an explicit non-blocking `ContextUnknown`, whether or not any authority fact was supplied at all. Reasoning about a gap only when some authority plane happens to exist makes the empty case silently permissive.
 
+A required authority names an authority identifier, the **subject** it is needed over, and the **action scope** it must permit. Satisfaction MUST be judged against all three; matching on the identifier alone lets a grant over one subject or one action close a gap it never covers. The two directions are different relations and MUST be kept so:
+
+- a **grant** satisfies a requirement only when it *contains* it — a field the grant leaves unstated is unrestricted, but a field it states MUST cover what is required;
+- a **limit** bears on a requirement when it *intersects* it — a limit narrower than what is required still bears on it, and an unstated field on either side cannot be assumed disjoint.
+
+A grant that exists under the required identifier but does not cover it is a **proven negative**, distinct from having no fact at all, and MUST block rather than reading as mere absence.
+
 Context-specific governing authority order MUST take precedence when proven. For backward compatibility, the current compiler authority order MAY remain as an explicit `compiler_default` only when no more specific governed order is available. The output MUST identify whether its effective order came from governed context or the compiler default. The compiler default is a **precedence fallback and never a grant**: it MUST NOT satisfy a required authority.
 
 Caller hints MUST NOT define effective authority order.
@@ -280,7 +292,10 @@ A named check MUST prove the property it names. Specifically:
 
 - **conflict disposition** MUST hold over every *eligible* conflicting governed semantic key a requirement would have matched, not merely over keys that also happen to appear in the selected set. A conflict that disappears entirely is the case the check exists to catch;
 - **budget compliance** MUST recompute each requirement's own selected item count and canonical byte cost from the finished context and verify that requirement's `max_items`, `max_bytes`, `min_items`, and coverage mode, **and independently** verify the global unique-item budget. A per-requirement breach that fits inside the global budget MUST be detected;
-- **capability and authority gaps** MUST prove that every compiler-derived required capability and required authority has exactly one explicit disposition — available/granted, unavailable/limited, or explicit unknown.
+- **capability and authority gaps** MUST prove that every compiler-derived required capability and required authority has exactly one explicit disposition — available/granted, unavailable/limited, or explicit unknown. An authority gap MUST be keyed by the requirement's full semantic key, so a gap over one subject or action scope is not closed by a record about another;
+- **coverage modes** MUST be proven against an eligible set the validator recomputes itself from the candidates, using the compiler's own matching rule, rather than against the count the selector happened to reach. `all_eligible` MUST have selected every eligible item, `minimum` MUST have taken the minimum rather than merely at least `min_items`, `semantic_keys` MUST have taken no key it did not require, and nothing ineligible may appear as selected. Under-coverage is legal only where something explicitly said so — a recorded budget stop, or an `OPTIONAL` missing policy. A selection bug that drops one eligible item while leaving enough behind to clear `min_items` is exactly what a budget-only check cannot see.
+
+Closure MUST NOT be handed an already-reduced resolution and treat it as evidence: trusting the step it exists to check makes the check a restatement.
 
 Closure MUST enforce exact executed-check coverage the same way runtime liveness does: a declared check that does not execute is a failure, not a quietly shorter report.
 
@@ -323,6 +338,8 @@ Adapters MUST NOT rebuild, weaken, or reinterpret task context independently.
 All adapters are renderers, not sources of semantic law. An adapter packet MUST carry the compiled task context **losslessly** — the body, not only the digest — and MUST carry the digest through unchanged rather than recomputing it.
 
 Adapters MUST preserve required obligations, unresolved unknowns, applicable law, authority limits, capability gaps, and context provenance. A textual adapter projection MUST include or reference the canonical context rather than re-deriving it. An adapter MUST NOT reselect context, summarize away blocking context, or recompute governance or authority.
+
+The projection MUST be an independent copy, not a handle onto the packet. A shallow copy leaves every nested list and mapping shared with the packet that `validate_packet` just checked, so a downstream consumer editing the projection edits the validated packet behind its own declared digest.
 
 ### INV-CTX-032: Deterministic compilation
 
@@ -473,7 +490,7 @@ Do not flatten all context into one precedence list.
 - Evidence supports claims but is not itself a universal override layer.
 - Memory and caller hints are always non-authoritative relative to governed facts.
 
-Explicit supersession is resolved kind-wide first (INV-CTX-013). Only then does same-semantic-key conflict resolution run, following the exact algorithm in the implementation.
+Within a consumer's eligible candidate set (INV-CTX-012), explicit supersession is resolved kind-wide first (INV-CTX-013). Only then does same-semantic-key conflict resolution run, following the exact algorithm in the implementation.
 
 ## 5. Explicit non-goals
 

@@ -22,6 +22,7 @@ from typing import Any
 import pytest
 import yaml
 
+from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
 from l9_cognitive_runtime.compiler.task_context import (
     ContextDiscoveryCompiler,
     resolve_snapshot,
@@ -36,6 +37,7 @@ from l9_cognitive_runtime.models.context import (
     DiscoveryContext,
     GovernedConstraint,
 )
+from l9_cognitive_runtime.types import CompileRequest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -212,3 +214,24 @@ def governed_signals() -> Callable[..., ContextSnapshot]:
 def governed_discovery() -> Callable[..., DiscoveryContext]:
     """Factory running the real discovery projection for a direct planner call."""
     return discovery_for
+
+
+def intent_for(
+    mission: str,
+    *,
+    target_refs: list[str] | None = None,
+    in_scope_refs: list[str] | None = None,
+    excluded_refs: list[str] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> IntentContract:
+    """Derive a canonical intent carrying only the declared scope hints."""
+    source_context: dict[str, Any] = {"pack": "test"}
+    if target_refs is not None:
+        source_context["target_refs"] = target_refs
+    if in_scope_refs is not None:
+        source_context["in_scope_refs"] = in_scope_refs
+    if excluded_refs is not None:
+        source_context["excluded_refs"] = excluded_refs
+    if extra:
+        source_context.update(extra)
+    return ObjectiveDeriver().derive(CompileRequest(mission=mission, source_context=source_context))

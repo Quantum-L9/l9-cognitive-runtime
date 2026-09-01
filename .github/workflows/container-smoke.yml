@@ -68,14 +68,53 @@ jobs:
           curl -fsS http://127.0.0.1:18080/healthz
           grep -q 'compile_runtime' ready.json
 
-      - name: Real MCP initialize and tool call
+      - name: Real MCP initialize and compile
         run: |
           uv sync --extra dev --frozen
           uv run --no-sync python - <<'PY'
           import asyncio
+          import json
           from mcp import ClientSession
           from mcp.client.streamable_http import streamable_http_client
           from l9_cognitive_runtime.mcp import READ_ONLY_TOOLS
+
+          # INV-CTX-044: the smoke must exercise the compiler through the
+          # deployed container, not merely confirm that a tool name is listed.
+          # A capability listing proves the listing.
+
+          GOVERNED_SNAPSHOT = {
+              "architecture_constraints": [
+                  {
+                      "semantic_key": "multiple_workers",
+                      "context_kind": "architecture_constraint",
+                      "authority_level": "governed_authoritative",
+                      "source_ref": {
+                          "source_id": "governance:multiple_workers",
+                          "source_kind": "architecture_review",
+                          "locator": "governance://architecture/multiple_workers",
+                          "immutable_coordinate": "review-multiple-workers",
+                      },
+                      "scope_mode": "global",
+                      "constraint_id": "multiple_workers",
+                      "statement": "multiple workers is proven for this task scope",
+                  }
+              ]
+          }
+
+          def payload(result):
+              if getattr(result, "structured_content", None):
+                  return result.structured_content
+              return json.loads(result.content[0].text)
+
+          def assert_compile(data):
+              assert data["digests"]["semantic"], "compile returned no semantic digest"
+              context_digest = data["digests"]["context"]
+              assert context_digest, "compile returned no context digest"
+              packet = data["execution_packet"]
+              assert packet["compiled_task_context"], "packet carries no compiled task context"
+              assert packet["compiled_task_context_digest"] == context_digest
+              assert packet["provenance"]["context_digest"] == context_digest
+              return context_digest
 
           async def main() -> None:
               async with streamable_http_client("http://127.0.0.1:18080/v1/mcp") as (read, write):
@@ -84,8 +123,29 @@ jobs:
                       assert initialized.server_info.name == "l9-cognitive-runtime"
                       tools = await session.list_tools()
                       assert {tool.name for tool in tools.tools} == set(READ_ONLY_TOOLS)
-                      result = await session.call_tool("runtime_capabilities", {})
-                      assert result.is_error is False
+
+                      capabilities = await session.call_tool("runtime_capabilities", {})
+                      assert capabilities.is_error is False
+                      assert payload(capabilities)["context_snapshot_input"] is True
+
+                      plain = await session.call_tool(
+                          "compile_runtime", {"mission": "Audit this repository."}
+                      )
+                      assert plain.is_error is False, plain.content
+                      plain_digest = assert_compile(payload(plain))
+
+                      governed = await session.call_tool(
+                          "compile_runtime",
+                          {
+                              "mission": "Audit this repository.",
+                              "context_snapshot": GOVERNED_SNAPSHOT,
+                          },
+                      )
+                      assert governed.is_error is False, governed.content
+                      governed_digest = assert_compile(payload(governed))
+
+                      # Material governed context moves compiled-context identity.
+                      assert governed_digest != plain_digest
 
           asyncio.run(main())
           PY

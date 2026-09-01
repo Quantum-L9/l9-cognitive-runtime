@@ -22,6 +22,23 @@ from typing import Any
 import pytest
 import yaml
 
+from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
+from l9_cognitive_runtime.compiler.task_context import (
+    ContextDiscoveryCompiler,
+    resolve_snapshot,
+)
+from l9_cognitive_runtime.compiler.task_scope import TaskScopeCompiler
+from l9_cognitive_runtime.models import IntentContract
+from l9_cognitive_runtime.models.context import (
+    AuthorityLevel,
+    ContextScopeMode,
+    ContextSnapshot,
+    ContextSourceRef,
+    DiscoveryContext,
+    GovernedConstraint,
+)
+from l9_cognitive_runtime.types import CompileRequest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 # Files copied verbatim from the repository pack (they validate against their models).
@@ -138,3 +155,83 @@ def pack_builder() -> Callable[..., Path]:
 def make_execution() -> Callable[..., dict[str, Any]]:
     """Return the ``execution_mapping`` factory for overriding the contract."""
     return execution_mapping
+
+
+# ---------------------------------------------------------------------------
+# Governed context helpers.
+#
+# Under INV-CTX-014 a raw ``source_context.context_signals`` hint cannot prove
+# an external architecture fact — only a provenance-backed governed item can.
+# These helpers build the governed equivalent of the old caller-hint signals.
+# ---------------------------------------------------------------------------
+
+
+def governed_signal_snapshot(*signals: str) -> ContextSnapshot:
+    """A snapshot proving each named architecture signal as governed law.
+
+    ``item_id`` is deliberately omitted: identity is compiler-owned and derived
+    from the claim itself (INV-CTX-011).
+    """
+    return ContextSnapshot(
+        architecture_constraints=[
+            GovernedConstraint(
+                semantic_key=signal,
+                authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+                source_ref=ContextSourceRef(
+                    source_id=f"governance:{signal}",
+                    source_kind="architecture_review",
+                    locator=f"governance://architecture/{signal}",
+                    immutable_coordinate=f"review-{signal}",
+                ),
+                scope_mode=ContextScopeMode.GLOBAL,
+                constraint_id=signal,
+                statement=f"{signal} is proven for this task scope",
+                applies_because=["governed architecture review"],
+            )
+            for signal in signals
+        ]
+    )
+
+
+def discovery_for(intent: IntentContract, snapshot: ContextSnapshot) -> DiscoveryContext:
+    """Run the real bounded discovery projection for a direct planner call."""
+    scope = TaskScopeCompiler().compile(intent)
+    return ContextDiscoveryCompiler().compile(scope, resolve_snapshot(snapshot))
+
+
+def empty_discovery(intent: IntentContract) -> DiscoveryContext:
+    """Discovery over the governed-empty snapshot: no governed signals at all."""
+    return discovery_for(intent, ContextSnapshot.empty())
+
+
+@pytest.fixture
+def governed_signals() -> Callable[..., ContextSnapshot]:
+    """Factory for a governed snapshot proving named architecture signals."""
+    return governed_signal_snapshot
+
+
+@pytest.fixture
+def governed_discovery() -> Callable[..., DiscoveryContext]:
+    """Factory running the real discovery projection for a direct planner call."""
+    return discovery_for
+
+
+def intent_for(
+    mission: str,
+    *,
+    target_refs: list[str] | None = None,
+    in_scope_refs: list[str] | None = None,
+    excluded_refs: list[str] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> IntentContract:
+    """Derive a canonical intent carrying only the declared scope hints."""
+    source_context: dict[str, Any] = {"pack": "test"}
+    if target_refs is not None:
+        source_context["target_refs"] = target_refs
+    if in_scope_refs is not None:
+        source_context["in_scope_refs"] = in_scope_refs
+    if excluded_refs is not None:
+        source_context["excluded_refs"] = excluded_refs
+    if extra:
+        source_context.update(extra)
+    return ObjectiveDeriver().derive(CompileRequest(mission=mission, source_context=source_context))

@@ -103,12 +103,14 @@ def test_legacy_execution_compiler_wraps_same_compiler(tmp_path: Path) -> None:
     from l9_cognitive_runtime.compiler.context import compile_execution_from_plan
     from l9_cognitive_runtime.compiler.kernels import KernelResolver
     from l9_cognitive_runtime.types import CompileRequest
+    from tests.conftest import empty_discovery
 
     intent = ObjectiveDeriver().derive(CompileRequest(mission="compile a kernel contract"))
     plan = ActivationPlanner().plan(
         intent,
         rules_path=ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
         pipeline_path=ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        discovery=empty_discovery(intent),
     )
     plan_path.write_text(yaml.safe_dump(plan.to_dict(), sort_keys=False), encoding="utf-8")
 
@@ -151,6 +153,7 @@ def test_graph_cli_requires_a_contract_with_structured_steps(tmp_path: Path) -> 
     from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver
     from l9_cognitive_runtime.compiler.context import compile_execution_from_plan
     from l9_cognitive_runtime.types import CompileRequest
+    from tests.conftest import empty_discovery
 
     script = ROOT / "runtime" / "execution_graph" / "build_execution_graph.py"
 
@@ -165,6 +168,7 @@ def test_graph_cli_requires_a_contract_with_structured_steps(tmp_path: Path) -> 
         intent,
         rules_path=ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
         pipeline_path=ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        discovery=empty_discovery(intent),
     )
     contract = compile_execution_from_plan(ROOT, plan).to_canonical_dict()
     assert contract["execution_steps"], "live spine must emit structured steps"

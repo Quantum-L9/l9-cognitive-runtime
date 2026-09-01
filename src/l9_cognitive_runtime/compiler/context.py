@@ -1,10 +1,17 @@
-"""Repo-root composition helper for the legacy runtime/ CLI wrappers.
+"""Repo-root compatibility surface for the legacy ``runtime/`` CLI wrappers.
 
-The production spine is ``CompilePipeline`` (pack-verified). The legacy
-``runtime/`` scripts historically ran against the repository root without a
-verified manifest; they now delegate to the same typed compilers through this
-helper, so no second semantic compiler implementation remains reachable
-(A0103/A0104).
+These functions exist so the ``runtime/contract_compiler/*.py`` scripts keep
+their invocation shapes. They own **no** semantics: every call delegates to
+``CompilePipeline.compile_from_root``, the pipeline-owned compatibility entry
+that joins the one canonical internal path (INV-CTX-002).
+
+That distinction is the whole point of this module's current shape. It used to
+sequence ``ObjectiveDeriver`` -> ``ActivationPlanner`` -> ``KernelResolver`` ->
+``ObligationDeriver`` -> contract compilers itself, which made it a second
+semantic composition owner: a chain that produced IRs while bypassing context
+closure, packet validation, and runtime semantic liveness entirely. Delegating
+removes that bypass — the wrappers now get artifacts that survived the full
+spine, not a shorter one.
 """
 
 from __future__ import annotations
@@ -12,24 +19,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from l9_cognitive_runtime.compiler.activation import ActivationPlan, ActivationPlanner
-from l9_cognitive_runtime.compiler.execution import ExecutionContractCompiler
-from l9_cognitive_runtime.compiler.handoff import HandoffContractCompiler
-from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelResolver
-from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
-from l9_cognitive_runtime.compiler.obligations import ObligationDeriver
-from l9_cognitive_runtime.compiler.validation import ValidationContractCompiler
+from l9_cognitive_runtime.compiler.activation import ActivationPlan
+from l9_cognitive_runtime.compiler.kernels import KernelBinding
+from l9_cognitive_runtime.compiler.pipeline import CompilePipeline
 from l9_cognitive_runtime.models import (
     ExecutionContract,
     HandoffContract,
     IntentContract,
     ValidationContract,
 )
-from l9_cognitive_runtime.parsing import load_yaml_file
-from l9_cognitive_runtime.types import CompileRequest
-
-RULES_REL = "runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"
-PIPELINE_REL = "runtime/kernel_pipeline/KERNEL_PIPELINE.yaml"
+from l9_cognitive_runtime.models.context import CompiledTaskContext
 
 
 @dataclass(frozen=True)
@@ -40,15 +39,22 @@ class CompiledContracts:
     execution: ExecutionContract
     validation: ValidationContract
     handoff: HandoffContract
+    task_context: CompiledTaskContext
 
 
 def compile_execution_from_plan(root: Path, plan: ActivationPlan) -> ExecutionContract:
-    """Compile an execution contract from a typed activation plan (repo root)."""
-    intent = ObjectiveDeriver().derive(CompileRequest(mission=plan.task_summary))
-    kernels = KernelResolver().resolve(plan.active_kernels, root)
-    pipeline = load_yaml_file(root / PIPELINE_REL)
-    obligations = ObligationDeriver().derive(intent, plan, kernels)
-    return ExecutionContractCompiler().compile(intent, plan, kernels, pipeline, obligations)
+    """Compile an execution contract from a typed activation plan (repo root).
+
+    The supplied plan replaces routing and nothing else: the compile still runs
+    the full spine, so the returned contract is the same artifact the canonical
+    path produces for that plan.
+    """
+    result = CompilePipeline().compile_from_root(
+        root,
+        plan.task_summary,
+        activation_plan=plan,
+    )
+    return result.bundle.execution
 
 
 def compile_from_root(
@@ -58,24 +64,25 @@ def compile_from_root(
     include_terminal: bool = False,
 ) -> CompiledContracts:
     """Compile the canonical contract set for a mission from a repo-root pack."""
-    intent = ObjectiveDeriver().derive(CompileRequest(mission=mission))
-    plan = ActivationPlanner().plan(
-        intent,
-        rules_path=root / RULES_REL,
-        pipeline_path=root / PIPELINE_REL,
+    result = CompilePipeline().compile_from_root(
+        root,
+        mission,
         include_terminal=include_terminal,
     )
-    kernels = KernelResolver().resolve(plan.active_kernels, root)
-    pipeline = load_yaml_file(root / PIPELINE_REL)
-    obligations = ObligationDeriver().derive(intent, plan, kernels)
-    execution = ExecutionContractCompiler().compile(intent, plan, kernels, pipeline, obligations)
-    validation = ValidationContractCompiler().compile(intent, execution, plan)
-    handoff = HandoffContractCompiler().compile(intent, execution, validation, plan)
+    bundle = result.bundle
     return CompiledContracts(
-        intent=intent,
-        plan=plan,
-        kernels=kernels,
-        execution=execution,
-        validation=validation,
-        handoff=handoff,
+        intent=bundle.intent,
+        plan=result.plan,
+        kernels=result.kernels,
+        execution=bundle.execution,
+        validation=bundle.validation,
+        handoff=bundle.handoff,
+        task_context=bundle.task_context,
     )
+
+
+__all__ = [
+    "CompiledContracts",
+    "compile_execution_from_plan",
+    "compile_from_root",
+]

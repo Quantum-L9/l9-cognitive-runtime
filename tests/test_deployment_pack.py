@@ -54,6 +54,37 @@ def test_deployment_pack_verifies_compiles_and_preserves_resources(tmp_path: Pat
     assert "properties" in schema[0].content
 
 
+def test_the_sealed_pack_carries_the_compiled_context_schema(tmp_path: Path) -> None:
+    """A sealed runtime that compiles a context must ship that context's schema."""
+    pack_root = build_deployment_pack(ROOT, tmp_path / "pack", source_revision=REVISION)
+    assert (pack_root / "contracts" / "compiled_task_context.schema.json").is_file()
+    server = build_server(pack_root)
+    schema_uri = f"l9://packs/{PACK_NAME}/schemas/compiled_task_context.schema.json"
+    schema = list(_run(server.read_resource(schema_uri)))
+    assert "compiled_task_context" in schema[0].content or "task_scope" in schema[0].content
+
+
+def test_deployment_closure_records_a_context_digest_for_every_route(tmp_path: Path) -> None:
+    """Closure evidence is the compile, and the compile's context identity."""
+    pack_root = build_deployment_pack(ROOT, tmp_path / "pack", source_revision=REVISION)
+    closure = PackLoader().load(pack_root).manifest["semantic_closure"]
+    routes = closure["routes_compiled"]
+    digests = closure["context_digests"]
+    assert routes
+    assert sorted(digests) == sorted(routes)
+    assert all(len(digest) == 64 for digest in digests.values())
+
+
+def test_a_sealed_pack_compiles_a_context_with_no_repository_checkout(tmp_path: Path) -> None:
+    pack_root = build_deployment_pack(ROOT, tmp_path / "pack", source_revision=REVISION)
+    bundle = CognitiveRuntimeService().compile_runtime(
+        CompileRequest(mission="hosted MCP smoke", pack_root=pack_root)
+    )
+    assert len(bundle.digests()["context"]) == 64
+    assert bundle.packet["compiled_task_context_digest"] == bundle.digests()["context"]
+    assert bundle.task_context.provenance.compiler_identity.semantics_version
+
+
 def test_deployment_pack_is_deterministic(tmp_path: Path) -> None:
     first = build_deployment_pack(ROOT, tmp_path / "first", source_revision=REVISION)
     second = build_deployment_pack(ROOT, tmp_path / "second", source_revision=REVISION)

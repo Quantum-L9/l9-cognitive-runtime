@@ -19,6 +19,7 @@ from l9_cognitive_runtime.models import (
     ObligationDisposition,
     ObligationKind,
 )
+from l9_cognitive_runtime.models.context import CompiledTaskContext, UnknownMateriality
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
 # Reserved owner names that always resolve (pipeline composition roots).
@@ -26,6 +27,7 @@ RESERVED_OWNERS = (
     "objective_deriver",
     "validation_runtime",
     "adapter_renderer",
+    "context_compiler",
 )
 
 _TERMINAL_DISPOSITIONS = (
@@ -51,6 +53,7 @@ class ObligationDeriver:
         intent: IntentContract,
         plan: ActivationPlan,
         kernels: list[KernelBinding],
+        task_context: CompiledTaskContext,
     ) -> list[Obligation]:
         task_kernel = next(
             (
@@ -170,6 +173,28 @@ class ObligationDeriver:
                     owner="objective_deriver",
                     consumer_refs=["handoff_contract"],
                     evidence_requirements=["deterministic realization resolution"],
+                )
+            )
+        # INV-CTX-024: material (blocking) compiled-context unknowns are
+        # conserved as required epistemic obligations, so they survive into
+        # execution, handoff, validation, and the packet until legally disposed.
+        # Non-blocking unknowns stay visible in the compiled context and in the
+        # packet without creating an obligation — that is what non-material
+        # means, and it is why an empty governed snapshot still compiles.
+        for context_unknown in task_context.unresolved_unknowns:
+            if context_unknown.materiality is not UnknownMateriality.BLOCKING:
+                continue
+            obligations.append(
+                Obligation(
+                    obligation_id=f"OBL.EPISTEMIC.CONTEXT.{context_unknown.unknown_id}",
+                    kind=ObligationKind.EPISTEMIC,
+                    source_ref=source_ref,
+                    required=True,
+                    owner="context_compiler",
+                    consumer_refs=["handoff_contract"],
+                    evidence_requirements=[
+                        f"resolution or governed disposition of {context_unknown.reason_code.value}"
+                    ],
                 )
             )
         # Non-required epistemic notes for remaining unknowns: conserved but

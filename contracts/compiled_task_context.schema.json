@@ -1,0 +1,1425 @@
+{
+  "$defs": {
+    "ApplicableLaw": {
+      "additionalProperties": false,
+      "properties": {
+        "applies_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Applies Because",
+          "type": "array"
+        },
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "context_kind": {
+          "const": "applicable_law",
+          "default": "applicable_law",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "law_id": {
+          "title": "Law Id",
+          "type": "string"
+        },
+        "precedence": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precedence"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        },
+        "statement": {
+          "title": "Statement",
+          "type": "string"
+        },
+        "supersedes_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Supersedes Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "law_id",
+        "statement"
+      ],
+      "title": "ApplicableLaw",
+      "type": "object"
+    },
+    "AuthorityContext": {
+      "additionalProperties": false,
+      "description": "Required / granted / limits / unknown stay distinct (INV-CTX-022).",
+      "properties": {
+        "effective_order": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Effective Order",
+          "type": "array"
+        },
+        "effective_order_source": {
+          "$ref": "#/$defs/EffectiveAuthorityOrderSource"
+        },
+        "granted": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AuthorityFact"
+          },
+          "title": "Granted",
+          "type": "array"
+        },
+        "limits": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AuthorityFact"
+          },
+          "title": "Limits",
+          "type": "array"
+        },
+        "required": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AuthorityRequirement"
+          },
+          "title": "Required",
+          "type": "array"
+        },
+        "unknown": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AuthorityFact"
+          },
+          "title": "Unknown",
+          "type": "array"
+        }
+      },
+      "required": [
+        "effective_order_source"
+      ],
+      "title": "AuthorityContext",
+      "type": "object"
+    },
+    "AuthorityFact": {
+      "additionalProperties": false,
+      "description": "A proven authority grant/limit. A snapshot may never declare ``required``.",
+      "properties": {
+        "action_scope": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Action Scope",
+          "type": "array"
+        },
+        "authority_id": {
+          "title": "Authority Id",
+          "type": "string"
+        },
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "context_kind": {
+          "const": "authority_fact",
+          "default": "authority_fact",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "precedence": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precedence"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        },
+        "state": {
+          "enum": [
+            "granted",
+            "limit",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "subject_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject Ref"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "authority_id",
+        "state"
+      ],
+      "title": "AuthorityFact",
+      "type": "object"
+    },
+    "AuthorityLevel": {
+      "enum": [
+        "governed_authoritative",
+        "governed_verified",
+        "informative",
+        "unverified"
+      ],
+      "title": "AuthorityLevel",
+      "type": "string"
+    },
+    "AuthorityRequirement": {
+      "additionalProperties": false,
+      "description": "Compiler-derived. A ``ContextSnapshot`` can never produce one.",
+      "properties": {
+        "action_scope": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Action Scope",
+          "type": "array"
+        },
+        "authority_id": {
+          "title": "Authority Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "requirement_id": {
+          "default": "",
+          "title": "Requirement Id",
+          "type": "string"
+        },
+        "source_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "subject_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject Ref"
+        }
+      },
+      "required": [
+        "authority_id",
+        "reason"
+      ],
+      "title": "AuthorityRequirement",
+      "type": "object"
+    },
+    "CapabilityContext": {
+      "additionalProperties": false,
+      "description": "Required / available / unavailable / unknown stay distinct (INV-CTX-021).",
+      "properties": {
+        "available": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CapabilityFact"
+          },
+          "title": "Available",
+          "type": "array"
+        },
+        "required": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CapabilityRequirement"
+          },
+          "title": "Required",
+          "type": "array"
+        },
+        "unavailable": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CapabilityFact"
+          },
+          "title": "Unavailable",
+          "type": "array"
+        },
+        "unknown": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CapabilityFact"
+          },
+          "title": "Unknown",
+          "type": "array"
+        }
+      },
+      "title": "CapabilityContext",
+      "type": "object"
+    },
+    "CapabilityFact": {
+      "additionalProperties": false,
+      "description": "A proven capability state. A snapshot may never declare ``required``.",
+      "properties": {
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "capability_id": {
+          "title": "Capability Id",
+          "type": "string"
+        },
+        "context_kind": {
+          "const": "capability_fact",
+          "default": "capability_fact",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        },
+        "state": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "capability_id",
+        "state"
+      ],
+      "title": "CapabilityFact",
+      "type": "object"
+    },
+    "CapabilityRequirement": {
+      "additionalProperties": false,
+      "description": "Compiler-derived. A ``ContextSnapshot`` can never produce one.",
+      "properties": {
+        "capability_id": {
+          "title": "Capability Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "requirement_id": {
+          "default": "",
+          "title": "Requirement Id",
+          "type": "string"
+        },
+        "source_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "capability_id",
+        "reason"
+      ],
+      "title": "CapabilityRequirement",
+      "type": "object"
+    },
+    "CompilerIdentity": {
+      "additionalProperties": false,
+      "description": "Installed-artifact-safe compiler semantics identity (INV-CTX-032).",
+      "properties": {
+        "package_version": {
+          "title": "Package Version",
+          "type": "string"
+        },
+        "semantics_version": {
+          "title": "Semantics Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "package_version",
+        "semantics_version"
+      ],
+      "title": "CompilerIdentity",
+      "type": "object"
+    },
+    "ContextProvenance": {
+      "additionalProperties": false,
+      "description": "Reproduction identity for the compiled context.\n\n``context_digest`` is deliberately absent: it is computed *from* the\nfinished ``CompiledTaskContext`` and carried outside it (INV-CTX-027). So\nis any whole-snapshot digest, which would let irrelevant unselected input\nperturb semantic identity (INV-CTX-028).",
+      "properties": {
+        "compiler_identity": {
+          "$ref": "#/$defs/CompilerIdentity"
+        },
+        "context_requirements_digest": {
+          "title": "Context Requirements Digest",
+          "type": "string"
+        },
+        "discovery_digest": {
+          "title": "Discovery Digest",
+          "type": "string"
+        },
+        "discovery_item_digests": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "title": "Discovery Item Digests",
+          "type": "object"
+        },
+        "kernel_digests": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "title": "Kernel Digests",
+          "type": "object"
+        },
+        "selected_item_digests": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "title": "Selected Item Digests",
+          "type": "object"
+        },
+        "task_scope_digest": {
+          "title": "Task Scope Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_scope_digest",
+        "discovery_digest",
+        "context_requirements_digest",
+        "compiler_identity"
+      ],
+      "title": "ContextProvenance",
+      "type": "object"
+    },
+    "ContextScopeMode": {
+      "enum": [
+        "scoped",
+        "global"
+      ],
+      "title": "ContextScopeMode",
+      "type": "string"
+    },
+    "ContextSourceRef": {
+      "additionalProperties": false,
+      "description": "Where a context item came from, with an immutable coordinate when possible.",
+      "properties": {
+        "content_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Digest"
+        },
+        "immutable_coordinate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Immutable Coordinate"
+        },
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_kind": {
+          "title": "Source Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_kind",
+        "locator"
+      ],
+      "title": "ContextSourceRef",
+      "type": "object"
+    },
+    "ContextUnknown": {
+      "additionalProperties": false,
+      "description": "A stable, reason-coded unknown. Identity never depends on prose.",
+      "properties": {
+        "details": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Details",
+          "type": "object"
+        },
+        "materiality": {
+          "$ref": "#/$defs/UnknownMateriality"
+        },
+        "reason_code": {
+          "$ref": "#/$defs/UnknownReasonCode"
+        },
+        "requirement_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requirement Ref"
+        },
+        "semantic_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Semantic Key"
+        },
+        "source_refs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ContextSourceRef"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "unknown_id": {
+          "default": "",
+          "title": "Unknown Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason_code",
+        "materiality"
+      ],
+      "title": "ContextUnknown",
+      "type": "object"
+    },
+    "DecisionStatus": {
+      "enum": [
+        "active",
+        "superseded",
+        "unknown"
+      ],
+      "title": "DecisionStatus",
+      "type": "string"
+    },
+    "DependencyContext": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "context_kind": {
+          "const": "dependency_context",
+          "default": "dependency_context",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "dependency_id": {
+          "title": "Dependency Id",
+          "type": "string"
+        },
+        "direction": {
+          "title": "Direction",
+          "type": "string"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "relationship": {
+          "title": "Relationship",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        },
+        "target_ref": {
+          "title": "Target Ref",
+          "type": "string"
+        },
+        "version_or_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version Or Revision"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "dependency_id",
+        "relationship",
+        "direction",
+        "target_ref"
+      ],
+      "title": "DependencyContext",
+      "type": "object"
+    },
+    "EffectiveAuthorityOrderSource": {
+      "enum": [
+        "governed_context",
+        "compiler_default"
+      ],
+      "title": "EffectiveAuthorityOrderSource",
+      "type": "string"
+    },
+    "EntityContext": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "context_kind": {
+          "const": "relevant_entity",
+          "default": "relevant_entity",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "entity_id": {
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "entity_type": {
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "relation_to_task": {
+          "title": "Relation To Task",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "entity_id",
+        "entity_type",
+        "relation_to_task"
+      ],
+      "title": "EntityContext",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "Evidence supports claims; it is not a universal truth layer (INV-CTX-018).",
+      "properties": {
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "context_kind": {
+          "const": "evidence_ref",
+          "default": "evidence_ref",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Digest"
+        },
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "evidence_type": {
+          "title": "Evidence Type",
+          "type": "string"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        },
+        "supports_semantic_keys": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Supports Semantic Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "evidence_id",
+        "evidence_type"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "GovernedConstraint": {
+      "additionalProperties": false,
+      "properties": {
+        "applies_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Applies Because",
+          "type": "array"
+        },
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "constraint_id": {
+          "title": "Constraint Id",
+          "type": "string"
+        },
+        "context_kind": {
+          "const": "architecture_constraint",
+          "default": "architecture_constraint",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        },
+        "statement": {
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "constraint_id",
+        "statement"
+      ],
+      "title": "GovernedConstraint",
+      "type": "object"
+    },
+    "MemoryContext": {
+      "additionalProperties": false,
+      "description": "Enrichment only. Authority is ceilinged at ``informative`` (INV-CTX-019).",
+      "properties": {
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "content": {
+          "default": null,
+          "title": "Content"
+        },
+        "context_kind": {
+          "const": "memory_context",
+          "default": "memory_context",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "memory_id": {
+          "title": "Memory Id",
+          "type": "string"
+        },
+        "memory_kind": {
+          "title": "Memory Kind",
+          "type": "string"
+        },
+        "relevance_reason": {
+          "default": "",
+          "title": "Relevance Reason",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "memory_id",
+        "memory_kind"
+      ],
+      "title": "MemoryContext",
+      "type": "object"
+    },
+    "PriorDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "context_kind": {
+          "const": "prior_decision",
+          "default": "prior_decision",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        },
+        "statement": {
+          "title": "Statement",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/DecisionStatus"
+        },
+        "superseded_by_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Superseded By Refs",
+          "type": "array"
+        },
+        "supersedes_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Supersedes Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "decision_id",
+        "status",
+        "statement"
+      ],
+      "title": "PriorDecision",
+      "type": "object"
+    },
+    "RepositoryState": {
+      "additionalProperties": false,
+      "description": "One repository fact claim. Never an opaque multi-fact bag (INV-CTX-010).",
+      "properties": {
+        "authority_level": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "context_kind": {
+          "const": "repository_state",
+          "default": "repository_state",
+          "title": "Context Kind",
+          "type": "string"
+        },
+        "fact_type": {
+          "title": "Fact Type",
+          "type": "string"
+        },
+        "item_id": {
+          "default": "",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "repository_id": {
+          "title": "Repository Id",
+          "type": "string"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        },
+        "selected_because": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Because",
+          "type": "array"
+        },
+        "semantic_key": {
+          "title": "Semantic Key",
+          "type": "string"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ContextSourceRef"
+        },
+        "subject_ref": {
+          "title": "Subject Ref",
+          "type": "string"
+        },
+        "value": {
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "semantic_key",
+        "authority_level",
+        "source_ref",
+        "scope_mode",
+        "repository_id",
+        "revision",
+        "subject_ref",
+        "fact_type"
+      ],
+      "title": "RepositoryState",
+      "type": "object"
+    },
+    "TaskScope": {
+      "additionalProperties": false,
+      "properties": {
+        "constraints": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Constraints",
+          "type": "array"
+        },
+        "excluded_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded Refs",
+          "type": "array"
+        },
+        "in_scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "In Scope Refs",
+          "type": "array"
+        },
+        "mission": {
+          "title": "Mission",
+          "type": "string"
+        },
+        "requested_outputs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Requested Outputs",
+          "type": "array"
+        },
+        "scope_id": {
+          "default": "",
+          "title": "Scope Id",
+          "type": "string"
+        },
+        "target_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Refs",
+          "type": "array"
+        },
+        "task_type": {
+          "title": "Task Type",
+          "type": "string"
+        },
+        "unresolved_unknowns": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ContextUnknown"
+          },
+          "title": "Unresolved Unknowns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "mission",
+        "task_type"
+      ],
+      "title": "TaskScope",
+      "type": "object"
+    },
+    "UnknownMateriality": {
+      "enum": [
+        "blocking",
+        "non_blocking"
+      ],
+      "title": "UnknownMateriality",
+      "type": "string"
+    },
+    "UnknownReasonCode": {
+      "enum": [
+        "ambiguous_scope",
+        "missing_required_context",
+        "conflicting_governed_claims",
+        "missing_revision",
+        "invalid_provenance",
+        "budget_insufficient",
+        "unsupported_capability",
+        "missing_authority",
+        "unknown_supersession",
+        "dangling_supersession",
+        "unresolved_freshness"
+      ],
+      "title": "UnknownReasonCode",
+      "type": "string"
+    }
+  },
+  "$id": "https://github.com/Quantum-L9/l9-cognitive-runtime/contracts/compiled_task_context.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The canonical context IR (INV-CTX-003). Carries no digest of itself.",
+  "properties": {
+    "applicable_law": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ApplicableLaw"
+      },
+      "title": "Applicable Law",
+      "type": "array"
+    },
+    "architecture_constraints": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/GovernedConstraint"
+      },
+      "title": "Architecture Constraints",
+      "type": "array"
+    },
+    "authority": {
+      "$ref": "#/$defs/AuthorityContext"
+    },
+    "capabilities": {
+      "$ref": "#/$defs/CapabilityContext"
+    },
+    "dependency_context": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/DependencyContext"
+      },
+      "title": "Dependency Context",
+      "type": "array"
+    },
+    "evidence_refs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "memory_context": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/MemoryContext"
+      },
+      "title": "Memory Context",
+      "type": "array"
+    },
+    "prior_decisions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/PriorDecision"
+      },
+      "title": "Prior Decisions",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ContextProvenance"
+    },
+    "relevant_entities": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/EntityContext"
+      },
+      "title": "Relevant Entities",
+      "type": "array"
+    },
+    "repository_state": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/RepositoryState"
+      },
+      "title": "Repository State",
+      "type": "array"
+    },
+    "selected_kernels": {
+      "default": [],
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Selected Kernels",
+      "type": "array"
+    },
+    "task_scope": {
+      "$ref": "#/$defs/TaskScope"
+    },
+    "unresolved_unknowns": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ContextUnknown"
+      },
+      "title": "Unresolved Unknowns",
+      "type": "array"
+    }
+  },
+  "required": [
+    "task_scope",
+    "capabilities",
+    "authority",
+    "provenance"
+  ],
+  "title": "CompiledTaskContext",
+  "type": "object"
+}

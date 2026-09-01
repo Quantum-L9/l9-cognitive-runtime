@@ -23,5 +23,23 @@ Packet digest: {{packet_digest}}
 ## Global Architect outputs
 {{gar_outputs}}
 
+## Compiled task context (digest {{context_digest}})
+Projected from the packet's compiled task context. Never re-derived, never reselected.
+
+### Applicable law
+{{applicable_law}}
+
+### Effective authority order (source: {{authority_order_source}})
+{{authority_order}}
+
+### Authority limits
+{{authority_limits}}
+
+### Capability gaps (required, not proven available)
+{{capability_gaps}}
+
+### Unresolved context unknowns
+{{context_unknowns}}
+
 ## Adapter note
 Render as a runbook checklist. Every required obligation, validation property, and delivery requirement is a checklist item; nothing may be elided.

@@ -16,6 +16,7 @@ from typing import Any
 
 from l9_cognitive_runtime.compiler.architecture_materiality import assess_materiality
 from l9_cognitive_runtime.models import IntentContract
+from l9_cognitive_runtime.models.context import DiscoveryContext
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.parsing import load_yaml_file
 
@@ -107,6 +108,7 @@ class ActivationPlanner:
         *,
         rules_path: Path,
         pipeline_path: Path,
+        discovery: DiscoveryContext,
         include_terminal: bool = False,
     ) -> ActivationPlan:
         pipeline = load_yaml_file(pipeline_path)
@@ -114,9 +116,10 @@ class ActivationPlanner:
         phases_by_id = self._phase_map(pipeline)
         route_name, route, confidence = self._match_route(intent.mission, rules)
 
-        # A0402: Global Architect activates from architecture materiality —
-        # proven intent + verified context signals — never from file presence.
-        materiality = assess_materiality(intent, rules)
+        # A0402/INV-CTX-014: Global Architect activates from architecture
+        # materiality — proven intent plus *governed* discovery signals — never
+        # from file presence and never from a raw caller hint.
+        materiality = assess_materiality(intent, rules, discovery)
         materiality_dict = materiality.to_dict()
 
         phases = list(route.get("phases", []))

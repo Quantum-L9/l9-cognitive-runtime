@@ -13,6 +13,7 @@ from typing import Any
 from l9_cognitive_runtime.compiler.activation import ActivationPlan
 from l9_cognitive_runtime.compiler.kernels import KernelBinding
 from l9_cognitive_runtime.models import ExecutionContract, IntentContract, Obligation
+from l9_cognitive_runtime.models.context import CompiledTaskContext
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
 # Canonical phase -> prose-step projection. P2 and P3 share one step: the
@@ -28,6 +29,11 @@ PHASE_STEP_MAP: dict[str, str] = {
     "P7_FLAWLESS_VICTORY": "execute terminal doctrine only after gates pass",
 }
 
+# The compiler's own authority order. Preserved verbatim for backward
+# compatibility and used only when governed context proves nothing more
+# specific — in which case the compiled context labels its source
+# ``compiler_default`` (INV-CTX-022). It is a precedence fallback, never a
+# grant, and caller hints never define it.
 AUTHORITY_ORDER = [
     "user task",
     "kernel activation plan",
@@ -79,6 +85,9 @@ class ExecutionContractCompiler:
         kernels: list[KernelBinding],
         pipeline: dict[str, Any],
         obligations: list[Obligation] | None = None,
+        *,
+        task_context: CompiledTaskContext,
+        context_digest: str,
     ) -> ExecutionContract:
         if plan.blockers:
             raise InvalidValueError(
@@ -150,6 +159,15 @@ class ExecutionContractCompiler:
             "CONVERGENCE": terminal_target,
         }
 
+        # INV-CTX-022: a governed effective order supersedes the compiler
+        # default when the compiled context proved one. The compiled context
+        # records which source won; here we only consume the result.
+        authority_order = (
+            list(task_context.authority.effective_order)
+            if task_context.authority.effective_order
+            else list(AUTHORITY_ORDER)
+        )
+
         execution_steps: list[dict[str, Any]] = []
         previous_outputs: list[str] = []
         for phase_id in plan.phase_sequence:
@@ -199,7 +217,7 @@ class ExecutionContractCompiler:
                 "source_activation_plan": ACTIVATION_PLAN_SOURCE,
                 "terminal_doctrine": terminal_doctrine,
                 "objective": intent.mission,
-                "authority_order": list(AUTHORITY_ORDER),
+                "authority_order": authority_order,
                 "kernel_activation": [binding.source_ref for binding in kernels],
                 "execution_sequence": sequence,
                 "validation_requirements": list(VALIDATION_REQUIREMENTS),
@@ -217,6 +235,8 @@ class ExecutionContractCompiler:
                     "kernel_digests": {
                         binding.source_ref: binding.source_digest for binding in kernels
                     },
+                    "authority_order_source": (task_context.authority.effective_order_source.value),
+                    "context_digest": context_digest,
                 },
                 "obligations": [
                     obligation.to_canonical_dict() for obligation in (obligations or [])

@@ -5,16 +5,30 @@ packet (A0701) that preserves every blocking obligation, Unknown, validation
 requirement, delivery requirement, and architectural constraint (INV-013).
 Rendering fails closed when the packet is incomplete or a blocking GAR
 architecture obligation is missing (A0702).
+
+The compiled task context travels the same way (INV-CTX-030/031): the adapter
+packet carries the **body**, not only the digest, and passes the digest through
+unchanged rather than recomputing it. Carrying a digest nothing verifies is
+metadata rather than integrity, so ``validate_packet`` recomputes the canonical
+digest of the carried body and requires the declared digest and the packet
+provenance to agree with it. A mutated body under an unchanged declared digest
+therefore fails before any adapter sees it.
+
+Applicable law, authority limits and effective order, capability gaps, and
+unresolved context unknowns are projected explicitly as well, so a template can
+render them but no template can silently drop them from the packet.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from l9_cognitive_runtime.models.canonical import sha256_digest
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
 ADAPTER_TEMPLATE_DIR = "runtime/contract_compiler/adapters"
@@ -33,12 +47,18 @@ class AdapterPacket:
     adapter: str
     source_contract: str
     packet_digest: str
+    context_digest: str
+    compiled_task_context: dict[str, Any]
     content: str
     required_obligation_ids: tuple[str, ...]
     unknowns: tuple[str, ...]
     validation_properties: tuple[dict[str, Any], ...]
     delivery_obligations: tuple[dict[str, Any], ...]
     gar_output_refs: tuple[str, ...]
+    applicable_law_refs: tuple[str, ...] = ()
+    authority_limit_refs: tuple[str, ...] = ()
+    capability_gap_refs: tuple[str, ...] = ()
+    context_unknown_ids: tuple[str, ...] = ()
     limitations: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
@@ -46,12 +66,18 @@ class AdapterPacket:
             "adapter": self.adapter,
             "source_contract": self.source_contract,
             "packet_digest": self.packet_digest,
+            "context_digest": self.context_digest,
+            "compiled_task_context": self.compiled_task_context,
             "content": self.content,
             "required_obligation_ids": list(self.required_obligation_ids),
             "unknowns": list(self.unknowns),
             "validation_properties": list(self.validation_properties),
             "delivery_obligations": list(self.delivery_obligations),
             "gar_output_refs": list(self.gar_output_refs),
+            "applicable_law_refs": list(self.applicable_law_refs),
+            "authority_limit_refs": list(self.authority_limit_refs),
+            "capability_gap_refs": list(self.capability_gap_refs),
+            "context_unknown_ids": list(self.context_unknown_ids),
             "limitations": list(self.limitations),
         }
 
@@ -72,6 +98,8 @@ def _require_section(packet: dict[str, Any], key: str) -> Any:
 def validate_packet(packet: dict[str, Any]) -> None:
     """Fail closed on an incomplete or weakened packet (INV-013)."""
     _require_section(packet, "intent")
+    context_body = _require_section(packet, "compiled_task_context")
+    declared_digest = _require_section(packet, "compiled_task_context_digest")
     _require_section(packet, "active_kernel_bindings")
     _require_section(packet, "execution_steps")
     _require_section(packet, "required_obligations")
@@ -80,6 +108,23 @@ def validate_packet(packet: dict[str, Any]) -> None:
     _require_section(packet, "unknowns")
     _require_section(packet, "convergence_contract")
     _require_section(packet, "provenance")
+    # INV-CTX-030: the packet's context identity is verified against the body it
+    # actually carries, not merely echoed. A digest nothing recomputes cannot
+    # detect the one failure it exists to detect.
+    recomputed = sha256_digest(context_body)
+    if recomputed != declared_digest:
+        raise InvalidValueError(
+            "compiled task context body does not hash to its declared digest",
+            path="compiled_task_context",
+            details={"declared": declared_digest, "recomputed": recomputed},
+        )
+    provenance_digest = (packet["provenance"] or {}).get("context_digest")
+    if provenance_digest != declared_digest:
+        raise InvalidValueError(
+            "packet context digest disagrees with packet provenance",
+            path="compiled_task_context_digest",
+            details={"packet": declared_digest, "provenance": provenance_digest},
+        )
     required_ids = {o["obligation_id"] for o in packet["required_obligations"]}
     # Every validation property must bind a required obligation still present,
     # and every required obligation must keep its validation path (INV-013).
@@ -130,6 +175,37 @@ def validate_packet(packet: dict[str, Any]) -> None:
             )
 
 
+def applicable_law_refs(packet: dict[str, Any]) -> tuple[str, ...]:
+    """Law identities the compiled context selected, in canonical order."""
+    context = packet.get("compiled_task_context") or {}
+    return tuple(str(law["law_id"]) for law in context.get("applicable_law") or [])
+
+
+def authority_limit_refs(packet: dict[str, Any]) -> tuple[str, ...]:
+    """Proven authority limits. An adapter may render them; none may drop them."""
+    authority = (packet.get("compiled_task_context") or {}).get("authority") or {}
+    return tuple(str(fact["authority_id"]) for fact in authority.get("limits") or [])
+
+
+def capability_gap_refs(packet: dict[str, Any]) -> tuple[str, ...]:
+    """Required capabilities the compiled context did not prove available."""
+    capabilities = (packet.get("compiled_task_context") or {}).get("capabilities") or {}
+    available = {str(fact["capability_id"]) for fact in capabilities.get("available") or []}
+    return tuple(
+        sorted(
+            str(requirement["capability_id"])
+            for requirement in capabilities.get("required") or []
+            if str(requirement["capability_id"]) not in available
+        )
+    )
+
+
+def context_unknown_ids(packet: dict[str, Any]) -> tuple[str, ...]:
+    """Every unresolved compiled-context unknown, blocking or not."""
+    context = packet.get("compiled_task_context") or {}
+    return tuple(str(unknown["unknown_id"]) for unknown in context.get("unresolved_unknowns") or [])
+
+
 def gar_output_refs(packet: dict[str, Any]) -> tuple[str, ...]:
     bindings = packet.get("active_kernel_bindings") or []
     refs: list[str] = []
@@ -158,12 +234,25 @@ class AdapterRenderer:
             adapter=adapter,
             source_contract="FINAL_EXECUTION_CONTRACT",
             packet_digest=packet_digest,
+            # INV-CTX-031: the projection carries the compiled-context identity
+            # through unchanged, and the body losslessly beside it. It is never
+            # recomputed, reselected, or summarized.
+            context_digest=str(packet["compiled_task_context_digest"]),
+            # Deep, not shallow: a shallow copy leaves every nested list and
+            # mapping shared with the packet that was just validated, so a
+            # downstream consumer editing the projection would edit the
+            # validated packet behind its own digest (INV-CTX-031).
+            compiled_task_context=deepcopy(packet["compiled_task_context"]),
             content=content,
-            required_obligation_ids=required_ids,
             unknowns=tuple(str(u) for u in packet["unknowns"]),
-            validation_properties=tuple(dict(p) for p in packet["validation_properties"]),
-            delivery_obligations=tuple(dict(o) for o in packet["delivery_obligations"]),
+            required_obligation_ids=required_ids,
+            validation_properties=tuple(deepcopy(p) for p in packet["validation_properties"]),
+            delivery_obligations=tuple(deepcopy(o) for o in packet["delivery_obligations"]),
             gar_output_refs=gar_output_refs(packet),
+            applicable_law_refs=applicable_law_refs(packet),
+            authority_limit_refs=authority_limit_refs(packet),
+            capability_gap_refs=capability_gap_refs(packet),
+            context_unknown_ids=context_unknown_ids(packet),
         )
 
     def _render_template(self, template_name: str, packet: dict[str, Any], digest: str) -> str:
@@ -180,9 +269,23 @@ class AdapterRenderer:
         obligations = [o["obligation_id"] for o in packet["required_obligations"]]
         delivery = [o["obligation_id"] for o in packet["delivery_obligations"]]
         validation = [p["property_id"] for p in packet["validation_properties"]]
+        authority = (packet.get("compiled_task_context") or {}).get("authority") or {}
         placeholders = {
             "{{adapter}}": str(self._adapter_for_template(template_name)),
             "{{packet_digest}}": digest,
+            "{{context_digest}}": str(packet["compiled_task_context_digest"]),
+            "{{applicable_law}}": "\n".join(f"- {law}" for law in applicable_law_refs(packet)),
+            "{{authority_order}}": "\n".join(
+                f"- {entry}" for entry in authority.get("effective_order") or []
+            ),
+            "{{authority_order_source}}": str(authority.get("effective_order_source", "")),
+            "{{authority_limits}}": "\n".join(
+                f"- {limit}" for limit in authority_limit_refs(packet)
+            ),
+            "{{capability_gaps}}": "\n".join(f"- {gap}" for gap in capability_gap_refs(packet)),
+            "{{context_unknowns}}": "\n".join(
+                f"- {unknown}" for unknown in context_unknown_ids(packet)
+            ),
             "{{mission}}": str(intent.get("mission", "")),
             "{{realization_mode}}": str(
                 intent.get("objective", {}).get("realization_mode", "UNKNOWN")
@@ -235,4 +338,22 @@ Packet digest: {{packet_digest}}
 
 ## Global Architect outputs
 {{gar_outputs}}
+
+## Compiled task context (digest {{context_digest}})
+Projected from the packet's compiled task context. Never re-derived, never reselected.
+
+### Applicable law
+{{applicable_law}}
+
+### Effective authority order (source: {{authority_order_source}})
+{{authority_order}}
+
+### Authority limits
+{{authority_limits}}
+
+### Capability gaps (required, not proven available)
+{{capability_gaps}}
+
+### Unresolved context unknowns
+{{context_unknowns}}
 """

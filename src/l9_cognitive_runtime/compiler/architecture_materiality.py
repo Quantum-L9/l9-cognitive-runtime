@@ -1,13 +1,21 @@
-"""Architecture materiality assessment (GAR activation rule, A0402).
+"""Architecture materiality assessment (GAR activation rule, A0402, INV-CTX-014).
 
 Global Architect activates when architecture materiality is proven by intent
-and verified context signals — never from kernel file presence, never from
+and *governed* context signals — never from kernel file presence, never from
 raw text after typed intent exists. Assessment is deterministic:
 
-- context signals: caller-provided ``source_context.context_signals`` mapped
-  through ``context_signal_map`` (verified facts, not prose);
+- context signals: governed architecture signals proven by the typed
+  ``DiscoveryContext``, mapped through ``context_signal_map``. A caller-supplied
+  ``source_context.context_signals`` list is **not** consulted: under
+  INV-CTX-006 a raw hint cannot by itself establish a fact about the world
+  outside the request. To prove a signal, a host supplies a provenance-backed
+  ``GovernedConstraint`` whose ``constraint_id`` is the signal name; every entry
+  in ``discovery.architecture_signal_refs`` traces to a discovery item whose
+  digest is recorded in ``discovery.selected_item_digests``;
 - mission signals: word-boundary token evidence mapped through
-  ``mission_signal_tokens``.
+  ``mission_signal_tokens``. Mission text remains a legitimate *candidate*
+  signal — it is the caller stating their own intent, not asserting an external
+  fact.
 
 Any trigger fires GAR; active lenses are the lens→trigger projections of the
 fired triggers.
@@ -20,6 +28,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from l9_cognitive_runtime.models import IntentContract
+from l9_cognitive_runtime.models.context import DiscoveryContext
 
 
 @dataclass(frozen=True)
@@ -46,24 +55,29 @@ def _word_evidence(text: str, tokens: list[str]) -> list[str]:
     return [token for token in tokens if re.search(rf"\b{re.escape(token)}\b", lowered)]
 
 
-def assess_materiality(intent: IntentContract, rules: dict[str, Any]) -> ArchitectureMateriality:
-    """Deterministic GAR activation assessment from intent + routing rules."""
+def assess_materiality(
+    intent: IntentContract,
+    rules: dict[str, Any],
+    discovery: DiscoveryContext,
+) -> ArchitectureMateriality:
+    """Deterministic GAR activation from intent + routing rules + governed discovery.
+
+    ``discovery`` is required, not optional. Defaulting it would reintroduce a
+    path where materiality is assessed with no governed plane at all, which is
+    the shape a caller hint used to slip through.
+    """
     materiality_rules = rules.get("architecture_materiality") or {}
     token_map = materiality_rules.get("mission_signal_tokens") or {}
     context_map = materiality_rules.get("context_signal_map") or {}
     lens_map = (materiality_rules.get("gar_activation") or {}).get("lenses") or {}
 
-    source_context = intent.source_context or {}
-    raw_signals = source_context.get("context_signals")
-    context_signals = raw_signals if isinstance(raw_signals, list) else []
-
     triggers: set[str] = set()
     evidence: list[str] = []
-    for signal in context_signals:
+    for signal in discovery.architecture_signal_refs:
         trigger = context_map.get(str(signal))
         if trigger:
             triggers.add(trigger)
-            evidence.append(f"context_signal:{signal}")
+            evidence.append(f"governed_signal:{signal}")
     for trigger, tokens in token_map.items():
         hits = _word_evidence(intent.mission, [str(token) for token in tokens])
         if hits:

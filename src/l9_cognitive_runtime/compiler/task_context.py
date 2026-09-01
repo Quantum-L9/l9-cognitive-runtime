@@ -1,0 +1,1389 @@
+"""Bounded context discovery and requirement-driven context compilation.
+
+Two bounded projections over one immutable injected snapshot (INV-CTX-005) —
+never a search loop, never an acquisition loop, never reasoning:
+
+1. :class:`ContextDiscoveryCompiler` — just enough governed fact to route the
+   task and decide architecture materiality.
+2. :class:`ContextCompiler` — the requirement-bound projection that produces
+   the canonical :class:`CompiledTaskContext`.
+
+Everything here is deterministic. The properties that are easy to lose and are
+therefore stated explicitly:
+
+- **Input is bounded before it is resolved.** ``preflight_snapshot`` rejects an
+  oversized snapshot on item count before anything is hashed, and on canonical
+  byte size before resolution (INV-CTX-007). Nothing is silently truncated.
+- **Eligibility precedes destructive resolution.** Supersession eliminates
+  claims and deduplication discards all but one representative. Both run over
+  the candidates a consumer is *eligible* for, never over the whole snapshot
+  first — otherwise a claim the requirement may not see decides the fate of one
+  it needs (INV-CTX-012).
+- **Explicit supersession is resolved kind-wide, first.** Grouping by semantic
+  key before supersession would mean a law can only ever supersede a law with
+  its own id — which is not what supersession means (INV-CTX-013). It is
+  resolved over item identities and obeys authority: a weaker claim may not
+  retire a stronger one.
+- **Input order is never precedence.** Surviving candidates are grouped by
+  ``(kind, semantic_key)``, deduplicated by canonical claim *and
+  applicability*, and resolved by the kind's own domain rule. An
+  equal-authority contradiction becomes a ``ContextUnknown`` — never an
+  arbitrary pick.
+- **Irrelevant contradictions are inert.** A cycle or conflict among claims
+  outside a projection's eligible set never enters it, so it cannot move the
+  context digest or raise a blocking obligation (INV-CTX-014).
+- **Nothing is selected for padding.** An item enters only by satisfying a
+  requirement, and carries the requirement in ``selected_because``.
+- **Absence is never a grant.** A required capability or authority with no
+  proving fact stays an explicit unknown (INV-CTX-021/022).
+- **Budgets never silently truncate.** Overflow routes through the affected
+  requirement's declared missing policy (INV-CTX-026).
+
+This module performs no I/O of any kind (INV-CTX-033).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass, field
+from typing import Any
+
+from l9_cognitive_runtime.compiler.activation import ActivationPlan
+from l9_cognitive_runtime.compiler.kernels import KernelBinding
+from l9_cognitive_runtime.compiler.task_scope import scope_reference_set
+from l9_cognitive_runtime.models import IntentContract
+from l9_cognitive_runtime.models.canonical import sha256_digest
+from l9_cognitive_runtime.models.context import (
+    AUTHORITY_RANK,
+    CONTEXT_COMPILER_SEMANTICS_VERSION,
+    GOVERNED_LEVELS,
+    SNAPSHOT_MAX_BYTES,
+    SNAPSHOT_MAX_ITEMS,
+    ApplicableLaw,
+    AuthorityContext,
+    AuthorityFact,
+    AuthorityRequirement,
+    CapabilityContext,
+    CapabilityFact,
+    CapabilityRequirement,
+    CompiledTaskContext,
+    CompilerIdentity,
+    ContextItemIdentity,
+    ContextKind,
+    ContextProvenance,
+    ContextRequirement,
+    ContextRequirementPlan,
+    ContextScopeMode,
+    ContextSnapshot,
+    ContextSourceRef,
+    ContextUnknown,
+    CoverageMode,
+    DecisionStatus,
+    DependencyContext,
+    DiscoveryContext,
+    EffectiveAuthorityOrderSource,
+    EntityContext,
+    EvidenceRef,
+    FreshnessRequirement,
+    GovernedConstraint,
+    MemoryContext,
+    MissingPolicy,
+    PriorDecision,
+    RepositoryState,
+    TaskScope,
+    UnknownMateriality,
+    UnknownReasonCode,
+    canonical_cost,
+    grant_covers_requirement,
+    limit_bears_on_requirement,
+)
+from l9_cognitive_runtime.models.errors import InvalidValueError
+
+# Kinds the bounded discovery projection may consider. Memory is absent by
+# construction: it can never be an authoritative routing input (INV-CTX-019).
+DISCOVERY_KINDS = (
+    ContextKind.RELEVANT_ENTITY,
+    ContextKind.REPOSITORY_STATE,
+    ContextKind.ARCHITECTURE_CONSTRAINT,
+    ContextKind.APPLICABLE_LAW,
+    ContextKind.DEPENDENCY_CONTEXT,
+)
+
+# Kinds whose claims legitimately apply beyond a single reference, so a global
+# candidate may satisfy a scoped requirement. Repository facts, entities,
+# dependencies, evidence, and memory are about *something* and must be scoped.
+GLOBALLY_APPLICABLE_KINDS = frozenset(
+    {
+        ContextKind.ARCHITECTURE_CONSTRAINT,
+        ContextKind.APPLICABLE_LAW,
+        ContextKind.PRIOR_DECISION,
+        ContextKind.AUTHORITY_FACT,
+        ContextKind.CAPABILITY_FACT,
+    }
+)
+
+# Kinds that carry explicit supersession, and the domain identifier that
+# supersession references name. These are resolved kind-wide before any
+# same-semantic-key resolution runs (INV-CTX-013).
+SUPERSESSION_KINDS: dict[ContextKind, str] = {
+    ContextKind.APPLICABLE_LAW: "law_id",
+    ContextKind.PRIOR_DECISION: "decision_id",
+}
+
+
+def preflight_snapshot(snapshot: ContextSnapshot) -> None:
+    """Enforce the finite input ceilings before anything is resolved.
+
+    Item count is checked first and costs nothing per item, so an oversized
+    snapshot is rejected before any candidate is canonicalized, hashed, grouped,
+    or resolved. Byte size is measured canonically and deterministically. Both
+    breaches fail closed: input is never silently truncated (INV-CTX-007).
+    """
+    count = snapshot.item_count()
+    if count > SNAPSHOT_MAX_ITEMS:
+        raise InvalidValueError(
+            "context snapshot exceeds the maximum item count",
+            path="context_snapshot",
+            details={"items": count, "max_items": SNAPSHOT_MAX_ITEMS},
+        )
+    size = snapshot.canonical_byte_size()
+    if size > SNAPSHOT_MAX_BYTES:
+        raise InvalidValueError(
+            "context snapshot exceeds the maximum canonical byte size",
+            path="context_snapshot",
+            details={"bytes": size, "max_bytes": SNAPSHOT_MAX_BYTES},
+        )
+
+
+def _claim_digest_payload(item: ContextItemIdentity) -> dict[str, Any]:
+    """The deduplication key: what is claimed *and* where it applies.
+
+    Applicability belongs here because deduplication picks one representative
+    and discards the rest. Keyed on the claim alone, two identically worded
+    laws at different scopes collapse before anything knows which scope the
+    task is in, and the survivor may be the one scoped elsewhere.
+    """
+    return {"claim": item.claim_payload(), "applicability": item.applicability_payload()}
+
+
+def _representative(items: Sequence[ContextItemIdentity]) -> ContextItemIdentity:
+    """Pick the canonical carrier of a byte-identical claim.
+
+    Never by list position: strongest authority, then a present immutable
+    coordinate, then coordinate, then content digest, then item id.
+    """
+    return min(
+        items,
+        key=lambda item: (
+            item.authority_rank,
+            0 if item.source_ref.immutable_coordinate else 1,
+            item.source_ref.immutable_coordinate or "",
+            item.source_ref.content_digest or "",
+            item.item_id,
+        ),
+    )
+
+
+def _strongest(items: Sequence[ContextItemIdentity]) -> list[ContextItemIdentity]:
+    best = min(item.authority_rank for item in items)
+    return [item for item in items if item.authority_rank == best]
+
+
+class GroupResolution:
+    """The outcome of resolving one ``(kind, semantic_key)`` group."""
+
+    __slots__ = ("items", "conflict", "details", "sources")
+
+    def __init__(
+        self,
+        items: list[ContextItemIdentity],
+        conflict: bool,
+        details: dict[str, Any] | None = None,
+        sources: list[ContextItemIdentity] | None = None,
+    ) -> None:
+        self.items = items
+        self.conflict = conflict
+        self.details = details or {}
+        self.sources = sources or []
+
+
+@dataclass(frozen=True)
+class ResolvedCandidates:
+    """The outcome of resolving one *eligible* candidate set."""
+
+    groups: dict[tuple[str, str], GroupResolution]
+    supersession_unknowns: tuple[ContextUnknown, ...] = field(default=())
+
+
+@dataclass(frozen=True)
+class SnapshotResolution:
+    """The normalized snapshot candidates, with resolution deliberately deferred.
+
+    Resolution is destructive: supersession eliminates claims and deduplication
+    keeps one representative per claim. Doing that once over the whole snapshot
+    and only afterwards asking which candidates a requirement was eligible to
+    see lets an *ineligible* candidate decide the fate of an eligible one — an
+    unverified law can retire an authoritative one and then be rejected itself,
+    and a law scoped elsewhere can stand in for the one in scope.
+
+    So nothing is resolved here. Each consumer resolves over the candidates it
+    is actually eligible for, via :meth:`resolve`. The result stays
+    deterministic because it is a pure function of (candidate set, predicate),
+    and it stays consistent because every consumer uses the same rules.
+    """
+
+    candidates: tuple[ContextItemIdentity, ...] = ()
+
+    def resolve(self, eligible: Callable[[ContextItemIdentity], bool]) -> ResolvedCandidates:
+        """Resolve over exactly the candidates ``eligible`` admits."""
+        return _resolve_candidates([item for item in self.candidates if eligible(item)])
+
+    def resolve_all(self) -> ResolvedCandidates:
+        """Resolve over every candidate. Diagnostics only — never a projection.
+
+        A projection that used this would be judging its context against
+        contradictions among claims it may not even look at.
+        """
+        return _resolve_candidates(list(self.candidates))
+
+
+# --------------------------------------------------------------------------
+# Kind-wide explicit supersession (INV-CTX-013).
+# --------------------------------------------------------------------------
+
+
+def _domain_id(item: ContextItemIdentity, attribute: str) -> str:
+    return str(getattr(item, attribute))
+
+
+def _supersession_index(
+    members: Sequence[ContextItemIdentity], attribute: str
+) -> tuple[dict[str, list[str]], dict[str, ContextItemIdentity], dict[str, str]]:
+    """Index the kind's members by domain identifier and by item identity."""
+    by_domain: dict[str, list[str]] = {}
+    by_item: dict[str, ContextItemIdentity] = {}
+    domain_of: dict[str, str] = {}
+    for item in members:
+        domain = _domain_id(item, attribute)
+        by_domain.setdefault(domain, []).append(item.item_id)
+        by_item[item.item_id] = item
+        domain_of[item.item_id] = domain
+    return by_domain, by_item, domain_of
+
+
+def _expand_supersession_ref(
+    ref: str,
+    referrer: ContextItemIdentity,
+    by_domain: dict[str, list[str]],
+    by_item: dict[str, ContextItemIdentity],
+    domain_of: dict[str, str],
+) -> tuple[list[str], bool]:
+    """Resolve one supersession reference to the items it actually names.
+
+    An ``item_id`` reference means *that claim*, never every claim sharing its
+    domain identifier: collapsing it to the domain would let a supersession
+    aimed at one instance retire every instance of that law or decision.
+
+    Returns ``(target_item_ids, resolved)``; ``resolved`` is False only when the
+    reference names nothing in the snapshot, which is the dangling case.
+    """
+    if ref in by_item:
+        return ([ref] if ref != referrer.item_id else []), True
+    if ref in by_domain:
+        if ref == domain_of[referrer.item_id]:
+            # A claim may not supersede itself by naming its own domain.
+            return [], True
+        return [target for target in by_domain[ref] if target != referrer.item_id], True
+    return [], False
+
+
+def _reachable_set(node: str, adjacency: dict[str, set[str]]) -> set[str]:
+    """Every node reachable from ``node`` along supersession edges."""
+    seen: set[str] = set()
+    stack = list(adjacency.get(node, ()))
+    while stack:
+        current = stack.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        stack.extend(adjacency.get(current, ()))
+    return seen
+
+
+def _cycle_components(adjacency: dict[str, set[str]]) -> list[list[str]]:
+    """Mutually reachable groups: one entry per *distinct* supersession cycle.
+
+    Two unrelated cycles are two contradictions, not one. Reporting them
+    together would make each cycle's members provenance for the other, and
+    would lend an informative cycle the blocking authority of a governed one
+    that merely happened to be in the same snapshot.
+    """
+    reach = {node: _reachable_set(node, adjacency) for node in adjacency}
+    on_cycle = sorted(node for node in adjacency if node in reach[node])
+    components: list[list[str]] = []
+    assigned: set[str] = set()
+    for node in on_cycle:
+        if node in assigned:
+            continue
+        component = [other for other in on_cycle if other in reach[node] and node in reach[other]]
+        assigned.update(component)
+        components.append(component)
+    return components
+
+
+def _source_sort_key(ref: ContextSourceRef) -> tuple[str, str, str, str, str]:
+    return (
+        ref.source_id,
+        ref.source_kind,
+        ref.locator,
+        ref.immutable_coordinate or "",
+        ref.content_digest or "",
+    )
+
+
+def _causal_source_refs(items: Iterable[ContextItemIdentity]) -> list[ContextSourceRef]:
+    """Deterministic, deduplicated provenance for the claims that caused an unknown.
+
+    An unknown that names a contradiction without naming who asserted it is a
+    dead end for whoever has to resolve it. Ordering is by stable source
+    identity, never by input position, so the same contradiction yields the
+    same provenance every time (INV-CTX-024/032).
+    """
+    indexed = {_source_sort_key(item.source_ref): item.source_ref for item in items}
+    return [indexed[key] for key in sorted(indexed)]
+
+
+def _truth_tier_materiality(items: Sequence[ContextItemIdentity]) -> UnknownMateriality:
+    """Blocking only when *governed* truth is what has been put in doubt.
+
+    A contradiction among governed claims is a hole in the law the task must
+    obey, so it blocks whatever surfaced it — the requirement being optional
+    says nothing about whether the law is self-consistent. A contradiction
+    among informative or unverified claims is not: material that could never
+    have decided anything must not acquire hard-block authority merely by
+    contradicting itself (INV-CTX-012/019).
+    """
+    return (
+        UnknownMateriality.BLOCKING
+        if any(item.authority_level in GOVERNED_LEVELS for item in items)
+        else UnknownMateriality.NON_BLOCKING
+    )
+
+
+def _resolve_supersession(
+    members: Sequence[ContextItemIdentity], attribute: str, kind: ContextKind
+) -> tuple[list[ContextItemIdentity], list[ContextUnknown]]:
+    """Apply explicit supersession across the kind, order-independently.
+
+    The graph is over *item identities*, not domain identifiers, so an
+    item-specific supersession stays item-specific.
+
+    Supersession is a governed act of retiring a claim, so it obeys authority:
+    a weaker claim may not retire a stronger one. A refused edge is recorded
+    rather than dropped — the attempt is visible, and the stronger claim stands.
+    """
+    by_domain, by_item, domain_of = _supersession_index(members, attribute)
+    proposed: set[tuple[str, str]] = set()
+    # Keyed by (domain, unresolved ref) and carrying every claim that made the
+    # reference, so the unknown can name who asserted it.
+    dangling: dict[tuple[str, str], list[str]] = {}
+
+    for item in members:
+        domain = domain_of[item.item_id]
+        for ref in getattr(item, "supersedes_refs", []):
+            targets, resolved = _expand_supersession_ref(
+                str(ref), item, by_domain, by_item, domain_of
+            )
+            if not resolved:
+                dangling.setdefault((domain, str(ref)), []).append(item.item_id)
+                continue
+            proposed.update((item.item_id, target) for target in targets)
+        for ref in getattr(item, "superseded_by_refs", []):
+            targets, resolved = _expand_supersession_ref(
+                str(ref), item, by_domain, by_item, domain_of
+            )
+            if not resolved:
+                dangling.setdefault((domain, str(ref)), []).append(item.item_id)
+                continue
+            proposed.update((target, item.item_id) for target in targets)
+
+    # Authority gate: a lower rank number is stronger authority.
+    edges: set[tuple[str, str]] = set()
+    refused: set[tuple[str, str]] = set()
+    for superseder, superseded in proposed:
+        if by_item[superseder].authority_rank <= by_item[superseded].authority_rank:
+            edges.add((superseder, superseded))
+        else:
+            refused.add((superseder, superseded))
+
+    adjacency: dict[str, set[str]] = {}
+    for superseder, superseded in edges:
+        adjacency.setdefault(superseder, set()).add(superseded)
+
+    components = _cycle_components(adjacency)
+    on_cycle = {node for component in components for node in component}
+    # A claim whose own standing is unresolvable must not silently kill a claim
+    # whose standing is resolvable, so cycle members supersede nothing.
+    superseded_items = {
+        superseded for superseder, superseded in edges if superseder not in on_cycle
+    }
+
+    unknowns: list[ContextUnknown] = []
+    for component in components:
+        # One contradiction, reported once per identifier it touches. Every
+        # member is causal — a cycle has no innocent participant — so each
+        # unknown carries provenance for the whole component, and the whole
+        # component decides whether governed truth is what is in doubt.
+        claims = [by_item[item_id] for item_id in component]
+        domains = sorted({domain_of[item_id] for item_id in component})
+        source_refs = _causal_source_refs(claims)
+        materiality = _truth_tier_materiality(claims)
+        unknowns.extend(
+            ContextUnknown(
+                semantic_key=domain,
+                reason_code=UnknownReasonCode.UNKNOWN_SUPERSESSION,
+                materiality=materiality,
+                details={
+                    "context_kind": kind.value,
+                    "reason": "supersession cycle",
+                    "cycle_members": domains,
+                    # Instance ids belong in identity so two SCCs over the
+                    # same domain identifiers cannot collapse (INV-CTX-024).
+                    # source_refs stay provenance and stay out of the recipe.
+                    "cycle_item_ids": sorted(component),
+                },
+                source_refs=source_refs,
+            )
+            for domain in domains
+        )
+    unknowns.extend(
+        ContextUnknown(
+            semantic_key=domain_of[superseder],
+            reason_code=UnknownReasonCode.UNKNOWN_SUPERSESSION,
+            materiality=UnknownMateriality.NON_BLOCKING,
+            details={
+                "context_kind": kind.value,
+                "reason": "weaker authority may not supersede a stronger claim",
+                "superseder_authority": by_item[superseder].authority_level.value,
+                "superseded": domain_of[superseded],
+                "superseded_authority": by_item[superseded].authority_level.value,
+            },
+            source_refs=_causal_source_refs([by_item[superseder], by_item[superseded]]),
+        )
+        for superseder, superseded in sorted(refused)
+    )
+    unknowns.extend(
+        ContextUnknown(
+            semantic_key=domain,
+            reason_code=UnknownReasonCode.DANGLING_SUPERSESSION,
+            materiality=UnknownMateriality.NON_BLOCKING,
+            details={"context_kind": kind.value, "unresolved_ref": ref},
+            source_refs=_causal_source_refs(by_item[item_id] for item_id in referrers),
+        )
+        for (domain, ref), referrers in sorted(dangling.items())
+    )
+
+    survivors: list[ContextItemIdentity] = []
+    for item in members:
+        if item.item_id in on_cycle:
+            continue
+        if isinstance(item, PriorDecision) and item.status is DecisionStatus.SUPERSEDED:
+            # An explicit superseded status never remains active (INV-CTX-016).
+            continue
+        if item.item_id in superseded_items:
+            continue
+        survivors.append(item)
+    return survivors, unknowns
+
+
+def apply_supersession(
+    items: Sequence[ContextItemIdentity],
+) -> tuple[list[ContextItemIdentity], list[ContextUnknown]]:
+    """Resolve explicit supersession for every kind that declares it."""
+    by_kind: dict[ContextKind, list[ContextItemIdentity]] = {}
+    for item in items:
+        by_kind.setdefault(item.context_kind, []).append(item)
+
+    survivors: list[ContextItemIdentity] = []
+    unknowns: list[ContextUnknown] = []
+    for kind, members in by_kind.items():
+        attribute = SUPERSESSION_KINDS.get(kind)
+        if attribute is None:
+            survivors.extend(members)
+            continue
+        kept, kind_unknowns = _resolve_supersession(members, attribute, kind)
+        survivors.extend(kept)
+        unknowns.extend(kind_unknowns)
+    return survivors, unknowns
+
+
+# --------------------------------------------------------------------------
+# Same-semantic-key resolution over the surviving claims.
+# --------------------------------------------------------------------------
+
+
+def _resolve_group(kind: ContextKind, reps: list[ContextItemIdentity]) -> GroupResolution:
+    """Apply the kind's domain precedence rule to competing same-key claims."""
+    if len(reps) == 1:
+        return GroupResolution(list(reps), conflict=False)
+
+    if kind in {ContextKind.EVIDENCE_REF, ContextKind.MEMORY_CONTEXT}:
+        # Evidence supports claims and memory enriches them; neither resolves
+        # domain truth, so distinct same-key items simply coexist.
+        return GroupResolution(sorted(reps, key=lambda item: item.sort_key), conflict=False)
+
+    if kind is ContextKind.APPLICABLE_LAW:
+        return _resolve_law([item for item in reps if isinstance(item, ApplicableLaw)])
+
+    if kind is ContextKind.REPOSITORY_STATE:
+        revisions = {item.revision for item in reps if isinstance(item, RepositoryState)}
+        if len(revisions) > 1:
+            # Differing revision coordinates do not imply recency.
+            return GroupResolution(
+                [], conflict=True, details={"revisions": sorted(revisions)}, sources=list(reps)
+            )
+        return _resolve_by_authority(reps)
+
+    if kind is ContextKind.DEPENDENCY_CONTEXT:
+        versions = {
+            item.version_or_revision for item in reps if isinstance(item, DependencyContext)
+        }
+        if len(versions) > 1:
+            # A higher version string does not imply governed precedence.
+            return GroupResolution(
+                [],
+                conflict=True,
+                details={"versions": sorted(str(v) for v in versions)},
+                sources=list(reps),
+            )
+        return _resolve_by_authority(reps)
+
+    return _resolve_by_authority(reps)
+
+
+def _resolve_by_authority(reps: Sequence[ContextItemIdentity]) -> GroupResolution:
+    top = _strongest(reps)
+    if len(top) == 1:
+        return GroupResolution(list(top), conflict=False)
+    return GroupResolution(
+        [],
+        conflict=True,
+        details={"authority_level": top[0].authority_level.value, "claims": len(top)},
+        sources=list(reps),
+    )
+
+
+def _resolve_law(reps: list[ApplicableLaw]) -> GroupResolution:
+    """Same-key law resolution. Supersession already ran kind-wide."""
+    if len(reps) == 1:
+        return GroupResolution(list(reps), conflict=False)
+    candidates: list[ApplicableLaw] = list(reps)
+    # Declared numeric precedence outranks generic authority rank.
+    if candidates and all(item.precedence is not None for item in candidates):
+        best = min(item.precedence or 0 for item in candidates)
+        top = [item for item in candidates if item.precedence == best]
+        if len(top) == 1:
+            return GroupResolution(list(top), conflict=False)
+        candidates = top
+    return _resolve_by_authority(candidates)
+
+
+def _resolve_candidates(items: Sequence[ContextItemIdentity]) -> ResolvedCandidates:
+    """Resolve supersession, normalize, deduplicate, and resolve groups.
+
+    A pure function of the candidate set, so the same contradiction resolves
+    identically for every consumer that is eligible to see it.
+    """
+    survivors, supersession_unknowns = apply_supersession(items)
+
+    grouped: dict[tuple[str, str], list[ContextItemIdentity]] = {}
+    for item in survivors:
+        grouped.setdefault((item.context_kind.value, item.semantic_key), []).append(item)
+
+    resolutions: dict[tuple[str, str], GroupResolution] = {}
+    for key, members in grouped.items():
+        by_claim: dict[str, list[ContextItemIdentity]] = {}
+        for item in members:
+            by_claim.setdefault(sha256_digest(_claim_digest_payload(item)), []).append(item)
+        reps = [_representative(bucket) for bucket in by_claim.values()]
+        reps.sort(key=lambda item: item.sort_key)
+        resolutions[key] = _resolve_group(ContextKind(key[0]), reps)
+    return ResolvedCandidates(
+        groups=resolutions,
+        supersession_unknowns=tuple(supersession_unknowns),
+    )
+
+
+def resolve_snapshot(snapshot: ContextSnapshot) -> SnapshotResolution:
+    """Normalize the snapshot into a deterministic candidate index.
+
+    This deliberately resolves nothing. Every consumer resolves over the
+    candidates it is eligible for; see :class:`SnapshotResolution`.
+    """
+    return SnapshotResolution(
+        candidates=tuple(sorted(snapshot.all_items(), key=lambda item: item.sort_key))
+    )
+
+
+class ContextDiscoveryCompiler:
+    """Bounded projection #1: governed fact sufficient to route (INV-CTX-014).
+
+    The output is the *only* legal external proof of architecture materiality.
+    Raw ``source_context.context_signals`` never reaches this far.
+
+    It resolves over exactly the candidates it is eligible to route from, and
+    never over the whole snapshot: a contradiction among claims that could not
+    have routed anything is not this projection's to report, and reporting it
+    would move the discovery digest — and therefore compiled-context identity —
+    for a reason the task has nothing to do with.
+    """
+
+    def compile(
+        self,
+        scope: TaskScope,
+        resolution: SnapshotResolution,
+    ) -> DiscoveryContext:
+        scoped_refs = scope_reference_set(scope)
+        routing_refs: list[str] = []
+        signal_refs: list[str] = []
+        digests: dict[str, str] = {}
+
+        view = resolution.resolve(lambda item: discovery_eligible(item, scoped_refs))
+        unknowns: list[ContextUnknown] = list(view.supersession_unknowns)
+
+        for kind in DISCOVERY_KINDS:
+            for (kind_value, semantic_key), group in sorted(view.groups.items()):
+                if kind_value != kind.value:
+                    continue
+                if group.conflict:
+                    unknowns.append(
+                        ContextUnknown(
+                            semantic_key=semantic_key,
+                            reason_code=UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS,
+                            materiality=UnknownMateriality.NON_BLOCKING,
+                            details={"context_kind": kind_value, **group.details},
+                            source_refs=[item.source_ref for item in group.sources],
+                        )
+                    )
+                    continue
+                for item in group.items:
+                    routing_refs.append(item.item_id)
+                    digests[item.item_id] = item.candidate_digest()
+                    if isinstance(item, GovernedConstraint):
+                        # The proven signal name, provenance-bound through
+                        # selected_item_digests[item_id].
+                        signal_refs.append(item.constraint_id)
+
+        return DiscoveryContext(
+            task_scope_digest=scope.sha256(),
+            routing_fact_refs=routing_refs,
+            architecture_signal_refs=signal_refs,
+            unresolved_unknowns=_dedupe_unknowns(unknowns),
+            selected_item_digests=dict(sorted(digests.items())),
+        )
+
+
+def _discovery_scope_match(item: ContextItemIdentity, scoped_refs: frozenset[str]) -> bool:
+    if item.scope_mode is ContextScopeMode.GLOBAL:
+        return True
+    return bool(set(item.scope_refs) & scoped_refs)
+
+
+def discovery_eligible(item: ContextItemIdentity, scoped_refs: frozenset[str]) -> bool:
+    """What the discovery projection may route from, and therefore resolve over.
+
+    Public because context closure judges discovery relevance with exactly this
+    rule. Only governed facts of a discovery kind, in scope, are eligible;
+    informative or unverified material may enrich later but never decides
+    routing (INV-CTX-014).
+    """
+    if item.context_kind not in DISCOVERY_KINDS:
+        return False
+    if item.authority_level not in GOVERNED_LEVELS:
+        return False
+    return _discovery_scope_match(item, scoped_refs)
+
+
+def matches_requirement(requirement: ContextRequirement, item: ContextItemIdentity) -> bool:
+    """Explicit candidate matching. No implicit empty-list semantics.
+
+    Public because context closure must judge *eligibility* with exactly the
+    same rule the compiler selected with — a conflict that a requirement would
+    have matched must be disposed even when nothing was selected for that key.
+    """
+    if item.context_kind is not requirement.context_kind:
+        return False
+    if item.authority_rank > AUTHORITY_RANK[requirement.minimum_authority]:
+        return False
+    if requirement.scope_mode is ContextScopeMode.GLOBAL:
+        if item.scope_mode is not ContextScopeMode.GLOBAL:
+            return False
+    else:
+        if item.scope_mode is ContextScopeMode.SCOPED:
+            if not (set(item.scope_refs) & set(requirement.scope_refs)):
+                return False
+        elif requirement.context_kind not in GLOBALLY_APPLICABLE_KINDS:
+            return False
+    if requirement.freshness_requirement is FreshnessRequirement.EXACT_REVISION:
+        constraint = requirement.coordinate_constraint
+        coordinate = item.source_ref.immutable_coordinate
+        revision = getattr(item, "revision", None)
+        if constraint not in {coordinate, revision}:
+            return False
+    return True
+
+
+def _candidate_sort_key(item: ContextItemIdentity) -> tuple[int, int, str, str]:
+    return (
+        0 if item.scope_mode is ContextScopeMode.SCOPED else 1,
+        item.authority_rank,
+        item.semantic_key,
+        item.item_id,
+    )
+
+
+def _budget_stop_record(
+    *,
+    bound: str,
+    blocked: ContextItemIdentity,
+    observed_count: int,
+    observed_bytes: int,
+    limit: int,
+) -> dict[str, Any]:
+    """Deterministic witness that a named bound blocked the next candidate.
+
+    Closure recomputes the eligible frontier and proves this record, so a
+    forged ``BUDGET_INSUFFICIENT`` unknown cannot legalise under-coverage
+    (INV-CTX-025/026).
+    """
+    return {
+        "bound": bound,
+        "blocked_item_id": blocked.item_id,
+        "observed_count": observed_count,
+        "observed_bytes": observed_bytes,
+        "candidate_cost": canonical_cost(blocked),
+        "limit": limit,
+    }
+
+
+class _Selection:
+    """Mutable selection state shared across requirements in one compile."""
+
+    def __init__(self, plan: ContextRequirementPlan) -> None:
+        self.plan = plan
+        self.by_item: dict[str, ContextItemIdentity] = {}
+        self.reasons: dict[str, set[str]] = {}
+        self.total_bytes = 0
+
+    def would_exceed_global(self, item: ContextItemIdentity, cost: int) -> bool:
+        if item.item_id in self.by_item:
+            return False  # already paid for; a reused item costs once
+        budget = self.plan.global_budget
+        if len(self.by_item) + 1 > budget.max_total_items:
+            return True
+        return self.total_bytes + cost > budget.max_total_bytes
+
+    def admit(self, item: ContextItemIdentity, cost: int, requirement_id: str) -> None:
+        if item.item_id not in self.by_item:
+            self.by_item[item.item_id] = item
+            self.total_bytes += cost
+        self.reasons.setdefault(item.item_id, set()).add(requirement_id)
+
+
+class ContextCompiler:
+    """Bounded projection #2: the requirement-bound canonical context IR.
+
+    Like discovery, it selects from the *resolved* snapshot only. The raw
+    snapshot is deliberately out of reach so nothing here can select a
+    candidate that supersession or deduplication already removed.
+    """
+
+    def compile(
+        self,
+        *,
+        intent: IntentContract,
+        scope: TaskScope,
+        resolution: SnapshotResolution,
+        discovery: DiscoveryContext,
+        requirement_plan: ContextRequirementPlan,
+        activation: ActivationPlan,
+        kernels: list[KernelBinding],
+        package_version: str,
+        default_authority_order: Sequence[str],
+    ) -> CompiledTaskContext:
+        selection = _Selection(requirement_plan)
+        unknowns: list[ContextUnknown] = list(scope.unresolved_unknowns)
+        unknowns.extend(discovery.unresolved_unknowns)
+
+        for requirement in requirement_plan.requirements:
+            unknowns.extend(self._select_for(requirement, resolution, selection))
+
+        selected = [
+            item.model_copy(update={"selected_because": sorted(selection.reasons[item_id])})
+            for item_id, item in sorted(selection.by_item.items())
+        ]
+        selected.sort(key=lambda item: item.sort_key)
+
+        unknowns.extend(_unknown_status_decisions(selected))
+
+        capabilities, capability_unknowns = _compile_capabilities(
+            intent, activation, kernels, selected
+        )
+        authority, authority_unknowns = _compile_authority(
+            intent, scope, activation, kernels, selected, default_authority_order
+        )
+        unknowns.extend(capability_unknowns)
+        unknowns.extend(authority_unknowns)
+
+        provenance = ContextProvenance(
+            task_scope_digest=scope.sha256(),
+            discovery_digest=discovery.sha256(),
+            context_requirements_digest=requirement_plan.sha256(),
+            discovery_item_digests=dict(discovery.selected_item_digests),
+            selected_item_digests={item.item_id: item.candidate_digest() for item in selected},
+            kernel_digests={binding.source_ref: binding.source_digest for binding in kernels},
+            compiler_identity=CompilerIdentity(
+                package_version=package_version,
+                semantics_version=CONTEXT_COMPILER_SEMANTICS_VERSION,
+            ),
+        )
+
+        return CompiledTaskContext(
+            task_scope=scope,
+            relevant_entities=_of_type(selected, EntityContext),
+            repository_state=_of_type(selected, RepositoryState),
+            architecture_constraints=_of_type(selected, GovernedConstraint),
+            applicable_law=_of_type(selected, ApplicableLaw),
+            prior_decisions=_of_type(selected, PriorDecision),
+            dependency_context=_of_type(selected, DependencyContext),
+            evidence_refs=_of_type(selected, EvidenceRef),
+            memory_context=_of_type(selected, MemoryContext),
+            # INV-CTX-020: byte-for-byte the bindings used downstream.
+            selected_kernels=[binding.to_dict() for binding in kernels],
+            capabilities=capabilities,
+            authority=authority,
+            unresolved_unknowns=_dedupe_unknowns(unknowns),
+            provenance=provenance,
+        )
+
+    def _select_for(
+        self,
+        requirement: ContextRequirement,
+        resolution: SnapshotResolution,
+        selection: _Selection,
+    ) -> list[ContextUnknown]:
+        # Resolve over exactly this requirement's eligible candidates. Doing it
+        # the other way round — resolving the whole snapshot and filtering
+        # afterwards — lets a candidate this requirement may not see eliminate
+        # one it needs, and turns a contradiction it would never have matched
+        # into an unknown charged against it.
+        view = resolution.resolve(lambda item: matches_requirement(requirement, item))
+
+        # Emitted as resolved, not re-materialized against the requirement: a
+        # cycle among claims this requirement was eligible for is a genuine
+        # epistemic hole whether or not the requirement itself was optional.
+        # Left unbound, so a cycle several consumers see is one unknown, not one
+        # per consumer.
+        unknowns: list[ContextUnknown] = list(view.supersession_unknowns)
+        eligible: list[ContextItemIdentity] = []
+        conflicted_keys: list[tuple[str, GroupResolution]] = []
+
+        for (_kind_value, semantic_key), group in sorted(view.groups.items()):
+            if group.conflict:
+                conflicted_keys.append((semantic_key, group))
+                continue
+            eligible.extend(group.items)
+
+        eligible.sort(key=_candidate_sort_key)
+
+        # An unresolved same-key contradiction is a disposition, not a silent
+        # drop: it becomes an Unknown bound to the requirement that wanted it.
+        disposed_keys: set[str] = set()
+        for semantic_key, group in conflicted_keys:
+            disposed_keys.add(semantic_key)
+            unknowns.append(
+                ContextUnknown(
+                    requirement_ref=requirement.requirement_id,
+                    semantic_key=semantic_key,
+                    reason_code=UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS,
+                    materiality=_materiality_for(requirement),
+                    details={
+                        "context_kind": requirement.context_kind.value,
+                        **group.details,
+                    },
+                    source_refs=[item.source_ref for item in group.sources],
+                )
+            )
+
+        selected_keys: set[str] = set()
+        selected_count = 0
+        requirement_bytes = 0
+        budget_stop: dict[str, Any] | None = None
+
+        for item in eligible:
+            if (
+                requirement.coverage_mode is CoverageMode.MINIMUM
+                and selected_count >= requirement.min_items
+            ):
+                break
+            if (
+                requirement.coverage_mode is CoverageMode.SEMANTIC_KEYS
+                and item.semantic_key not in requirement.required_semantic_keys
+            ):
+                continue
+            cost = canonical_cost(item)
+            if requirement.max_items is not None and selected_count + 1 > requirement.max_items:
+                budget_stop = _budget_stop_record(
+                    bound="requirement_max_items",
+                    blocked=item,
+                    observed_count=selected_count,
+                    observed_bytes=requirement_bytes,
+                    limit=requirement.max_items,
+                )
+                break
+            if (
+                requirement.max_bytes is not None
+                and requirement_bytes + cost > requirement.max_bytes
+            ):
+                budget_stop = _budget_stop_record(
+                    bound="requirement_max_bytes",
+                    blocked=item,
+                    observed_count=selected_count,
+                    observed_bytes=requirement_bytes,
+                    limit=requirement.max_bytes,
+                )
+                break
+            if selection.would_exceed_global(item, cost):
+                budget = selection.plan.global_budget
+                if len(selection.by_item) + 1 > budget.max_total_items:
+                    bound = "global_max_items"
+                    limit = budget.max_total_items
+                else:
+                    bound = "global_max_bytes"
+                    limit = budget.max_total_bytes
+                budget_stop = _budget_stop_record(
+                    bound=bound,
+                    blocked=item,
+                    observed_count=len(selection.by_item),
+                    observed_bytes=selection.total_bytes,
+                    limit=limit,
+                )
+                break
+            selection.admit(item, cost, requirement.requirement_id)
+            selected_keys.add(item.semantic_key)
+            selected_count += 1
+            requirement_bytes += cost
+
+        budget_blocked = budget_stop is not None
+        satisfied = self._satisfied(
+            requirement, selected_count, selected_keys, disposed_keys, budget_blocked
+        )
+        if not satisfied:
+            unknowns.extend(
+                self._dispose_unsatisfied(
+                    requirement,
+                    budget_blocked=budget_blocked,
+                    budget_stop=budget_stop,
+                    selected_keys=selected_keys,
+                    disposed_keys=disposed_keys,
+                )
+            )
+        return unknowns
+
+    @staticmethod
+    def _satisfied(
+        requirement: ContextRequirement,
+        selected_count: int,
+        selected_keys: set[str],
+        disposed_keys: set[str],
+        budget_blocked: bool,
+    ) -> bool:
+        if selected_count < requirement.min_items:
+            return False
+        if requirement.coverage_mode is CoverageMode.SEMANTIC_KEYS:
+            missing = set(requirement.required_semantic_keys) - selected_keys - disposed_keys
+            return not missing
+        if requirement.coverage_mode is CoverageMode.ALL_ELIGIBLE:
+            # `all_eligible` only breaks early on budget exhaustion, so a
+            # budget stop is exactly the case where coverage is incomplete.
+            return not budget_blocked
+        return True
+
+    @staticmethod
+    def _dispose_unsatisfied(
+        requirement: ContextRequirement,
+        *,
+        budget_blocked: bool,
+        selected_keys: set[str],
+        disposed_keys: set[str],
+        budget_stop: dict[str, Any] | None = None,
+    ) -> list[ContextUnknown]:
+        if budget_blocked and budget_stop is None:
+            raise InvalidValueError(
+                "budget stop recorded without a deterministic witness",
+                path=requirement.requirement_id,
+            )
+        reason = (
+            UnknownReasonCode.BUDGET_INSUFFICIENT
+            if budget_blocked
+            else UnknownReasonCode.MISSING_REQUIRED_CONTEXT
+        )
+        details: dict[str, Any] = {
+            "context_kind": requirement.context_kind.value,
+            "coverage_mode": requirement.coverage_mode.value,
+            "min_items": requirement.min_items,
+            "selected": len(selected_keys),
+        }
+        if budget_stop is not None:
+            details.update(budget_stop)
+        if requirement.coverage_mode is CoverageMode.SEMANTIC_KEYS:
+            details["missing_semantic_keys"] = sorted(
+                set(requirement.required_semantic_keys) - selected_keys - disposed_keys
+            )
+        if requirement.missing_policy is MissingPolicy.BLOCK:
+            raise InvalidValueError(
+                "required context could not be satisfied under a BLOCK missing policy",
+                path=requirement.requirement_id,
+                details={"reason_code": reason.value, **details},
+            )
+        if (
+            requirement.missing_policy is MissingPolicy.OPTIONAL
+            and reason is not UnknownReasonCode.BUDGET_INSUFFICIENT
+        ):
+            # OPTIONAL says taking *nothing* is legal when nothing was there to
+            # take. It says nothing about truncation: a budget that stopped the
+            # selector short of known eligible material is a fact about this
+            # compile, and it stays recorded so closure can tell a legal short
+            # selection from a selector that silently dropped candidates
+            # (INV-CTX-023/026).
+            return []
+        return [
+            ContextUnknown(
+                requirement_ref=requirement.requirement_id,
+                reason_code=reason,
+                materiality=_materiality_for(requirement),
+                details=details,
+            )
+        ]
+
+
+def _materiality_for(requirement: ContextRequirement) -> UnknownMateriality:
+    return UnknownMateriality.BLOCKING if requirement.required else UnknownMateriality.NON_BLOCKING
+
+
+def _unknown_status_decisions(selected: Sequence[ContextItemIdentity]) -> list[ContextUnknown]:
+    """A decision whose status is itself unknown stays visible (INV-CTX-016).
+
+    Visible always; *blocking* only when the decision is governed. An
+    unverified note whose own status nobody established must not halt the task
+    on the strength of its own uncertainty (INV-CTX-019).
+    """
+    return [
+        ContextUnknown(
+            semantic_key=item.semantic_key,
+            reason_code=UnknownReasonCode.UNKNOWN_SUPERSESSION,
+            materiality=_truth_tier_materiality([item]),
+            details={"decision_id": item.decision_id, "reason": "decision status unknown"},
+            source_refs=[item.source_ref],
+        )
+        for item in selected
+        if isinstance(item, PriorDecision) and item.status is DecisionStatus.UNKNOWN
+    ]
+
+
+def _of_type(items: Iterable[ContextItemIdentity], model: type) -> list[Any]:
+    return [item for item in items if isinstance(item, model)]
+
+
+def _dedupe_unknowns(unknowns: Iterable[ContextUnknown]) -> list[ContextUnknown]:
+    indexed = {unknown.unknown_id: unknown for unknown in unknowns}
+    return [indexed[key] for key in sorted(indexed)]
+
+
+# --------------------------------------------------------------------------
+# Capability and authority compilation.
+#
+# Requirements are compiler-derived from intent, scope, route, and kernels
+# (INV-CTX-021/022). A snapshot proves *state*; it can never declare what the
+# task requires — the models make that structurally impossible, since
+# CapabilityFact.state and AuthorityFact.state have no ``required`` member.
+#
+# The disposition ladder is exhaustive on purpose: proven-negative blocks,
+# proven-positive satisfies, and *absence* is its own explicit non-blocking
+# state. Reasoning about gaps only when some fact happens to exist would make
+# the empty snapshot silently permissive, which is precisely the shape that
+# lets a successful compile imply a permission nobody proved.
+# --------------------------------------------------------------------------
+
+# Capability dispositions that count as explicitly recorded. Mirrored by the
+# context closure validator, which proves each requirement reached exactly one.
+CAPABILITY_STATES = ("available", "unavailable", "unknown", "absent")
+
+# Authority dispositions that are proven negatives rather than mere absence:
+# something was proven that stands against the requirement.
+AUTHORITY_PROVEN_NEGATIVE = frozenset({"limited_without_grant", "insufficient_scope"})
+AUTHORITY_STATES = (
+    "granted",
+    "limited_without_grant",
+    "insufficient_scope",
+    "unknown",
+    "absent",
+)
+
+
+def _requirement_sources(
+    intent: IntentContract, activation: ActivationPlan, kernels: list[KernelBinding]
+) -> list[str]:
+    return [f"intent:{intent.intent_id}", f"route:{activation.matched_route}"] + [
+        f"kernel:{binding.source_ref}" for binding in kernels
+    ]
+
+
+def _compile_capabilities(
+    intent: IntentContract,
+    activation: ActivationPlan,
+    kernels: list[KernelBinding],
+    selected: Sequence[ContextItemIdentity],
+) -> tuple[CapabilityContext, list[ContextUnknown]]:
+    sources = _requirement_sources(intent, activation, kernels)
+    required: list[CapabilityRequirement] = []
+
+    def need(capability_id: str, reason: str) -> None:
+        required.append(
+            CapabilityRequirement(capability_id=capability_id, reason=reason, source_refs=sources)
+        )
+
+    mode = intent.objective.realization_mode.value
+    if mode == "MUTATION":
+        need("workspace_mutation", "realization mode MUTATION mutates the workspace")
+    elif mode == "ARTIFACT":
+        need("artifact_emission", "realization mode ARTIFACT returns files")
+    if intent.objective.validation_required:
+        need("validation_execution", "objective requires validation evidence")
+    if activation.terminal_allowed:
+        need("terminal_convergence", "activation plan reaches the terminal convergence gate")
+    if (activation.architecture_materiality or {}).get("required"):
+        need("architecture_review", "architecture materiality activates the Global Architect")
+
+    required.sort(key=lambda item: (item.capability_id, item.requirement_id))
+
+    facts = [item for item in selected if isinstance(item, CapabilityFact)]
+    available = [fact for fact in facts if fact.state == "available"]
+    unavailable = [fact for fact in facts if fact.state == "unavailable"]
+    unknown_state = [fact for fact in facts if fact.state == "unknown"]
+
+    available_ids = {fact.capability_id for fact in available}
+    unavailable_ids = {fact.capability_id for fact in unavailable}
+    unknown_ids = {fact.capability_id for fact in unknown_state}
+
+    unknowns: list[ContextUnknown] = []
+    for requirement in required:
+        state = capability_disposition(
+            requirement.capability_id, available_ids, unavailable_ids, unknown_ids
+        )
+        if state == "available":
+            continue
+        unknowns.append(
+            ContextUnknown(
+                semantic_key=requirement.capability_id,
+                reason_code=UnknownReasonCode.UNSUPPORTED_CAPABILITY,
+                materiality=(
+                    UnknownMateriality.BLOCKING
+                    if state == "unavailable"
+                    else UnknownMateriality.NON_BLOCKING
+                ),
+                details={"capability_id": requirement.capability_id, "state": state},
+            )
+        )
+
+    return (
+        CapabilityContext(
+            required=required,
+            available=available,
+            unavailable=unavailable,
+            unknown=unknown_state,
+        ),
+        unknowns,
+    )
+
+
+def capability_disposition(
+    capability_id: str,
+    available_ids: set[str],
+    unavailable_ids: set[str],
+    unknown_ids: set[str],
+) -> str:
+    """The single explicit disposition of one required capability."""
+    if capability_id in unavailable_ids:
+        return "unavailable"
+    if capability_id in available_ids:
+        return "available"
+    if capability_id in unknown_ids:
+        return "unknown"
+    return "absent"
+
+
+def authority_disposition(
+    requirement: AuthorityRequirement,
+    granted: Sequence[AuthorityFact],
+    limits: Sequence[AuthorityFact],
+    unknown_facts: Sequence[AuthorityFact],
+) -> str:
+    """The single explicit disposition of one required authority.
+
+    The requirement names an authority, a subject, and an action scope, and all
+    three are matched. Matching on ``authority_id`` alone would let a
+    ``repository_write`` grant over one subject satisfy a ``repository_write``
+    requirement over another — a permission nobody proved (INV-CTX-022).
+
+    A grant wins over a limit: limits alongside a covering grant are a bounded
+    grant, and they stay visible in ``AuthorityContext.limits``. A limit
+    *without* a covering grant is a proven negative and blocks. A grant that
+    exists but does not cover what is required is ``insufficient_scope`` — also
+    a proven negative, and distinct from having no fact at all. The compiler
+    default order is never consulted here: precedence is not permission.
+    """
+    if any(grant_covers_requirement(fact, requirement) for fact in granted):
+        return "granted"
+    if any(limit_bears_on_requirement(fact, requirement) for fact in limits):
+        return "limited_without_grant"
+    if any(fact.authority_id == requirement.authority_id for fact in granted):
+        return "insufficient_scope"
+    if any(fact.authority_id == requirement.authority_id for fact in unknown_facts):
+        return "unknown"
+    return "absent"
+
+
+def _compile_authority(
+    intent: IntentContract,
+    scope: TaskScope,
+    activation: ActivationPlan,
+    kernels: list[KernelBinding],
+    selected: Sequence[ContextItemIdentity],
+    default_order: Sequence[str],
+) -> tuple[AuthorityContext, list[ContextUnknown]]:
+    sources = _requirement_sources(intent, activation, kernels)
+    required: list[AuthorityRequirement] = []
+
+    def need(authority_id: str, reason: str, action_scope: list[str]) -> None:
+        required.append(
+            AuthorityRequirement(
+                authority_id=authority_id,
+                subject_ref=None,
+                action_scope=action_scope,
+                reason=reason,
+                source_refs=sources,
+            )
+        )
+
+    if intent.objective.realization_mode.value == "MUTATION":
+        need(
+            "repository_write",
+            "realization mode MUTATION writes to the workspace",
+            list(scope.target_refs),
+        )
+    if intent.objective.delivery_required:
+        need(
+            "delivery",
+            f"objective requires delivery in mode {intent.objective.delivery_mode.value}",
+            [],
+        )
+    if (activation.architecture_materiality or {}).get("required"):
+        need("architecture_decision", "architecture materiality requires a governed decision", [])
+
+    required.sort(key=lambda item: (item.authority_id, item.requirement_id))
+
+    facts = [item for item in selected if isinstance(item, AuthorityFact)]
+    granted = [fact for fact in facts if fact.state == "granted"]
+    limits = [fact for fact in facts if fact.state == "limit"]
+    unknown_state = [fact for fact in facts if fact.state == "unknown"]
+
+    unknowns: list[ContextUnknown] = []
+    for requirement in required:
+        state = authority_disposition(requirement, granted, limits, unknown_state)
+        if state == "granted":
+            continue
+        unknowns.append(
+            ContextUnknown(
+                semantic_key=requirement.semantic_key,
+                reason_code=UnknownReasonCode.MISSING_AUTHORITY,
+                materiality=(
+                    UnknownMateriality.BLOCKING
+                    if state in AUTHORITY_PROVEN_NEGATIVE
+                    else UnknownMateriality.NON_BLOCKING
+                ),
+                details={
+                    "authority_id": requirement.authority_id,
+                    "subject_ref": requirement.subject_ref,
+                    "action_scope": list(requirement.action_scope),
+                    "state": state,
+                },
+            )
+        )
+
+    effective_order, source = _effective_authority_order(selected, granted, limits, default_order)
+
+    return (
+        AuthorityContext(
+            required=required,
+            granted=granted,
+            limits=limits,
+            unknown=unknown_state,
+            effective_order=effective_order,
+            effective_order_source=source,
+        ),
+        unknowns,
+    )
+
+
+def _effective_authority_order(
+    selected: Sequence[ContextItemIdentity],
+    granted: Sequence[AuthorityFact],
+    limits: Sequence[AuthorityFact],
+    default_order: Sequence[str],
+) -> tuple[list[str], EffectiveAuthorityOrderSource]:
+    """Governed precedence wins when proven; otherwise the labelled default.
+
+    Caller hints never reach here (INV-CTX-022): only governed authority facts
+    and selected applicable law can define an order. The returned default is a
+    precedence fallback, never a grant.
+    """
+    ranked_facts = [fact for fact in [*granted, *limits] if fact.precedence is not None]
+    if ranked_facts:
+        ordered = sorted(ranked_facts, key=lambda fact: (fact.precedence or 0, fact.authority_id))
+        return (
+            list(dict.fromkeys(fact.authority_id for fact in ordered)),
+            EffectiveAuthorityOrderSource.GOVERNED_CONTEXT,
+        )
+    ranked_law = [
+        item for item in selected if isinstance(item, ApplicableLaw) and item.precedence is not None
+    ]
+    if ranked_law:
+        ordered_law = sorted(ranked_law, key=lambda item: (item.precedence or 0, item.law_id))
+        return (
+            list(dict.fromkeys(item.law_id for item in ordered_law)),
+            EffectiveAuthorityOrderSource.GOVERNED_CONTEXT,
+        )
+    return list(default_order), EffectiveAuthorityOrderSource.COMPILER_DEFAULT
+
+
+__all__ = [
+    "AUTHORITY_PROVEN_NEGATIVE",
+    "AUTHORITY_STATES",
+    "CAPABILITY_STATES",
+    "DISCOVERY_KINDS",
+    "GLOBALLY_APPLICABLE_KINDS",
+    "SUPERSESSION_KINDS",
+    "ContextCompiler",
+    "ContextDiscoveryCompiler",
+    "GroupResolution",
+    "ResolvedCandidates",
+    "SnapshotResolution",
+    "apply_supersession",
+    "authority_disposition",
+    "capability_disposition",
+    "discovery_eligible",
+    "matches_requirement",
+    "preflight_snapshot",
+    "resolve_snapshot",
+]

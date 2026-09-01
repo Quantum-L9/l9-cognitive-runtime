@@ -22,7 +22,12 @@ from mcp.server.mcpserver import MCPServer
 
 from l9_cognitive_runtime import __version__
 from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore
-from l9_cognitive_runtime.models.errors import InvalidValueError
+from l9_cognitive_runtime.models.context import (
+    SNAPSHOT_MAX_ITEMS,
+    ContextSnapshot,
+    payload_item_count,
+)
+from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
 from l9_cognitive_runtime.pack import PackLoader, RuntimePack
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
@@ -40,6 +45,16 @@ READ_ONLY_TOOLS = (
 )
 
 
+# Tools that accept a governed ``ContextSnapshot`` payload (INV-CTX-043).
+# ``compile_intent`` is deliberately absent: intent semantics do not depend on
+# governed context, so accepting it there would imply an influence it has not.
+CONTEXT_AWARE_TOOLS = (
+    "compile_runtime",
+    "plan_kernel_activation",
+    "validate_runtime_bundle",
+)
+
+
 def _capabilities(pack: RuntimePack) -> dict[str, Any]:
     return {
         "server": SERVER_NAME,
@@ -50,9 +65,43 @@ def _capabilities(pack: RuntimePack) -> dict[str, Any]:
         "writes": False,
         "execution": False,
         "shell": False,
+        # INV-CTX-043: governed context is useless if callers cannot discover
+        # that this surface accepts it.
+        "context_snapshot_input": True,
+        "context_aware_tools": list(CONTEXT_AWARE_TOOLS),
         "pack_ref": pack.provenance.pack_ref,
         "manifest_digest": pack.provenance.manifest_digest,
     }
+
+
+def parse_context_snapshot(payload: dict[str, Any] | None) -> ContextSnapshot | None:
+    """Validate a governed context payload, or fail closed.
+
+    ``None`` means no governed snapshot, which is the empty governed snapshot
+    every pre-context caller already gets. A *malformed* payload is not the same
+    thing and must never be silently downgraded to it.
+    """
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise InvalidValueError("context_snapshot must be an object", path="context_snapshot")
+    # The item ceiling is applied to the untyped payload: typing a candidate
+    # derives its identity, which hashes it, so counting first is what keeps an
+    # oversized payload from being hashed before it is refused (INV-CTX-007).
+    count = payload_item_count(payload)
+    if count > SNAPSHOT_MAX_ITEMS:
+        raise InvalidValueError(
+            "context_snapshot exceeds the maximum item count",
+            path="context_snapshot",
+            details={"items": count, "max_items": SNAPSHOT_MAX_ITEMS},
+        )
+    try:
+        return ContextSnapshot.from_mapping(payload)
+    except ModelValidationError as exc:
+        raise InvalidValueError(
+            f"context_snapshot is not a valid governed snapshot: {exc}",
+            path="context_snapshot",
+        ) from exc
 
 
 def build_server(pack_root: Path) -> MCPServer:
@@ -66,9 +115,14 @@ def build_server(pack_root: Path) -> MCPServer:
     service = CognitiveRuntimeService()
     runs = InMemoryRunStore()
 
-    def _compile(mission: str, task_type: str = DEFAULT_TASK_TYPE) -> Any:
+    def _compile(
+        mission: str,
+        task_type: str = DEFAULT_TASK_TYPE,
+        context_snapshot: dict[str, Any] | None = None,
+    ) -> Any:
         return service.compile_runtime(
-            CompileRequest(mission=mission, task_type=task_type, pack_root=root)
+            CompileRequest(mission=mission, task_type=task_type, pack_root=root),
+            context_snapshot=parse_context_snapshot(context_snapshot),
         )
 
     def _require_bound_pack(requested: str) -> None:
@@ -104,19 +158,35 @@ def build_server(pack_root: Path) -> MCPServer:
         }
 
     @mcp.tool()
-    def plan_kernel_activation(mission: str) -> dict[str, Any]:
-        """Return the contract's kernel activation plan (read-only)."""
-        bundle = _compile(mission)
+    def plan_kernel_activation(
+        mission: str, context_snapshot: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Return the contract's kernel activation plan (read-only).
+
+        Accepts a governed context snapshot because context can change routing:
+        a governed architecture constraint is what proves materiality, and
+        materiality pulls the architecture phase and kernel into the plan.
+        """
+        bundle = _compile(mission, context_snapshot=context_snapshot)
         return {
             "kernel_activation": list(bundle.execution.kernel_activation),
             "execution_sequence": list(bundle.execution.execution_sequence),
             "execution_digest": bundle.digests()["execution"],
+            "context_digest": bundle.digests()["context"],
         }
 
     @mcp.tool()
-    def compile_runtime(mission: str, task_type: str = DEFAULT_TASK_TYPE) -> dict[str, Any]:
-        """Compile a full runtime bundle in memory and store an isolated run."""
-        bundle = _compile(mission, task_type)
+    def compile_runtime(
+        mission: str,
+        task_type: str = DEFAULT_TASK_TYPE,
+        context_snapshot: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Compile a full runtime bundle in memory and store an isolated run.
+
+        ``context_snapshot`` is the governed context input (INV-CTX-043). It is
+        typed and validated before compilation; an invalid payload fails closed.
+        """
+        bundle = _compile(mission, task_type, context_snapshot=context_snapshot)
         # Store only the derived result — never raw request/intent/kernel bodies.
         payload = {
             "digests": bundle.digests(),
@@ -132,14 +202,19 @@ def build_server(pack_root: Path) -> MCPServer:
         return {**payload, "run_id": record.run_id, "resource_uri": record.resource_uri}
 
     @mcp.tool()
-    def validate_runtime_bundle(mission: str) -> dict[str, Any]:
+    def validate_runtime_bundle(
+        mission: str, context_snapshot: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Compile and validate a runtime bundle's integrity (read-only)."""
-        bundle = _compile(mission)
+        bundle = _compile(mission, context_snapshot=context_snapshot)
         digests = bundle.digests()
+        packet_context = bundle.packet.get("compiled_task_context_digest")
         checks = {
             "all_digests_present": all(digests.values()),
             "graph_has_terminal": bool(bundle.graph.terminal_node),
             "provenance_present": bundle.provenance is not None,
+            # INV-CTX-030: the packet's context identity agrees with the bundle's.
+            "packet_context_digest_matches": packet_context == digests["context"],
         }
         return {"valid": all(checks.values()), "digests": digests, "checks": checks}
 

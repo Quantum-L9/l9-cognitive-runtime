@@ -84,7 +84,11 @@ def test_item_id_is_derived_when_omitted() -> None:
 
 
 def test_identical_source_and_claim_produce_identical_item_id() -> None:
-    assert entity("payments").item_id == entity("payments").item_id
+    """Two independent constructions of the same candidate agree, across runs."""
+    first = entity("payments")
+    second = entity("payments")
+    assert first.item_id == second.item_id
+    assert first.item_id == first.expected_item_id()
 
 
 def test_a_supplied_item_id_must_equal_the_canonical_recipe() -> None:
@@ -99,7 +103,10 @@ def test_a_supplied_item_id_must_equal_the_canonical_recipe() -> None:
         entity_type="module",
         relation_to_task="target",
     )
-    assert same.item_id == item.item_id
+    # Not a comparison with what was passed in — the accepted value must equal
+    # the recipe recomputed from the finished item.
+    assert same.item_id == same.expected_item_id()
+    assert same.candidate_digest() == item.candidate_digest()
 
 
 @pytest.mark.parametrize(
@@ -398,7 +405,10 @@ def test_scoped_requirement_requires_scope_refs() -> None:
 
 
 def test_requirement_identity_is_deterministic() -> None:
-    assert _requirement().requirement_id == _requirement().requirement_id
+    first = _requirement()
+    second = _requirement()
+    assert first.requirement_id == second.requirement_id
+    assert first.requirement_id.startswith("ctxreq.sha256:")
 
 
 # ---------------------------------------------------------------------------

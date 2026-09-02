@@ -87,10 +87,35 @@ def load_yaml_mapping(text: str, *, source: str = "<yaml>") -> dict[str, Any]:
     return data
 
 
-def load_yaml_file(path: Path) -> dict[str, Any]:
-    if not path.is_file():
-        raise InvalidValueError("YAML file missing", path=str(path))
-    return load_yaml_mapping(path.read_text(encoding="utf-8"), source=str(path))
+def confined_input_file(path: Path | str, *, allow_root: Path) -> Path:
+    """Resolve an input file and prove it stays beneath an explicit root.
+
+    File-bearing CLI and compatibility inputs are untrusted boundary data. An
+    absolute path, ``..`` segment, or symlink must not turn a repository/pack
+    read into arbitrary filesystem access. Callers choose the authority root;
+    this function only proves the candidate remains inside it.
+    """
+    root = allow_root.expanduser().resolve()
+    candidate = Path(path).expanduser()
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise InvalidValueError(
+            "input path escapes allow_root",
+            path=str(path),
+            details={"allow_root": str(root), "resolved": str(resolved)},
+        ) from exc
+    if not resolved.is_file():
+        raise InvalidValueError("input file missing", path=str(resolved))
+    return resolved
+
+
+def load_yaml_file(path: Path, *, allow_root: Path) -> dict[str, Any]:
+    resolved = confined_input_file(path, allow_root=allow_root)
+    return load_yaml_mapping(resolved.read_text(encoding="utf-8"), source=str(resolved))
 
 
 def require_non_empty_plan(plan: dict[str, Any], *, source: str) -> dict[str, Any]:

@@ -1,13 +1,8 @@
-"""Derive execution graphs from structured execution contracts.
+"""Derive and validate execution graphs from structured execution contracts.
 
-This is a pure, deterministic transform of an ``ExecutionContract`` into an
-``ExecutionGraph`` — not a runtime scheduler. Nodes derive mechanically from
-the contract's structured ``execution_steps`` (INV-006): kernel references,
-obligation references, gates, evidence requirements, and failure routes come
-from the step declarations. There is no prose phase map and no first-kernel
-fallback; a contract without structured steps cannot derive a graph (A0501).
-Cycles and unresolved dependencies are rejected, and identical contracts
-produce byte-identical canonical graphs.
+This module owns the canonical graph semantics. Compatibility CLIs under
+``runtime/`` may project or validate a graph, but they delegate here rather
+than maintaining a second graph-validation implementation.
 """
 
 from __future__ import annotations
@@ -16,7 +11,7 @@ from collections import deque
 from typing import Any
 
 from l9_cognitive_runtime.models import ExecutionContract, ExecutionGraph
-from l9_cognitive_runtime.models.errors import InvalidValueError
+from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
 
 # Run-level exits every step may route to (A0503): a step can fail closed into
 # a block or an abort; the terminal node additionally represents CONVERGED.
@@ -107,6 +102,29 @@ def derive_execution_graph(contract: ExecutionContract) -> ExecutionGraph:
             "terminal_disposition": terminal_disposition,
         }
     )
+
+
+def validate_execution_graph_mapping(graph: dict[str, Any]) -> list[str]:
+    """Validate a serialized execution graph without executing compatibility code."""
+    try:
+        typed = ExecutionGraph.from_mapping(graph)
+    except ModelValidationError as exc:
+        return [str(exc)]
+
+    ids = [node.id for node in typed.nodes]
+    findings: list[str] = []
+    if len(ids) != len(set(ids)):
+        findings.append("duplicate node id")
+    if typed.terminal_node not in ids:
+        findings.append("terminal_node missing from nodes")
+
+    nodes = [{"id": node.id} for node in typed.nodes]
+    edges = [{"from": edge.from_node, "to": edge.to_node} for edge in typed.edges]
+    try:
+        topological_order(nodes, edges)
+    except InvalidValueError as exc:
+        findings.append(str(exc))
+    return findings
 
 
 def topological_order(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> list[str]:

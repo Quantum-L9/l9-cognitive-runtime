@@ -12,6 +12,8 @@ jobs:
   gates:
     name: gates (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
     strategy:
       fail-fast: false
       matrix:
@@ -22,8 +24,8 @@ jobs:
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
-      - name: Sync (locked)
-        run: uv sync --extra dev --frozen
+      - name: Sync locked third-party dependencies only
+        run: uv sync --extra dev --frozen --no-install-project --no-build
       - name: Ruff lint
         run: uv run --no-sync --no-build ruff check src tests
       - name: Ruff format check
@@ -42,9 +44,9 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.11"
-      - name: Sync (locked)
-        run: uv sync --extra dev --frozen
-      - name: Build sdist + wheel
+      - name: Sync locked third-party dependencies only
+        run: uv sync --extra dev --frozen --no-install-project --no-build
+      - name: Build sdist + wheel explicitly
         run: uv run --no-sync --no-build python -m build
       - name: Assert working tree stayed clean (no committed dist artifacts)
         run: |

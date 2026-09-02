@@ -11,7 +11,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project --no-build
 
 COPY FINAL_EXECUTION_CONTRACT.yaml VALIDATION_CONTRACT.yaml HANDOFF_CONTRACT.yaml EXECUTION_GRAPH.json ./
 COPY contracts ./contracts

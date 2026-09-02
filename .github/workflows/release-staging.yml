@@ -53,11 +53,11 @@ jobs:
         run: |
           set -euo pipefail
           uv sync --extra dev --frozen
-          uv run --no-sync ruff check src tests
-          uv run --no-sync ruff format --check src tests
-          uv run --no-sync mypy src tests
-          uv run --no-sync python -m pytest -q
-          uv run --no-sync python -m build
+          uv run --no-sync --no-build ruff check src tests
+          uv run --no-sync --no-build ruff format --check src tests
+          uv run --no-sync --no-build mypy src tests
+          uv run --no-sync --no-build python -m pytest -q
+          uv run --no-sync --no-build python -m build
       - name: Publish and request deployment
         uses: Quantum-L9/l9-ci-core/.github/actions/container-release@d6e778c907e3711c4f610fe135ea8cc7a6c5350d
         with:

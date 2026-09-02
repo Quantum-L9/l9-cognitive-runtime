@@ -1,0 +1,36 @@
+name: sonar-diagnostic
+
+on:
+  push:
+    branches:
+      - diag/sonar-security
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query public SonarCloud security findings
+        env:
+          PROJECT: Quantum-L9_l9-cognitive-runtime
+        run: |
+          set -euo pipefail
+          echo "== security measures =="
+          curl --fail --silent --show-error --get \
+            --data-urlencode "component=${PROJECT}" \
+            --data-urlencode "branch=main" \
+            --data-urlencode "metricKeys=security_rating,new_security_rating,vulnerabilities,new_vulnerabilities,security_hotspots,new_security_hotspots" \
+            https://sonarcloud.io/api/measures/component \
+            | jq '{component: .component.key, measures: [.component.measures[] | {metric, value, period}]}'
+
+          echo "== open vulnerabilities =="
+          curl --fail --silent --show-error --get \
+            --data-urlencode "componentKeys=${PROJECT}" \
+            --data-urlencode "branch=main" \
+            --data-urlencode "resolved=false" \
+            --data-urlencode "types=VULNERABILITY" \
+            --data-urlencode "ps=100" \
+            https://sonarcloud.io/api/issues/search \
+            | jq '{total, issues: [.issues[] | {key, rule, severity, component, line, message, status, creationDate, impacts}]}'

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from l9_cognitive_runtime.cli import confined_output_path  # noqa: E402
+from l9_cognitive_runtime.models.errors import InvalidValueError  # noqa: E402
 from l9_cognitive_runtime.parsing import confined_input_file  # noqa: E402
 
 
@@ -40,8 +40,26 @@ def main() -> int:
     for edge in graph["edges"]:
         lines.append(f"- `{edge['from']}` -> `{edge['to']}` ({edge.get('reason', '')})")
 
-    write_root = Path(args.allow_write_root) if args.allow_write_root else None
-    output = confined_output_path(args.output, allow_root=write_root)
+    write_root = (
+        Path(args.allow_write_root).expanduser().resolve()
+        if args.allow_write_root
+        else Path.cwd().resolve()
+    )
+    requested_output = Path(args.output).expanduser()
+    output = (
+        requested_output.resolve()
+        if requested_output.is_absolute()
+        else (write_root / requested_output).resolve()
+    )
+    try:
+        output.relative_to(write_root)
+    except ValueError as exc:
+        raise InvalidValueError(
+            "output path escapes allow_write_root",
+            path=args.output,
+            details={"allow_write_root": str(write_root), "resolved": str(output)},
+        ) from exc
+
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(output)
     return 0

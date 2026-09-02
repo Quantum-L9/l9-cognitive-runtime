@@ -12,28 +12,28 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: List PR 49 SonarCloud vulnerabilities compactly
+      - name: Measure main SonarCloud security state
         env:
           PROJECT: Quantum-L9_l9-cognitive-runtime
         run: |
           set -euo pipefail
+          echo "== measures =="
+          curl --fail --silent --show-error --get \
+            --data-urlencode "component=${PROJECT}" \
+            --data-urlencode "branch=main" \
+            --data-urlencode "metricKeys=security_rating,vulnerabilities,security_hotspots" \
+            https://sonarcloud.io/api/measures/component \
+            | jq -r '.component.measures[] | [.metric, .value] | @tsv'
+
+          echo "== open vulnerabilities =="
           curl --fail --silent --show-error --get \
             --data-urlencode "componentKeys=${PROJECT}" \
-            --data-urlencode "pullRequest=49" \
+            --data-urlencode "branch=main" \
             --data-urlencode "resolved=false" \
             --data-urlencode "types=VULNERABILITY" \
             --data-urlencode "ps=100" \
             https://sonarcloud.io/api/issues/search \
             | jq -r '
-                .issues
-                | sort_by(.rule, .component, (.line // 0))
-                | .[]
-                | [
-                    .rule,
-                    .severity,
-                    ((.impacts // []) | map(.severity) | join(",")),
-                    (.component | sub("^Quantum-L9_l9-cognitive-runtime:"; "")),
-                    ((.line // 0) | tostring),
-                    (.message | gsub("[\t\r\n]+"; " "))
-                  ]
-                | @tsv'
+                "total\t" + (.total|tostring),
+                (.issues | sort_by(.rule, .component, (.line // 0)) | .[] |
+                  [.rule, .severity, (.component | sub("^Quantum-L9_l9-cognitive-runtime:"; "")), ((.line // 0)|tostring)] | @tsv)'

@@ -10,23 +10,18 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from l9_cognitive_runtime.models.errors import InvalidValueError  # noqa: E402
 from l9_cognitive_runtime.parsing import confined_input_file  # noqa: E402
+
+CANONICAL_OUTPUT = "EXECUTION_GRAPH.md"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("graph")
-    parser.add_argument("--output", default="EXECUTION_GRAPH.md")
     parser.add_argument(
         "--root",
         default=str(Path.cwd()),
         help="Directory the graph input must remain beneath (default: cwd)",
-    )
-    parser.add_argument(
-        "--allow-write-root",
-        default=None,
-        help="Directory --output must stay beneath (default: cwd)",
     )
     args = parser.parse_args()
 
@@ -40,26 +35,9 @@ def main() -> int:
     for edge in graph["edges"]:
         lines.append(f"- `{edge['from']}` -> `{edge['to']}` ({edge.get('reason', '')})")
 
-    write_root = (
-        Path(args.allow_write_root).expanduser().resolve()
-        if args.allow_write_root
-        else Path.cwd().resolve()
-    )
-    requested_output = Path(args.output).expanduser()
-    output = (
-        requested_output.resolve()
-        if requested_output.is_absolute()
-        else (write_root / requested_output).resolve()
-    )
-    try:
-        output.relative_to(write_root)
-    except ValueError as exc:
-        raise InvalidValueError(
-            "output path escapes allow_write_root",
-            path=args.output,
-            details={"allow_write_root": str(write_root), "resolved": str(output)},
-        ) from exc
-
+    # Compatibility surface is intentionally canonical-only: callers may choose
+    # where to run the CLI, but not an arbitrary filesystem destination.
+    output = Path.cwd() / CANONICAL_OUTPUT
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(output)
     return 0

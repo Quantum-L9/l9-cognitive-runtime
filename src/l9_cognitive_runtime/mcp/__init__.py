@@ -111,6 +111,31 @@ def parse_context_snapshot(payload: dict[str, Any] | None) -> ContextSnapshot | 
         ) from exc
 
 
+def resolve_principal(*, hosted_auth: bool) -> str | None:
+    """Resolve the run-owning principal, or ``None`` when identity is unknown.
+
+    Hosted requests are owned by the validated token's ``(client_id, issuer,
+    subject)`` triple — the same components the SDK binds session ownership to, so
+    two users of one OAuth client are distinct principals. Local stdio has no token
+    and is owned by ``LOCAL_PRINCIPAL``.
+
+    The two must never meet. Under hosted auth a request without a validated token
+    returns ``None`` rather than falling back to ``LOCAL_PRINCIPAL``, which would
+    hand an unauthenticated caller the local principal's runs. The SDK's
+    ``RequireAuthMiddleware`` should already have rejected such a request; this is
+    the second lock on the same door.
+
+    Lives at module level rather than inside ``build_server`` so the rule can be
+    read and tested on its own — it is the one place run ownership is decided.
+    """
+    token = get_access_token()
+    if token is not None:
+        return "oauth:" + json.dumps(principal_components(token), separators=(",", ":"))
+    if hosted_auth:
+        return None
+    return LOCAL_PRINCIPAL
+
+
 def build_server(
     pack_root: Path,
     *,
@@ -166,27 +191,7 @@ def build_server(
         return pack.resolve(relative).read_text(encoding="utf-8")
 
     hosted_auth = token_verifier is not None and auth_settings is not None
-
-    def _principal() -> str | None:
-        """Resolve the run-owning principal, or ``None`` when identity is unknown.
-
-        Hosted requests are owned by the validated token's ``(client_id, issuer,
-        subject)`` triple — the same components the SDK binds session ownership to,
-        so two users of one OAuth client are distinct principals. Local stdio has
-        no token and is owned by ``LOCAL_PRINCIPAL``.
-
-        The two must never meet. Under hosted auth a request without a validated
-        token returns ``None`` rather than falling back to ``LOCAL_PRINCIPAL``,
-        which would hand an unauthenticated caller the local principal's runs.
-        The SDK's RequireAuthMiddleware should already have rejected such a
-        request; this is the second lock on the same door.
-        """
-        token = get_access_token()
-        if token is not None:
-            return "oauth:" + json.dumps(principal_components(token), separators=(",", ":"))
-        if hosted_auth:
-            return None
-        return LOCAL_PRINCIPAL
+    auth_mode = "oauth2_bearer" if hosted_auth else "none"
 
     mcp = MCPServer(
         name=SERVER_NAME,
@@ -203,7 +208,7 @@ def build_server(
     @mcp.tool()
     def runtime_capabilities() -> dict[str, Any]:
         """List the read-only capabilities of this MCP server."""
-        return _capabilities(pack, authentication="oauth2_bearer" if hosted_auth else "none")
+        return _capabilities(pack, authentication=auth_mode)
 
     @mcp.tool()
     def compile_intent(mission: str, task_type: str = DEFAULT_TASK_TYPE) -> dict[str, Any]:
@@ -255,7 +260,7 @@ def build_server(
             # per-run artifact resolvable through l9://runs/{run_id}.
             "execution_packet": bundle.packet,
         }
-        owner = _principal()
+        owner = resolve_principal(hosted_auth=hosted_auth)
         if owner is None:
             # Hosted transport with no validated identity: refuse rather than
             # create a run nobody can be held to own.
@@ -287,7 +292,7 @@ def build_server(
     @mcp.resource("l9://runtime/capabilities")
     def runtime_capabilities_resource() -> str:
         return json.dumps(
-            _capabilities(pack, authentication="oauth2_bearer" if hosted_auth else "none"),
+            _capabilities(pack, authentication=auth_mode),
             indent=2,
             sort_keys=True,
         )
@@ -320,7 +325,7 @@ def build_server(
         # Anti-enumerating: unknown, expired, cross-principal and (under hosted
         # auth) unidentified callers all raise the same RunNotFoundError, so a
         # reader cannot tell "not yours" from "does not exist".
-        owner = _principal()
+        owner = resolve_principal(hosted_auth=hosted_auth)
         if owner is None:
             raise RunNotFoundError("run not found", path=run_id)
         record = runs.require(run_id, owner)

@@ -1,26 +1,44 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, json
-from pathlib import Path
-from dependency_resolver import topological_order
 
-def validate(graph: dict) -> list[str]:
-    findings=[]
-    ids=[n.get('id') for n in graph.get('nodes',[])]
-    if len(ids)!=len(set(ids)): findings.append('duplicate node id')
-    if graph.get('terminal_node') not in ids: findings.append('terminal_node missing from nodes')
-    edge_ids={(e.get('from'),e.get('to')) for e in graph.get('edges',[])}
-    for a,b in edge_ids:
-        if a not in ids or b not in ids: findings.append(f'edge references missing node: {a}->{b}')
-    try: topological_order(graph.get('nodes',[]), graph.get('edges',[]))
-    except Exception as e: findings.append(str(e))
-    return findings
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+
+from l9_cognitive_runtime.graph import validate_execution_graph_mapping  # noqa: E402
+from l9_cognitive_runtime.parsing import confined_input_file  # noqa: E402
+
+
+def validate(graph: dict[str, Any]) -> list[str]:
+    """Compatibility projection over the canonical graph validator."""
+    return validate_execution_graph_mapping(graph)
+
 
 def main() -> int:
-    p=argparse.ArgumentParser(); p.add_argument('graph'); p.add_argument('--json', action='store_true'); args=p.parse_args()
-    graph=json.loads(Path(args.graph).read_text())
-    findings=validate(graph); status='passed' if not findings else 'failed'
-    out={'validator':'graph_validator.py','status':status,'findings':findings}
+    parser = argparse.ArgumentParser()
+    parser.add_argument("graph")
+    parser.add_argument(
+        "--root",
+        default=str(Path.cwd()),
+        help="Directory the graph input must remain beneath (default: cwd)",
+    )
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+
+    graph_path = confined_input_file(args.graph, allow_root=Path(args.root))
+    graph = json.loads(graph_path.read_text(encoding="utf-8"))
+    findings = validate(graph)
+    status = "passed" if not findings else "failed"
+    out = {"validator": "graph_validator.py", "status": status, "findings": findings}
     print(json.dumps(out, indent=2, sort_keys=True) if args.json else out)
-    return 0 if status=='passed' else 1
-if __name__=='__main__': raise SystemExit(main())
+    return 0 if status == "passed" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

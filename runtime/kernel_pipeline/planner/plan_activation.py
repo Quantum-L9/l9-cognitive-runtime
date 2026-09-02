@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
+from l9_cognitive_runtime.cli import confined_output_path  # noqa: E402
 from l9_cognitive_runtime.compiler import CompilePipeline  # noqa: E402
 
 PIPELINE_PATH = ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml"
@@ -55,11 +56,18 @@ def main() -> int:
         default=None,
         help="Optional output path for KERNEL_ACTIVATION_PLAN.yaml",
     )
+    parser.add_argument(
+        "--allow-write-root",
+        default=None,
+        help="Directory --out must stay beneath (default: cwd)",
+    )
     args = parser.parse_args()
     plan = build_plan(args.task, include_terminal=args.terminal)
     text = yaml.safe_dump(plan, sort_keys=False, allow_unicode=True)
     if args.out:
-        Path(args.out).write_text(text, encoding="utf-8")
+        write_root = Path(args.allow_write_root) if args.allow_write_root else None
+        output = confined_output_path(args.out, allow_root=write_root)
+        output.write_text(text, encoding="utf-8")
     print(text)
     return 1 if plan["blockers"] else 0
 

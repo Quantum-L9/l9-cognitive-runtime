@@ -18,10 +18,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from mcp.server.auth.middleware.auth_context import get_access_token
+from mcp.server.auth.provider import TokenVerifier, principal_components
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 
 from l9_cognitive_runtime import __version__
-from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore
+from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore, RunNotFoundError
 from l9_cognitive_runtime.models.context import (
     SNAPSHOT_MAX_ITEMS,
     ContextSnapshot,
@@ -55,11 +59,14 @@ CONTEXT_AWARE_TOOLS = (
 )
 
 
-def _capabilities(pack: RuntimePack) -> dict[str, Any]:
+def _capabilities(pack: RuntimePack, *, authentication: str = "none") -> dict[str, Any]:
     return {
         "server": SERVER_NAME,
         "version": __version__,
         "transport": "stdio",
+        # Callers should be able to discover whether this surface is protected
+        # without having to provoke a 401 to find out.
+        "authentication": authentication,
         "mode": "read_only",
         "tools": list(READ_ONLY_TOOLS),
         "writes": False,
@@ -104,8 +111,46 @@ def parse_context_snapshot(payload: dict[str, Any] | None) -> ContextSnapshot | 
         ) from exc
 
 
-def build_server(pack_root: Path) -> MCPServer:
-    """Create a read-only MCP server bound to an explicit, verified pack root."""
+def resolve_principal(*, hosted_auth: bool) -> str | None:
+    """Resolve the run-owning principal, or ``None`` when identity is unknown.
+
+    Hosted requests are owned by the validated token's ``(client_id, issuer,
+    subject)`` triple — the same components the SDK binds session ownership to, so
+    two users of one OAuth client are distinct principals. Local stdio has no token
+    and is owned by ``LOCAL_PRINCIPAL``.
+
+    The two must never meet. Under hosted auth a request without a validated token
+    returns ``None`` rather than falling back to ``LOCAL_PRINCIPAL``, which would
+    hand an unauthenticated caller the local principal's runs. The SDK's
+    ``RequireAuthMiddleware`` should already have rejected such a request; this is
+    the second lock on the same door.
+
+    Lives at module level rather than inside ``build_server`` so the rule can be
+    read and tested on its own — it is the one place run ownership is decided.
+    """
+    token = get_access_token()
+    if token is not None:
+        return "oauth:" + json.dumps(principal_components(token), separators=(",", ":"))
+    if hosted_auth:
+        return None
+    return LOCAL_PRINCIPAL
+
+
+def build_server(
+    pack_root: Path,
+    *,
+    token_verifier: TokenVerifier | None = None,
+    auth_settings: AuthSettings | None = None,
+) -> MCPServer:
+    """Create a read-only MCP server bound to an explicit, verified pack root.
+
+    ``token_verifier``/``auth_settings`` switch the server into hosted
+    resource-server mode (MCP-011): the SDK then requires a validated bearer token
+    on the HTTP transport and every run is owned by the token's principal. Both
+    default to ``None``, which is the local stdio posture — unauthenticated, owned
+    by ``LOCAL_PRINCIPAL``. Authentication changes *who owns a run*; it never
+    changes what the compiler produces.
+    """
     root = pack_root.resolve()
     if not root.is_dir():
         raise InvalidValueError("pack_root must be an existing directory", path=str(root))
@@ -120,10 +165,22 @@ def build_server(pack_root: Path) -> MCPServer:
         task_type: str = DEFAULT_TASK_TYPE,
         context_snapshot: dict[str, Any] | None = None,
     ) -> Any:
-        return service.compile_runtime(
-            CompileRequest(mission=mission, task_type=task_type, pack_root=root),
-            context_snapshot=parse_context_snapshot(context_snapshot),
-        )
+        # ``ModelValidationError`` is this runtime's typed *anticipated* failure:
+        # the caller supplied something the contract refuses. The SDK classifies
+        # any exception that is not ``ToolError`` as a server crash, replacing the
+        # message with "Error executing tool <name>" and logging a traceback — so
+        # without this translation a malformed ``context_snapshot`` still fails
+        # closed (INV-CTX-043) but stops saying *what* was wrong. Re-raising as
+        # ``ToolError`` restores the diagnosis to the caller and keeps genuine
+        # bugs classified as crashes, which is stricter than the 2.0.0 surface
+        # that passed every exception's text through.
+        try:
+            return service.compile_runtime(
+                CompileRequest(mission=mission, task_type=task_type, pack_root=root),
+                context_snapshot=parse_context_snapshot(context_snapshot),
+            )
+        except ModelValidationError as exc:
+            raise ToolError(str(exc)) from exc
 
     def _require_bound_pack(requested: str) -> None:
         if requested != pack_ref:
@@ -133,6 +190,9 @@ def build_server(pack_root: Path) -> MCPServer:
         # pack.resolve confines beneath the pack root and rejects traversal.
         return pack.resolve(relative).read_text(encoding="utf-8")
 
+    hosted_auth = token_verifier is not None and auth_settings is not None
+    auth_mode = "oauth2_bearer" if hosted_auth else "none"
+
     mcp = MCPServer(
         name=SERVER_NAME,
         version=__version__,
@@ -141,12 +201,14 @@ def build_server(pack_root: Path) -> MCPServer:
             "against a verified pack; does not execute graphs, run shell commands, or "
             "mutate the repository."
         ),
+        token_verifier=token_verifier,
+        auth=auth_settings,
     )
 
     @mcp.tool()
     def runtime_capabilities() -> dict[str, Any]:
         """List the read-only capabilities of this MCP server."""
-        return _capabilities(pack)
+        return _capabilities(pack, authentication=auth_mode)
 
     @mcp.tool()
     def compile_intent(mission: str, task_type: str = DEFAULT_TASK_TYPE) -> dict[str, Any]:
@@ -198,7 +260,12 @@ def build_server(pack_root: Path) -> MCPServer:
             # per-run artifact resolvable through l9://runs/{run_id}.
             "execution_packet": bundle.packet,
         }
-        record = runs.create(principal=LOCAL_PRINCIPAL, payload=payload)
+        owner = resolve_principal(hosted_auth=hosted_auth)
+        if owner is None:
+            # Hosted transport with no validated identity: refuse rather than
+            # create a run nobody can be held to own.
+            raise ToolError("authenticated principal required")
+        record = runs.create(principal=owner, payload=payload)
         return {**payload, "run_id": record.run_id, "resource_uri": record.resource_uri}
 
     @mcp.tool()
@@ -224,7 +291,11 @@ def build_server(pack_root: Path) -> MCPServer:
 
     @mcp.resource("l9://runtime/capabilities")
     def runtime_capabilities_resource() -> str:
-        return json.dumps(_capabilities(pack), indent=2, sort_keys=True)
+        return json.dumps(
+            _capabilities(pack, authentication=auth_mode),
+            indent=2,
+            sort_keys=True,
+        )
 
     @mcp.resource("l9://packs/{pack_ref}/manifest")
     def pack_manifest_resource(pack_ref: str) -> str:
@@ -251,8 +322,13 @@ def build_server(pack_root: Path) -> MCPServer:
 
     @mcp.resource("l9://runs/{run_id}")
     def run_resource(run_id: str) -> str:
-        # Anti-enumerating: unknown/expired runs raise RunNotFoundError.
-        record = runs.require(run_id, LOCAL_PRINCIPAL)
+        # Anti-enumerating: unknown, expired, cross-principal and (under hosted
+        # auth) unidentified callers all raise the same RunNotFoundError, so a
+        # reader cannot tell "not yours" from "does not exist".
+        owner = resolve_principal(hosted_auth=hosted_auth)
+        if owner is None:
+            raise RunNotFoundError("run not found", path=run_id)
+        record = runs.require(run_id, owner)
         return json.dumps(record.payload, indent=2, sort_keys=True)
 
     return mcp

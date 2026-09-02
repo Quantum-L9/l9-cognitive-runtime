@@ -21,7 +21,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "mcp>=2.0.0",
+  "mcp>=2.1.1",
   "pydantic>=2.8",
   "PyYAML>=6.0",
 ]

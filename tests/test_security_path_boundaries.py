@@ -67,5 +67,6 @@ def test_compatibility_file_io_uses_confined_boundaries() -> None:
 
     assert "confined_input_file" in validator
     assert "confined_input_file" in visualizer
-    assert "confined_output_path" in visualizer
+    assert "output.relative_to(write_root)" in visualizer
+    assert "output path escapes allow_write_root" in visualizer
     assert "confined_output_path" in planner

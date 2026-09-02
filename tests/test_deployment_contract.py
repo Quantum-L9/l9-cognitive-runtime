@@ -10,7 +10,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / ".l9/deployment.yaml"
 RELEASE = ROOT / ".github/workflows/release-staging.yml"
-CORE_PIN = "6d5507245cd01d915e3bf400a1e4f8c31ed95e3c"
+CORE_PIN = "d6e778c907e3711c4f610fe135ea8cc7a6c5350d"
 HOST = "mcp-staging.quantumaipartners.com"
 
 
@@ -40,8 +40,9 @@ def test_deployment_profile_binds_staging_mcp_contract() -> None:
 def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
     text = RELEASE.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in text
-    assert f"@{CORE_PIN}" in text
+    assert text.count(f"@{CORE_PIN}") == 2
     assert "profile: release" in text
+    assert "event: release" in text
     assert "matrix-id: release-semgrep" in text
     assert "github.ref == 'refs/heads/main'" in text
     assert "source-revision-build-arg-name: L9_SOURCE_REVISION" in text

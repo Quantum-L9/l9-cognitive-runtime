@@ -67,6 +67,7 @@ def test_compatibility_file_io_uses_confined_boundaries() -> None:
 
     assert "confined_input_file" in validator
     assert "confined_input_file" in visualizer
-    assert "output.relative_to(write_root)" in visualizer
-    assert "output path escapes allow_write_root" in visualizer
+    assert 'CANONICAL_OUTPUT = "EXECUTION_GRAPH.md"' in visualizer
+    assert "--output" not in visualizer
+    assert "--allow-write-root" not in visualizer
     assert "confined_output_path" in planner

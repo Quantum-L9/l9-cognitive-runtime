@@ -39,17 +39,18 @@ This file is not a rung. It only names them.
 - **`src/l9_cognitive_runtime` is a baseline namespace only.** `runtime/` semantics are
   unchanged and are **not** relocated by it. Do not "finish the migration" — there
   isn't one.
-- **The lockfile is frozen in CI.** Every job runs `uv sync --extra dev --frozen`. A
-  change that needs a new dependency must update `uv.lock` in the same commit, or CI
-  fails on the sync step before it reaches a test.
+- **The lockfile is frozen in CI.** CI syncs locked third-party dependencies with
+  `--no-install-project --no-build`; repository code is loaded directly from `src`.
+  A change that needs a new dependency must update `uv.lock` in the same commit.
 - **`dist/` is ignored except for one tracked `dist/README.md`.** That is deliberate,
-  not drift. CI asserts the working tree stays clean after a build, so a committed
-  build artifact fails the `build from clean checkout` job.
+  not drift. CI asserts the working tree stays clean after an explicit build, so a
+  committed build artifact fails the `build from clean checkout` job.
 
 ## Verify before pushing
 
 ```bash
-uv sync --extra dev --frozen
+uv sync --extra dev --frozen --no-install-project --no-build
+export PYTHONPATH=src
 uv run --no-sync --no-build ruff check src tests
 uv run --no-sync --no-build ruff format --check src tests
 uv run --no-sync --no-build mypy src tests          # strict
@@ -57,14 +58,14 @@ uv run --no-sync --no-build python -m pytest -q
 git status --porcelain                              # must be empty
 ```
 
-That mirrors `pr-check.yml` exactly. Running it locally is the only way to know a push
-will be green before it is pushed.
+That mirrors the `pr-check.yml` test environment. Running it locally is the only way to
+know a push will be green before it is pushed.
 
 ## CI topology
 
 | Workflow | Trigger | What it proves |
 |---|---|---|
-| `pr-check.yml` | pull requests | ruff lint, ruff format, mypy strict, pytest — then a separate build from a clean checkout asserting no committed `dist/` artifacts |
+| `pr-check.yml` | pull requests | ruff lint, ruff format, mypy strict, pytest — then a separate explicit build from a clean checkout asserting no committed `dist/` artifacts |
 | `container-smoke.yml` | see workflow | the image builds and starts |
 | `release-staging.yml` | see workflow | staging release path |
 

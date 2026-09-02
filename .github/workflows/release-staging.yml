@@ -16,7 +16,7 @@ permissions:
 jobs:
   analysis:
     name: Canonical release analysis
-    uses: Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@6d5507245cd01d915e3bf400a1e4f8c31ed95e3c
+    uses: Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@d6e778c907e3711c4f610fe135ea8cc7a6c5350d
     permissions:
       actions: read
       checks: write
@@ -24,6 +24,7 @@ jobs:
       security-events: write
     with:
       profile: release
+      event: release
       matrix-id: release-semgrep
       language: python
 
@@ -58,7 +59,7 @@ jobs:
           uv run --no-sync python -m pytest -q
           uv run --no-sync python -m build
       - name: Publish and request deployment
-        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@6d5507245cd01d915e3bf400a1e4f8c31ed95e3c
+        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@d6e778c907e3711c4f610fe135ea8cc7a6c5350d
         with:
           deployment-profile: .l9/deployment.yaml
           registered-profile-path: integrations/consumers/l9-cognitive-runtime.deployment.yaml

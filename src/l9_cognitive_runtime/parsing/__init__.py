@@ -87,33 +87,46 @@ def load_yaml_mapping(text: str, *, source: str = "<yaml>") -> dict[str, Any]:
     return data
 
 
-def confined_input_file(path: Path | str, *, allow_root: Path) -> Path:
-    """Resolve an input file and prove it stays beneath an explicit root.
+def _recognized_input_root(path: Path) -> Path:
+    """Find the nearest repository or verified-pack boundary for an input file."""
+    for parent in (path.parent, *path.parents):
+        if (parent / "MANIFEST.json").is_file() or (parent / "pyproject.toml").is_file():
+            return parent.resolve()
+    raise InvalidValueError(
+        "input file is outside a recognized repository or runtime pack",
+        path=str(path),
+    )
+
+
+def confined_input_file(path: Path | str, *, allow_root: Path | None = None) -> Path:
+    """Resolve an input file and prove it stays beneath an authority root.
 
     File-bearing CLI and compatibility inputs are untrusted boundary data. An
     absolute path, ``..`` segment, or symlink must not turn a repository/pack
-    read into arbitrary filesystem access. Callers choose the authority root;
-    this function only proves the candidate remains inside it.
+    read into arbitrary filesystem access. Callers may provide the authority
+    root explicitly; otherwise the nearest repository or verified-pack marker
+    becomes the root. Inputs outside either boundary fail closed.
     """
-    root = allow_root.expanduser().resolve()
-    candidate = Path(path).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve()
+    candidate = Path(path).expanduser().resolve()
+    root = (
+        allow_root.expanduser().resolve()
+        if allow_root is not None
+        else _recognized_input_root(candidate)
+    )
     try:
-        resolved.relative_to(root)
+        candidate.relative_to(root)
     except ValueError as exc:
         raise InvalidValueError(
             "input path escapes allow_root",
             path=str(path),
-            details={"allow_root": str(root), "resolved": str(resolved)},
+            details={"allow_root": str(root), "resolved": str(candidate)},
         ) from exc
-    if not resolved.is_file():
-        raise InvalidValueError("input file missing", path=str(resolved))
-    return resolved
+    if not candidate.is_file():
+        raise InvalidValueError("input file missing", path=str(candidate))
+    return candidate
 
 
-def load_yaml_file(path: Path, *, allow_root: Path) -> dict[str, Any]:
+def load_yaml_file(path: Path, *, allow_root: Path | None = None) -> dict[str, Any]:
     resolved = confined_input_file(path, allow_root=allow_root)
     return load_yaml_mapping(resolved.read_text(encoding="utf-8"), source=str(resolved))
 

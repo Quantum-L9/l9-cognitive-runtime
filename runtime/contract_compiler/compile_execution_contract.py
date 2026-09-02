@@ -34,17 +34,18 @@ def main() -> int:
     p.add_argument(
         "--allow-write-root",
         default=None,
-        help="Directory --out must stay beneath (default: --root)",
+        help="Directory generated inputs/outputs must stay beneath (default: --root)",
     )
     args = p.parse_args()
-    root = Path(args.root)
-    write_root = Path(args.allow_write_root) if args.allow_write_root else root
-    plan_path = (
-        root / args.activation_plan
-        if not Path(args.activation_plan).is_absolute()
-        else Path(args.activation_plan)
+    root = Path(args.root).expanduser().resolve()
+    io_root = (
+        Path(args.allow_write_root).expanduser().resolve()
+        if args.allow_write_root
+        else root
     )
-    plan_data = load_yaml_file(plan_path)
+    requested_plan = Path(args.activation_plan).expanduser()
+    plan_path = requested_plan if requested_plan.is_absolute() else root / requested_plan
+    plan_data = load_yaml_file(plan_path, allow_root=io_root if requested_plan.is_absolute() else root)
     if not plan_data.get("active_kernels"):
         raise InvalidValueError(
             "activation plan has no active kernels; refusing a default kernel set",
@@ -52,7 +53,7 @@ def main() -> int:
         )
     plan = ActivationPlan.from_mapping(plan_data)
     execution = compile_execution_from_plan(root, plan)
-    out = confined_output_path(args.out, allow_root=write_root)
+    out = confined_output_path(args.out, allow_root=io_root)
     out.write_text(
         yaml.safe_dump(execution.to_canonical_dict(), sort_keys=False, allow_unicode=True),
         encoding="utf-8",

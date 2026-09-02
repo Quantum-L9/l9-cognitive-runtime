@@ -33,8 +33,9 @@ from l9_cognitive_runtime.parsing import load_yaml_file  # noqa: E402
 
 def build(source_contract: str, root: Path | None = None) -> dict[str, Any]:
     """Derive the execution graph for a contract file (thin delegation)."""
-    base = (root or ROOT).resolve()
-    contract = ExecutionContract.from_mapping(load_yaml_file(base / source_contract))
+    base = (root or ROOT).expanduser().resolve()
+    contract_path = base / source_contract
+    contract = ExecutionContract.from_mapping(load_yaml_file(contract_path, allow_root=base))
     return derive_execution_graph(contract).to_canonical_dict()
 
 

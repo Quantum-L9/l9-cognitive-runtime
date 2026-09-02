@@ -12,14 +12,14 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: List current SonarCloud vulnerabilities compactly
+      - name: List PR 49 SonarCloud vulnerabilities compactly
         env:
           PROJECT: Quantum-L9_l9-cognitive-runtime
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --get \
             --data-urlencode "componentKeys=${PROJECT}" \
-            --data-urlencode "branch=main" \
+            --data-urlencode "pullRequest=49" \
             --data-urlencode "resolved=false" \
             --data-urlencode "types=VULNERABILITY" \
             --data-urlencode "ps=100" \

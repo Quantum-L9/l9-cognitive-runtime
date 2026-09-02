@@ -265,7 +265,8 @@ class SigningKeyResolver(Protocol):
     network client.
     """
 
-    def get_signing_key_from_jwt(self, token: str) -> Any: ...
+    def get_signing_key_from_jwt(self, token: str) -> Any:
+        """Return the signing key the token's ``kid`` header selects."""
 
 
 class JwtTokenVerifier:

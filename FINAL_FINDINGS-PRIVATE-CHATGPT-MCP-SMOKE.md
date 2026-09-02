@@ -183,3 +183,17 @@ Phase 4 established that the release path cannot currently publish an image at a
 the canonical gate fails before the publish step — so the missing image digest above is
 downstream of that defect, not an independent gap. See
 `FINAL_FINDINGS-RELEASE-STAGING.md`.
+
+## Update — container evidence now exists (CI, PR #45)
+
+`container-smoke.yml` ran on `53555be` and **passed in full** ([run](https://github.com/Quantum-L9/l9-cognitive-runtime/actions/runs/33575188006)): *Build
+immutable candidate image* (including its `Config.User == 10001:10001` assertion), *Run
+hardened container* (`--read-only`, `--cap-drop=ALL`, `no-new-privileges`), *Health and
+readiness*, and *Real MCP initialize and compile* — the governed `ContextSnapshot` smoke
+with its packet and provenance digest assertions, against the deployed container on
+mcp 2.1.1.
+
+This supersedes the "container image — UNKNOWN" entry above for everything **except a
+published immutable digest**: that workflow builds a local tag, so no registry digest
+exists and none is claimed. Publishing one still requires `release-staging`, which
+remains blocked (`FINAL_FINDINGS-RELEASE-STAGING.md`).

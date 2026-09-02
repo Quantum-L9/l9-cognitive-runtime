@@ -67,7 +67,7 @@ Run on this branch's head, Python 3.11.15 and 3.12.11:
 | `uv run --no-sync python -m build` | sdist + wheel; tree clean afterwards |
 | `uv run --no-sync python runtime/kernel_pipeline/run_validators.py` | pack `passed`, 7/7 validators |
 | `semgrep scan --config p/python` (CI pin 1.171.0) | **0 findings** — matches pre-change baseline |
-| `container-smoke.yml` image assertions | **NOT RUN — no Docker daemon** |
+| `container-smoke.yml` image assertions | **PASSED in CI** on `53555be` — image build, non-root `10001:10001`, `--read-only` run, health, real MCP initialize + compile |
 
 A baseline was captured on unmodified `main` **first** (364 passed, clean, 7/7), so
 every failure encountered afterwards is attributable to the change that caused it.
@@ -117,8 +117,9 @@ would have had to be built from a revision that does not contain the auth work.
 
 ## Remaining UNKNOWNs
 
-- **Image digest, SBOM, provenance** — no container runtime here; and Phase 4 shows the
-  release path cannot publish one anyway.
+- **Published image digest, SBOM, provenance** — the image now provably builds, runs
+  hardened and serves MCP (container-smoke, CI). What is still absent is a *published*
+  registry digest with attestations, because Phase 4 blocks the release path.
 - **ChatGPT invocation** — no OpenAI tunnel credential, no ChatGPT workspace admin.
   No claim is made that ChatGPT called this runtime.
 - **Issuer / audience / client registration** — no identity provider is named anywhere

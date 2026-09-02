@@ -52,11 +52,13 @@ jobs:
       - name: Verify release source
         run: |
           set -euo pipefail
-          uv sync --extra dev --frozen
+          uv sync --extra dev --frozen --no-install-project --no-build
+          export PYTHONPATH=src
           uv run --no-sync --no-build ruff check src tests
           uv run --no-sync --no-build ruff format --check src tests
           uv run --no-sync --no-build mypy src tests
           uv run --no-sync --no-build python -m pytest -q
+          # Intentional, explicit build. No implicit build is permitted above.
           uv run --no-sync --no-build python -m build
       - name: Publish and request deployment
         uses: Quantum-L9/l9-ci-core/.github/actions/container-release@d6e778c907e3711c4f610fe135ea8cc7a6c5350d

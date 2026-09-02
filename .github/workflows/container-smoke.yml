@@ -70,8 +70,8 @@ jobs:
 
       - name: Real MCP initialize and compile
         run: |
-          uv sync --extra dev --frozen
-          uv run --no-sync --no-build python - <<'PY'
+          uv sync --extra dev --frozen --no-install-project --no-build
+          PYTHONPATH=src uv run --no-sync --no-build python - <<'PY'
           import asyncio
           import json
           from mcp import ClientSession

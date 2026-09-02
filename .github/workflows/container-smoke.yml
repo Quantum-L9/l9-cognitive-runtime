@@ -78,6 +78,10 @@ jobs:
           from mcp.client.streamable_http import streamable_http_client
           from l9_cognitive_runtime.mcp import READ_ONLY_TOOLS
 
+          # INV-CTX-044: the smoke must exercise the compiler through the
+          # deployed container, not merely confirm that a tool name is listed.
+          # A capability listing proves the listing.
+
           GOVERNED_SNAPSHOT = {
               "architecture_constraints": [
                   {
@@ -139,6 +143,8 @@ jobs:
                       )
                       assert governed.is_error is False, governed.content
                       governed_digest = assert_compile(payload(governed))
+
+                      # Material governed context moves compiled-context identity.
                       assert governed_digest != plain_digest
 
           asyncio.run(main())

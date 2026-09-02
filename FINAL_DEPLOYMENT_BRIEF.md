@@ -11,7 +11,7 @@ remaining two are stopped by blockers that are named, reproduced, and attributed
 |---|---|---|
 | 1 — MCP SDK 2.1.1 | **PASS** | Frozen at 2.1.1, all surfaces proven, one real behavior regression found and fixed |
 | 2 — Hosted OAuth/OIDC | **PASS** | Resource-server protection at ingress; compiler untouched; 26 auth tests, mutation-checked |
-| 3 — Private ChatGPT smoke | **HUMAN_BOUNDARY** | Runtime answers the full sequence under real auth; no container runtime, no OpenAI tunnel credential, no ChatGPT admin access |
+| 3 — Private ChatGPT smoke | **HUMAN_BOUNDARY** | Runtime answers the full sequence under real auth, and the container builds/runs/serves in CI; no OpenAI tunnel credential, no ChatGPT admin access |
 | 4 — Release-staging | **BLOCKED** | Upstream `l9-ci-core` wiring gap makes the release gate unpassable by construction |
 
 The overall verdict is **BLOCKED**, not HUMAN_BOUNDARY: Phase 4 is a real technical
@@ -23,17 +23,19 @@ defect, not merely an absent human. It is upstream and not fixable from this rep
 |---|---|
 | `origin/main` | `28f5b4b2450299de34f2d2d69bea32ece09363b1` (unchanged — nothing merged) |
 | Work branch | `claude/l9-chatgpt-mcp-deploy-vpevgd` |
-| Head | `989d3526472800688887f1c1488ed912bbf98ea5` |
-| Merged PRs | **none** — see "Deviation from the contract" |
+| Head | `e18ac43` (branch head; PR #45 open against `main`) |
+| Pull request | [#45](https://github.com/Quantum-L9/l9-cognitive-runtime/pull/45) — **open**, not merged |
 | MCP SDK | `mcp==2.1.1`, `mcp-types==2.1.1` (locked, frozen) |
-| Deployed image digest | **UNKNOWN — no image was built** |
+| Deployed image digest | **UNKNOWN** — the image builds and runs in CI (container-smoke), but no *published* registry digest exists |
 | Sealed pack manifest digest | `19da8e857c7bcd39fb06f191c3b60f0e2f895fe7af3e60ac2429854949e73c18` |
 | Private ChatGPT smoke | **UNKNOWN** — ChatGPT never called this runtime |
 | Release-staging | **FAILING** — reproduced 2026-09-01 |
 
-Four commits, each green before push:
+Six commits, each green before push:
 
 ```
+e18ac43  docs: record the container evidence CI produced, and narrow the digest UNKNOWN
+53555be  docs: record the deployment findings and the terminal verdict
 989d352  fix(mcp): stop a log message tripping semgrep's credential-leak rule
 955128d  fix(mcp): refuse token key material over plaintext HTTP
 37a04db  feat(mcp): protect hosted MCP with OAuth/OIDC
@@ -110,10 +112,11 @@ Sealed pack + `L9_REQUIRE_AUTH=true` + real RSA keypair + real JWKS + real RS256
 The contract specifies one PR per phase, each merged before the next branches from
 `main`. The session directive assigns a single branch,
 `claude/l9-chatgpt-mcp-deploy-vpevgd`, and forbids pushing elsewhere; merge authority is
-not held here either. The phases were therefore executed sequentially as four commits on
-that one branch, and **no PR was opened** (none was requested). `main` is unchanged, so
-Phase 3's "exact current main SHA" requirement is unmet by construction: the deployment
-would have had to be built from a revision that does not contain the auth work.
+not held here either. The phases were therefore executed sequentially as six commits on
+that one branch and published as **a single PR (#45)** on request, rather than four.
+`main` is unchanged until that PR merges, so Phase 3's "exact current main SHA"
+requirement is unmet by construction: a deployment today would be built from a revision
+that does not contain the auth work.
 
 ## Remaining UNKNOWNs
 

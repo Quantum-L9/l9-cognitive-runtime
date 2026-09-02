@@ -12,7 +12,7 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Measure post-path-hardening main SonarCloud state
+      - name: Verify final main SonarCloud security state
         env:
           PROJECT: Quantum-L9_l9-cognitive-runtime
         run: |

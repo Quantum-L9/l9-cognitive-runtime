@@ -25,13 +25,13 @@ jobs:
       - name: Sync (locked)
         run: uv sync --extra dev --frozen
       - name: Ruff lint
-        run: uv run --no-sync ruff check src tests
+        run: uv run --no-sync --no-build ruff check src tests
       - name: Ruff format check
-        run: uv run --no-sync ruff format --check src tests
+        run: uv run --no-sync --no-build ruff format --check src tests
       - name: Mypy (strict)
-        run: uv run --no-sync mypy src tests
+        run: uv run --no-sync --no-build mypy src tests
       - name: Pytest
-        run: uv run --no-sync python -m pytest -q
+        run: uv run --no-sync --no-build python -m pytest -q
 
   clean-build:
     name: build from clean checkout
@@ -45,7 +45,7 @@ jobs:
       - name: Sync (locked)
         run: uv sync --extra dev --frozen
       - name: Build sdist + wheel
-        run: uv run --no-sync python -m build
+        run: uv run --no-sync --no-build python -m build
       - name: Assert working tree stayed clean (no committed dist artifacts)
         run: |
           if [ -n "$(git status --porcelain)" ]; then

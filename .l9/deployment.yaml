@@ -29,6 +29,8 @@ runtime:
   stop_grace_seconds: 30
   environment:
     L9_ALLOWED_HOSTS: mcp-staging.quantumaipartners.com
+    L9_REQUIRE_AUTH: "true"
+    L9_MCP_RESOURCE_URL: https://mcp-staging.quantumaipartners.com/v1/mcp
 health:
   startup:
     type: http

@@ -50,11 +50,11 @@ This file is not a rung. It only names them.
 
 ```bash
 uv sync --extra dev --frozen
-uv run --no-sync ruff check src tests
-uv run --no-sync ruff format --check src tests
-uv run --no-sync mypy src tests          # strict
-uv run --no-sync python -m pytest -q
-git status --porcelain                   # must be empty
+uv run --no-sync --no-build ruff check src tests
+uv run --no-sync --no-build ruff format --check src tests
+uv run --no-sync --no-build mypy src tests          # strict
+uv run --no-sync --no-build python -m pytest -q
+git status --porcelain                              # must be empty
 ```
 
 That mirrors `pr-check.yml` exactly. Running it locally is the only way to know a push

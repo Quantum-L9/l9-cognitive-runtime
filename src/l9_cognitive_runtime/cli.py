@@ -98,40 +98,66 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional JSON file holding a governed ContextSnapshot",
     )
     parser.add_argument(
+        "--plan-context",
+        action="store_true",
+        help="Emit the deterministic ContextPlan and stop before final compilation",
+    )
+    parser.add_argument(
+        "--expected-context-plan-id",
+        default=None,
+        help="Fail closed if final compilation recomputes a different ContextPlan identity",
+    )
+    parser.add_argument(
         "--write-dir",
         type=Path,
         default=None,
         help="Optional directory under cwd for artifacts; omit for memory-only",
     )
     args = parser.parse_args(argv)
+    if args.plan_context and args.expected_context_plan_id is not None:
+        parser.error("--expected-context-plan-id cannot be used with --plan-context")
 
     snapshot = (
         load_context_snapshot(args.context_snapshot) if args.context_snapshot is not None else None
     )
     service = CognitiveRuntimeService()
-    bundle = service.compile_runtime(
-        CompileRequest(
-            mission=args.mission,
-            task_type=args.task_type,
-            pack_root=args.pack_root,
-        ),
-        context_snapshot=snapshot,
+    request = CompileRequest(
+        mission=args.mission,
+        task_type=args.task_type,
+        pack_root=args.pack_root,
     )
-    payload = {
-        "digests": bundle.digests(),
-        "intent": bundle.intent.to_canonical_dict(),
-        "compiled_task_context": bundle.task_context.to_canonical_dict(),
-        "execution": bundle.execution.to_canonical_dict(),
-        "validation": bundle.validation.to_canonical_dict(),
-        "handoff": bundle.handoff.to_canonical_dict(),
-        "graph": bundle.graph.to_canonical_dict(),
-    }
+    output_name = "bundle.json"
+    if args.plan_context:
+        plan = service.plan_context(request, discovery_snapshot=snapshot)
+        payload = {
+            "context_plan": plan.to_canonical_dict(),
+            "context_plan_id": plan.context_plan_id,
+            "context_plan_digest": plan.sha256(),
+        }
+        output_name = "context-plan.json"
+    else:
+        bundle = service.compile_runtime(
+            request,
+            context_snapshot=snapshot,
+            expected_context_plan_id=args.expected_context_plan_id,
+        )
+        payload = {
+            "digests": bundle.digests(),
+            "context_plan": bundle.context_plan.to_canonical_dict(),
+            "intent": bundle.intent.to_canonical_dict(),
+            "compiled_task_context": bundle.task_context.to_canonical_dict(),
+            "execution": bundle.execution.to_canonical_dict(),
+            "validation": bundle.validation.to_canonical_dict(),
+            "handoff": bundle.handoff.to_canonical_dict(),
+            "graph": bundle.graph.to_canonical_dict(),
+        }
     if args.write_dir is not None:
         out = _confined_write_dir(args.write_dir)
         out.mkdir(parents=True, exist_ok=True)
         text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
-        (out / "bundle.json").write_text(text, encoding="utf-8")
-        print(out / "bundle.json")
+        destination = out / output_name
+        destination.write_text(text, encoding="utf-8")
+        print(destination)
     else:
         json.dump(payload, sys.stdout, indent=2, sort_keys=True)
         sys.stdout.write("\n")

@@ -54,14 +54,19 @@ def test_deployment_pack_verifies_compiles_and_preserves_resources(tmp_path: Pat
     assert "properties" in schema[0].content
 
 
-def test_the_sealed_pack_carries_the_compiled_context_schema(tmp_path: Path) -> None:
-    """A sealed runtime that compiles a context must ship that context's schema."""
+def test_the_sealed_pack_carries_the_public_context_schemas(tmp_path: Path) -> None:
+    """A sealed runtime ships its snapshot, plan, and compiled-context contracts."""
     pack_root = build_deployment_pack(ROOT, tmp_path / "pack", source_revision=REVISION)
-    assert (pack_root / "contracts" / "compiled_task_context.schema.json").is_file()
     server = build_server(pack_root)
-    schema_uri = f"l9://packs/{PACK_NAME}/schemas/compiled_task_context.schema.json"
-    schema = list(_run(server.read_resource(schema_uri)))
-    assert "compiled_task_context" in schema[0].content or "task_scope" in schema[0].content
+    for name in (
+        "context_snapshot.schema.json",
+        "context_plan.schema.json",
+        "compiled_task_context.schema.json",
+    ):
+        assert (pack_root / "contracts" / name).is_file()
+        schema_uri = f"l9://packs/{PACK_NAME}/schemas/{name}"
+        schema = list(_run(server.read_resource(schema_uri)))
+        assert "properties" in schema[0].content
 
 
 def test_deployment_closure_records_a_context_digest_for_every_route(tmp_path: Path) -> None:

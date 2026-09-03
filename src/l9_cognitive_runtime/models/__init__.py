@@ -27,6 +27,7 @@ from l9_cognitive_runtime.models.canonical import canonical_json, sha256_digest
 from l9_cognitive_runtime.models.context import (
     AUTHORITY_RANK,
     CONTEXT_COMPILER_SEMANTICS_VERSION,
+    CONTEXT_PLAN_SCHEMA_VERSION,
     GOVERNED_LEVELS,
     SNAPSHOT_MAX_BYTES,
     SNAPSHOT_MAX_ITEMS,
@@ -43,6 +44,7 @@ from l9_cognitive_runtime.models.context import (
     ContextBudget,
     ContextItemIdentity,
     ContextKind,
+    ContextPlan,
     ContextProvenance,
     ContextRequirement,
     ContextRequirementPlan,
@@ -80,6 +82,7 @@ from l9_cognitive_runtime.models.yaml_codec import dump_yaml, load_yaml, load_ya
 __all__ = [
     "AUTHORITY_RANK",
     "CONTEXT_COMPILER_SEMANTICS_VERSION",
+    "CONTEXT_PLAN_SCHEMA_VERSION",
     "GOVERNED_LEVELS",
     "SNAPSHOT_MAX_BYTES",
     "SNAPSHOT_MAX_ITEMS",
@@ -99,6 +102,7 @@ __all__ = [
     "CompilerIdentity",
     "ContextBudget",
     "ContextItemIdentity",
+    "ContextPlan",
     "ContextKind",
     "ContextProvenance",
     "ContextRequirement",

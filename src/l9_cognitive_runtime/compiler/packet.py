@@ -61,6 +61,7 @@ def build_execution_packet(
     semantic_digest: str,
     task_context: CompiledTaskContext,
     context_digest: str,
+    context_plan_id: str,
 ) -> dict[str, Any]:
     """Build the canonical execution packet from compiled IRs."""
     required_obligations = [
@@ -81,6 +82,9 @@ def build_execution_packet(
         # than trusting the declared one.
         "compiled_task_context": task_context.to_canonical_dict(),
         "compiled_task_context_digest": context_digest,
+        # INV-CTX-046: downstream consumers can bind execution to the exact
+        # demand contract that was recomputed immediately before compilation.
+        "context_plan_id": context_plan_id,
         "active_kernel_bindings": [binding.to_dict() for binding in kernels],
         "execution_steps": [step.to_canonical_dict() for step in execution.execution_steps],
         "required_obligations": required_obligations,
@@ -101,5 +105,6 @@ def build_execution_packet(
             "graph_digest": graph.sha256(),
             "handoff_digest": handoff.sha256(),
             "context_digest": context_digest,
+            "context_plan_id": context_plan_id,
         },
     }

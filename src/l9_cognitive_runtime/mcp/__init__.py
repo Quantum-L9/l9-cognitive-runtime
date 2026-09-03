@@ -44,6 +44,7 @@ READ_ONLY_TOOLS = (
     "runtime_capabilities",
     "compile_intent",
     "plan_kernel_activation",
+    "plan_context_requirements",
     "compile_runtime",
     "validate_runtime_bundle",
 )
@@ -55,6 +56,7 @@ READ_ONLY_TOOLS = (
 CONTEXT_AWARE_TOOLS = (
     "compile_runtime",
     "plan_kernel_activation",
+    "plan_context_requirements",
     "validate_runtime_bundle",
 )
 
@@ -76,6 +78,9 @@ def _capabilities(pack: RuntimePack, *, authentication: str = "none") -> dict[st
         # that this surface accepts it.
         "context_snapshot_input": True,
         "context_aware_tools": list(CONTEXT_AWARE_TOOLS),
+        "context_planning": True,
+        "context_plan_schema": "context_plan.schema.json",
+        "context_snapshot_schema": "context_snapshot.schema.json",
         "pack_ref": pack.provenance.pack_ref,
         "manifest_digest": pack.provenance.manifest_digest,
     }
@@ -164,6 +169,7 @@ def build_server(
         mission: str,
         task_type: str = DEFAULT_TASK_TYPE,
         context_snapshot: dict[str, Any] | None = None,
+        expected_context_plan_id: str | None = None,
     ) -> Any:
         # ``ModelValidationError`` is this runtime's typed *anticipated* failure:
         # the caller supplied something the contract refuses. The SDK classifies
@@ -178,8 +184,22 @@ def build_server(
             return service.compile_runtime(
                 CompileRequest(mission=mission, task_type=task_type, pack_root=root),
                 context_snapshot=parse_context_snapshot(context_snapshot),
+                expected_context_plan_id=expected_context_plan_id,
             )
-        except ModelValidationError as exc:
+        except (InvalidValueError, ModelValidationError) as exc:
+            raise ToolError(str(exc)) from exc
+
+    def _plan(
+        mission: str,
+        task_type: str = DEFAULT_TASK_TYPE,
+        context_snapshot: dict[str, Any] | None = None,
+    ) -> Any:
+        try:
+            return service.plan_context(
+                CompileRequest(mission=mission, task_type=task_type, pack_root=root),
+                discovery_snapshot=parse_context_snapshot(context_snapshot),
+            )
+        except (InvalidValueError, ModelValidationError) as exc:
             raise ToolError(str(exc)) from exc
 
     def _require_bound_pack(requested: str) -> None:
@@ -238,20 +258,41 @@ def build_server(
         }
 
     @mcp.tool()
+    def plan_context_requirements(
+        mission: str,
+        task_type: str = DEFAULT_TASK_TYPE,
+        context_snapshot: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Return the typed demand contract an outer host may fulfill (read-only)."""
+        plan = _plan(mission, task_type, context_snapshot)
+        return {
+            "context_plan": plan.to_canonical_dict(),
+            "context_plan_id": plan.context_plan_id,
+            "context_plan_digest": plan.sha256(),
+        }
+
+    @mcp.tool()
     def compile_runtime(
         mission: str,
         task_type: str = DEFAULT_TASK_TYPE,
         context_snapshot: dict[str, Any] | None = None,
+        expected_context_plan_id: str | None = None,
     ) -> dict[str, Any]:
         """Compile a full runtime bundle in memory and store an isolated run.
 
         ``context_snapshot`` is the governed context input (INV-CTX-043). It is
         typed and validated before compilation; an invalid payload fails closed.
         """
-        bundle = _compile(mission, task_type, context_snapshot=context_snapshot)
+        bundle = _compile(
+            mission,
+            task_type,
+            context_snapshot=context_snapshot,
+            expected_context_plan_id=expected_context_plan_id,
+        )
         # Store only the derived result — never raw request/intent/kernel bodies.
         payload = {
             "digests": bundle.digests(),
+            "context_plan_id": bundle.context_plan.context_plan_id,
             "execution_contract_id": bundle.execution.contract_id,
             "graph_id": bundle.graph.graph_id,
             "terminal_node": bundle.graph.terminal_node,

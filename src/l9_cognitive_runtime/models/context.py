@@ -27,7 +27,7 @@ ambient version-control state (INV-CTX-032).
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from pydantic import field_validator, model_validator
 
@@ -37,7 +37,8 @@ from l9_cognitive_runtime.models.canonical import canonical_json_bytes, sha256_d
 # Semantics version of the canonical context compiler. Bump this whenever the
 # canonical compiled-context semantics change. It is deliberately explicit and
 # installed-artifact safe: never derived from Git (INV-CTX-032).
-CONTEXT_COMPILER_SEMANTICS_VERSION = "1.0.0"
+CONTEXT_COMPILER_SEMANTICS_VERSION = "1.1.0"
+CONTEXT_PLAN_SCHEMA_VERSION: Final = "l9.context-plan/v1"
 
 # Finite input ceilings for an injected governed snapshot (INV-CTX-007). These
 # bound the compiler's *input*, not only its output: without them a caller can
@@ -814,6 +815,46 @@ class ContextRequirementPlan(ArtifactModel):
         return self
 
 
+class ContextPlan(ArtifactModel):
+    """Public demand contract between cognitive planning and outer-host acquisition.
+
+    The plan contains no acquired context. It binds the task scope, bounded
+    discovery projection, selected kernel identities, requirement set, and the
+    verified semantic sources that produced them. An outer host may fulfill the
+    requirements, but final compilation must recompute this identity before it
+    can trust a supplied snapshot (INV-CTX-045/046).
+    """
+
+    schema_version: Literal["l9.context-plan/v1"] = CONTEXT_PLAN_SCHEMA_VERSION
+    context_plan_id: str = ""
+    task_scope: TaskScope
+    discovery: DiscoveryContext
+    requirement_plan: ContextRequirementPlan
+    active_kernel_digests: dict[str, str]
+    pack_manifest_digest: str
+    routing_rules_digest: str
+    pipeline_digest: str
+    compiler_identity: CompilerIdentity
+
+    @model_validator(mode="after")
+    def _derive_identity(self) -> ContextPlan:
+        scope_digest = self.task_scope.sha256()
+        if self.discovery.task_scope_digest != scope_digest:
+            raise ValueError("context plan discovery does not bind the task scope")
+        if self.requirement_plan.task_scope_digest != scope_digest:
+            raise ValueError("context requirement plan does not bind the task scope")
+        if not self.requirement_plan.matched_route.strip():
+            raise ValueError("context plan requires a matched route")
+        payload = self.to_canonical_dict()
+        payload.pop("context_plan_id", None)
+        expected = derive_id("context-plan", payload)
+        if not self.context_plan_id:
+            _assign(self, "context_plan_id", expected)
+        elif self.context_plan_id != expected:
+            raise ValueError("context_plan_id must be the deterministic context-plan recipe")
+        return self
+
+
 class CapabilityRequirement(ArtifactModel):
     """Compiler-derived. A ``ContextSnapshot`` can never produce one."""
 
@@ -1075,6 +1116,7 @@ __all__ = [
     "AUTHORITY_RANK",
     "CLAIM_EXCLUDED_FIELDS",
     "CONTEXT_COMPILER_SEMANTICS_VERSION",
+    "CONTEXT_PLAN_SCHEMA_VERSION",
     "GOVERNED_LEVELS",
     "SNAPSHOT_BUCKETS",
     "SNAPSHOT_MAX_BYTES",
@@ -1091,6 +1133,7 @@ __all__ = [
     "CompilerIdentity",
     "ContextBudget",
     "ContextItemIdentity",
+    "ContextPlan",
     "ContextKind",
     "ContextProvenance",
     "ContextRequirement",

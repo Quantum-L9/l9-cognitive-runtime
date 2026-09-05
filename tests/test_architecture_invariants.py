@@ -414,13 +414,16 @@ def test_repository_root_invariants_document_is_present_and_complete() -> None:
     invariants = ROOT / "INVARIANTS.md"
     assert invariants.is_file()
     text = invariants.read_text(encoding="utf-8")
-    declared = {f"INV-CTX-{index:03d}" for index in range(1, 45)}
+    declared = {f"INV-CTX-{index:03d}" for index in range(1, 48)}
     missing = sorted(name for name in declared if f"### {name}:" not in text)
     assert missing == []
 
 
 def test_the_compiled_context_schema_ships_with_the_contracts() -> None:
-    assert (ROOT / "contracts" / "compiled_task_context.schema.json").is_file()
+    contracts = ROOT / "contracts"
+    assert (contracts / "compiled_task_context.schema.json").is_file()
+    assert (contracts / "context_snapshot.schema.json").is_file()
+    assert (contracts / "context_plan.schema.json").is_file()
 
 
 def test_no_new_runtime_dependency_was_added() -> None:

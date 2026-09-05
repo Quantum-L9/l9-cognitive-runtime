@@ -454,6 +454,49 @@ The sealed deployment pack MUST contain the compiled-context schema and MUST pro
 
 The container smoke MUST exercise a real MCP `initialize` **and a real `compile_runtime` call** against the deployed container. Asserting that a tool name appears in a capability listing proves the listing, not the compiler. The smoke MUST assert the call is not an error and that the result carries a semantic digest, a context digest, an execution packet containing the compiled task context, and a compiled-context digest matching the packet provenance. Replacing the real MCP smoke with a direct in-process Python call is forbidden.
 
+### INV-CTX-045: Context demand is a public, acquisition-free compiler artifact
+
+The runtime MUST expose a deterministic `ContextPlan` before final compilation. The plan is a
+read-only projection of the same semantic prefix used by `CompilePipeline.compile`: objective,
+task scope, bounded discovery, activation, kernel binding, and context requirement planning.
+
+`ContextPlan` MUST bind the task scope, discovery projection, typed requirement plan, active
+kernel digests, verified pack manifest, routing rules, pipeline definition, and compiler
+semantics identity. It MUST contain no acquired context and MUST perform no I/O or network
+retrieval. An outer host may fulfill its requirements; the cognitive runtime remains the sole
+owner of requirement derivation.
+
+A separate planner implementation or a host-owned approximation of the requirement rules is
+forbidden.
+
+### INV-CTX-046: Plan-bound compilation fails closed on planning drift
+
+A caller MAY bind final compilation to an `expected_context_plan_id`. When it does, the live
+compiler MUST recompute the plan from the final governed snapshot before any execution
+semantics are compiled. If task scope, discovery, route, selected kernels, kernel content,
+requirements, pack identity, routing rules, pipeline definition, or compiler semantics move
+the plan identity, compilation MUST fail with a replan-required error.
+
+The plan MUST be preserved in the returned `RuntimeBundle`, and its identity MUST survive into
+the canonical execution packet and packet provenance. Adapters may project that identity but
+may not rewrite it. Supplying no expected plan ID preserves pre-plan callers under
+INV-CTX-040; it does not disable recomputation.
+
+Additional fulfilled context that does not change discovery or demand MAY be selected without
+invalidating the plan. Binding a plan to a whole raw snapshot is forbidden because irrelevant
+unselected input must not perturb semantic demand.
+
+### INV-CTX-047: Public context boundary schemas are model-bound
+
+The repository MUST ship serialization schemas for both external context boundaries:
+
+- `contracts/context_snapshot.schema.json` for governed candidates supplied by an outer host;
+- `contracts/context_plan.schema.json` for the deterministic demand contract returned by Cog.
+
+The checked-in schemas MUST be generated from the canonical Pydantic models and drift-tested.
+The sealed deployment pack MUST include them through its existing contract-schema closure.
+No consumer may maintain a hand-copied approximation as a second contract authority.
+
 ## 3. Canonical CompiledTaskContext shape
 
 The semantic minimum is:

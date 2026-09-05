@@ -59,3 +59,23 @@ typed_outputs:
     required: true
     consumer_refs:
       - convergence_gate
+
+context_needs:
+  - id: governed_architecture_constraints
+    context_kind: architecture_constraint
+    required: false
+    reason: governed architecture constraints materially applicable to the task
+    coverage: all_eligible
+    minimum_authority: governed_verified
+  - id: dependency_seams
+    context_kind: dependency_context
+    required: false
+    reason: dependency seams materially relevant to architecture judgment
+    coverage: all_eligible
+    minimum_authority: governed_verified
+  - id: prior_architecture_decisions
+    context_kind: prior_decision
+    required: false
+    reason: prior architecture decisions governing the task scope
+    coverage: all_eligible
+    minimum_authority: governed_verified

@@ -1,0 +1,573 @@
+{
+  "$defs": {
+    "AuthorityLevel": {
+      "enum": [
+        "governed_authoritative",
+        "governed_verified",
+        "informative",
+        "unverified"
+      ],
+      "title": "AuthorityLevel",
+      "type": "string"
+    },
+    "CompilerIdentity": {
+      "additionalProperties": false,
+      "description": "Installed-artifact-safe compiler semantics identity (INV-CTX-032).",
+      "properties": {
+        "package_version": {
+          "title": "Package Version",
+          "type": "string"
+        },
+        "semantics_version": {
+          "title": "Semantics Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "package_version",
+        "semantics_version"
+      ],
+      "title": "CompilerIdentity",
+      "type": "object"
+    },
+    "ContextBudget": {
+      "additionalProperties": false,
+      "properties": {
+        "max_total_bytes": {
+          "title": "Max Total Bytes",
+          "type": "integer"
+        },
+        "max_total_items": {
+          "title": "Max Total Items",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_total_items",
+        "max_total_bytes"
+      ],
+      "title": "ContextBudget",
+      "type": "object"
+    },
+    "ContextKind": {
+      "enum": [
+        "relevant_entity",
+        "repository_state",
+        "architecture_constraint",
+        "applicable_law",
+        "prior_decision",
+        "dependency_context",
+        "evidence_ref",
+        "memory_context",
+        "capability_fact",
+        "authority_fact"
+      ],
+      "title": "ContextKind",
+      "type": "string"
+    },
+    "ContextRequirement": {
+      "additionalProperties": false,
+      "description": "One explicitly declared context need (INV-CTX-008).",
+      "properties": {
+        "context_kind": {
+          "$ref": "#/$defs/ContextKind"
+        },
+        "coordinate_constraint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coordinate Constraint"
+        },
+        "coverage_mode": {
+          "$ref": "#/$defs/CoverageMode"
+        },
+        "freshness_requirement": {
+          "$ref": "#/$defs/FreshnessRequirement"
+        },
+        "kernel_need_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Kernel Need Refs",
+          "type": "array"
+        },
+        "max_bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Bytes"
+        },
+        "max_items": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Items"
+        },
+        "min_items": {
+          "title": "Min Items",
+          "type": "integer"
+        },
+        "minimum_authority": {
+          "$ref": "#/$defs/AuthorityLevel"
+        },
+        "missing_policy": {
+          "$ref": "#/$defs/MissingPolicy"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "integer"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "required_semantic_keys": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Semantic Keys",
+          "type": "array"
+        },
+        "requirement_id": {
+          "default": "",
+          "title": "Requirement Id",
+          "type": "string"
+        },
+        "scope_mode": {
+          "$ref": "#/$defs/ContextScopeMode"
+        },
+        "scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "context_kind",
+        "reason",
+        "required",
+        "scope_mode",
+        "freshness_requirement",
+        "minimum_authority",
+        "priority",
+        "coverage_mode",
+        "min_items",
+        "missing_policy"
+      ],
+      "title": "ContextRequirement",
+      "type": "object"
+    },
+    "ContextRequirementPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "global_budget": {
+          "$ref": "#/$defs/ContextBudget"
+        },
+        "matched_route": {
+          "title": "Matched Route",
+          "type": "string"
+        },
+        "plan_id": {
+          "default": "",
+          "title": "Plan Id",
+          "type": "string"
+        },
+        "requirements": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ContextRequirement"
+          },
+          "title": "Requirements",
+          "type": "array"
+        },
+        "task_scope_digest": {
+          "title": "Task Scope Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_scope_digest",
+        "matched_route",
+        "global_budget"
+      ],
+      "title": "ContextRequirementPlan",
+      "type": "object"
+    },
+    "ContextScopeMode": {
+      "enum": [
+        "scoped",
+        "global"
+      ],
+      "title": "ContextScopeMode",
+      "type": "string"
+    },
+    "ContextSourceRef": {
+      "additionalProperties": false,
+      "description": "Where a context item came from, with an immutable coordinate when possible.",
+      "properties": {
+        "content_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Digest"
+        },
+        "immutable_coordinate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Immutable Coordinate"
+        },
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_kind": {
+          "title": "Source Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_kind",
+        "locator"
+      ],
+      "title": "ContextSourceRef",
+      "type": "object"
+    },
+    "ContextUnknown": {
+      "additionalProperties": false,
+      "description": "A stable, reason-coded unknown. Identity never depends on prose.",
+      "properties": {
+        "details": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Details",
+          "type": "object"
+        },
+        "materiality": {
+          "$ref": "#/$defs/UnknownMateriality"
+        },
+        "reason_code": {
+          "$ref": "#/$defs/UnknownReasonCode"
+        },
+        "requirement_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requirement Ref"
+        },
+        "semantic_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Semantic Key"
+        },
+        "source_refs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ContextSourceRef"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "unknown_id": {
+          "default": "",
+          "title": "Unknown Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason_code",
+        "materiality"
+      ],
+      "title": "ContextUnknown",
+      "type": "object"
+    },
+    "CoverageMode": {
+      "enum": [
+        "minimum",
+        "all_eligible",
+        "semantic_keys"
+      ],
+      "title": "CoverageMode",
+      "type": "string"
+    },
+    "DiscoveryContext": {
+      "additionalProperties": false,
+      "description": "Bounded projection #1: only what routing and materiality need.",
+      "properties": {
+        "architecture_signal_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Architecture Signal Refs",
+          "type": "array"
+        },
+        "routing_fact_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Routing Fact Refs",
+          "type": "array"
+        },
+        "selected_item_digests": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "title": "Selected Item Digests",
+          "type": "object"
+        },
+        "task_scope_digest": {
+          "title": "Task Scope Digest",
+          "type": "string"
+        },
+        "unresolved_unknowns": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ContextUnknown"
+          },
+          "title": "Unresolved Unknowns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "task_scope_digest"
+      ],
+      "title": "DiscoveryContext",
+      "type": "object"
+    },
+    "FreshnessRequirement": {
+      "enum": [
+        "exact_revision",
+        "snapshot_bound",
+        "any"
+      ],
+      "title": "FreshnessRequirement",
+      "type": "string"
+    },
+    "MissingPolicy": {
+      "enum": [
+        "BLOCK",
+        "PRESERVE_UNKNOWN",
+        "OPTIONAL"
+      ],
+      "title": "MissingPolicy",
+      "type": "string"
+    },
+    "TaskScope": {
+      "additionalProperties": false,
+      "properties": {
+        "constraints": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Constraints",
+          "type": "array"
+        },
+        "excluded_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded Refs",
+          "type": "array"
+        },
+        "in_scope_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "In Scope Refs",
+          "type": "array"
+        },
+        "mission": {
+          "title": "Mission",
+          "type": "string"
+        },
+        "requested_outputs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Requested Outputs",
+          "type": "array"
+        },
+        "scope_id": {
+          "default": "",
+          "title": "Scope Id",
+          "type": "string"
+        },
+        "target_refs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Refs",
+          "type": "array"
+        },
+        "task_type": {
+          "title": "Task Type",
+          "type": "string"
+        },
+        "unresolved_unknowns": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ContextUnknown"
+          },
+          "title": "Unresolved Unknowns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "mission",
+        "task_type"
+      ],
+      "title": "TaskScope",
+      "type": "object"
+    },
+    "UnknownMateriality": {
+      "enum": [
+        "blocking",
+        "non_blocking"
+      ],
+      "title": "UnknownMateriality",
+      "type": "string"
+    },
+    "UnknownReasonCode": {
+      "enum": [
+        "ambiguous_scope",
+        "missing_required_context",
+        "conflicting_governed_claims",
+        "missing_revision",
+        "invalid_provenance",
+        "budget_insufficient",
+        "unsupported_capability",
+        "missing_authority",
+        "unknown_supersession",
+        "dangling_supersession",
+        "unresolved_freshness"
+      ],
+      "title": "UnknownReasonCode",
+      "type": "string"
+    }
+  },
+  "$id": "https://github.com/Quantum-L9/l9-cognitive-runtime/contracts/context_plan.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Public demand contract between cognitive planning and outer-host acquisition.\n\nThe plan contains no acquired context. It binds the task scope, bounded\ndiscovery projection, selected kernel identities, requirement set, and the\nverified semantic sources that produced them. An outer host may fulfill the\nrequirements, but final compilation must recompute this identity before it\ncan trust a supplied snapshot (INV-CTX-045/046).",
+  "properties": {
+    "active_kernel_digests": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Active Kernel Digests",
+      "type": "object"
+    },
+    "compiler_identity": {
+      "$ref": "#/$defs/CompilerIdentity"
+    },
+    "context_plan_id": {
+      "default": "",
+      "title": "Context Plan Id",
+      "type": "string"
+    },
+    "discovery": {
+      "$ref": "#/$defs/DiscoveryContext"
+    },
+    "pack_manifest_digest": {
+      "title": "Pack Manifest Digest",
+      "type": "string"
+    },
+    "pipeline_digest": {
+      "title": "Pipeline Digest",
+      "type": "string"
+    },
+    "requirement_plan": {
+      "$ref": "#/$defs/ContextRequirementPlan"
+    },
+    "routing_rules_digest": {
+      "title": "Routing Rules Digest",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "l9.context-plan/v1",
+      "default": "l9.context-plan/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "task_scope": {
+      "$ref": "#/$defs/TaskScope"
+    }
+  },
+  "required": [
+    "task_scope",
+    "discovery",
+    "requirement_plan",
+    "active_kernel_digests",
+    "pack_manifest_digest",
+    "routing_rules_digest",
+    "pipeline_digest",
+    "compiler_identity"
+  ],
+  "title": "ContextPlan",
+  "type": "object"
+}

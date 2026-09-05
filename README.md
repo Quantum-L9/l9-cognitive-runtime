@@ -48,19 +48,40 @@ task scope, but only a provenance-backed snapshot item establishes a fact about
 the world outside the request. Passing no snapshot means the empty governed
 snapshot, so callers that predate this input compile exactly as before.
 
-Every public surface can supply it:
+Every public surface can supply it. The runtime also exposes a plan-first
+handshake so an outer host can ask Cog what context it requires before acquiring
+anything:
 
-```bash
-# CLI
-l9-cognitive-runtime --mission "..." --pack-root ./pack \
-  --context-snapshot ./snapshot.json
-
-# MCP: compile_runtime / plan_kernel_activation / validate_runtime_bundle
-#      accept an optional `context_snapshot` payload.
+```text
+CompileRequest + minimal governed discovery snapshot
+  -> ContextPlan
+  -> outer host fulfills typed requirements
+  -> ContextSnapshot + expected_context_plan_id
+  -> final CompilePipeline
 ```
 
-The architecture law these obey is `INVARIANTS.md`; the machine schema for the
-compiled context is `contracts/compiled_task_context.schema.json`.
+```bash
+# PLAN: emit the deterministic demand contract
+l9-cognitive-runtime --mission "..." --pack-root ./pack --plan-context
+
+# COMPILE: bind execution to the exact plan after the outer host fulfills it
+l9-cognitive-runtime --mission "..." --pack-root ./pack \
+  --context-snapshot ./snapshot.json \
+  --expected-context-plan-id 'context-plan.sha256:...'
+
+# MCP: plan_context_requirements returns the same ContextPlan. compile_runtime
+# accepts context_snapshot + expected_context_plan_id and fails closed on drift.
+```
+
+This repository still performs **no context acquisition**. Topology, governance,
+memory, capability, and authority sources remain outside Cog. The architecture
+law these obey is `INVARIANTS.md`; public machine contracts are:
+
+- `contracts/context_snapshot.schema.json`
+- `contracts/context_plan.schema.json`
+- `contracts/compiled_task_context.schema.json`
+
+See `docs/CONTEXT_PLANNING_BRIDGE.md` for the outer-host protocol.
 
 ## Canonical Tree
 

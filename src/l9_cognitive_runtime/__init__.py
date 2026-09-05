@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from l9_cognitive_runtime.models import (
     AdapterRender,
+    ContextPlan,
+    ContextSnapshot,
     ExecutionContract,
     ExecutionGraph,
     HandoffContract,
@@ -22,6 +24,8 @@ __all__ = [
     "AdapterRender",
     "CognitiveRuntimeService",
     "CompileRequest",
+    "ContextPlan",
+    "ContextSnapshot",
     "ExecutionContract",
     "ExecutionGraph",
     "HandoffContract",

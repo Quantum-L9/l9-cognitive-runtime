@@ -13,6 +13,7 @@ from typing import Any
 
 from l9_cognitive_runtime.models import (
     CompiledTaskContext,
+    ContextPlan,
     ExecutionContract,
     ExecutionGraph,
     HandoffContract,
@@ -60,6 +61,7 @@ class RuntimeBundle:
     semantic_digest: str
     packet: dict[str, Any]
     task_context: CompiledTaskContext
+    context_plan: ContextPlan
 
     def digests(self) -> dict[str, str]:
         return {
@@ -73,4 +75,5 @@ class RuntimeBundle:
             # INV-CTX-027: computed from the finished context and carried here,
             # never stored inside the context itself.
             "context": self.task_context.sha256(),
+            "context_plan": self.context_plan.sha256(),
         }

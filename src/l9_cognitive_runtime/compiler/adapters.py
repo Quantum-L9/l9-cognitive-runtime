@@ -48,6 +48,7 @@ class AdapterPacket:
     source_contract: str
     packet_digest: str
     context_digest: str
+    context_plan_id: str
     compiled_task_context: dict[str, Any]
     content: str
     required_obligation_ids: tuple[str, ...]
@@ -67,6 +68,7 @@ class AdapterPacket:
             "source_contract": self.source_contract,
             "packet_digest": self.packet_digest,
             "context_digest": self.context_digest,
+            "context_plan_id": self.context_plan_id,
             "compiled_task_context": self.compiled_task_context,
             "content": self.content,
             "required_obligation_ids": list(self.required_obligation_ids),
@@ -100,6 +102,7 @@ def validate_packet(packet: dict[str, Any]) -> None:
     _require_section(packet, "intent")
     context_body = _require_section(packet, "compiled_task_context")
     declared_digest = _require_section(packet, "compiled_task_context_digest")
+    context_plan_id = _require_section(packet, "context_plan_id")
     _require_section(packet, "active_kernel_bindings")
     _require_section(packet, "execution_steps")
     _require_section(packet, "required_obligations")
@@ -124,6 +127,13 @@ def validate_packet(packet: dict[str, Any]) -> None:
             "packet context digest disagrees with packet provenance",
             path="compiled_task_context_digest",
             details={"packet": declared_digest, "provenance": provenance_digest},
+        )
+    provenance_plan_id = (packet["provenance"] or {}).get("context_plan_id")
+    if provenance_plan_id != context_plan_id:
+        raise InvalidValueError(
+            "packet context plan identity disagrees with packet provenance",
+            path="context_plan_id",
+            details={"packet": context_plan_id, "provenance": provenance_plan_id},
         )
     required_ids = {o["obligation_id"] for o in packet["required_obligations"]}
     # Every validation property must bind a required obligation still present,
@@ -238,6 +248,7 @@ class AdapterRenderer:
             # through unchanged, and the body losslessly beside it. It is never
             # recomputed, reselected, or summarized.
             context_digest=str(packet["compiled_task_context_digest"]),
+            context_plan_id=str(packet["context_plan_id"]),
             # Deep, not shallow: a shallow copy leaves every nested list and
             # mapping shared with the packet that was just validated, so a
             # downstream consumer editing the projection would edit the

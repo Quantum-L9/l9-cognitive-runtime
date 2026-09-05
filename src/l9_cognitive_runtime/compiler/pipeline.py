@@ -33,6 +33,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from l9_cognitive_runtime.compiler.activation import ActivationPlan, ActivationPlanner
 from l9_cognitive_runtime.compiler.adapters import validate_packet
@@ -55,6 +56,7 @@ from l9_cognitive_runtime.compiler.packet import build_execution_packet
 from l9_cognitive_runtime.compiler.task_context import (
     ContextCompiler,
     ContextDiscoveryCompiler,
+    SnapshotResolution,
     preflight_snapshot,
     resolve_snapshot,
 )
@@ -69,7 +71,15 @@ from l9_cognitive_runtime.models import (
     ValidationContract,
 )
 from l9_cognitive_runtime.models.canonical import canonical_json, sha256_digest
-from l9_cognitive_runtime.models.context import ContextSnapshot
+from l9_cognitive_runtime.models.context import (
+    CONTEXT_COMPILER_SEMANTICS_VERSION,
+    CompilerIdentity,
+    ContextPlan,
+    ContextRequirementPlan,
+    ContextSnapshot,
+    DiscoveryContext,
+    TaskScope,
+)
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.pack import PackProvenance, RuntimePack
 from l9_cognitive_runtime.parsing import load_yaml_file
@@ -101,6 +111,22 @@ def _package_version() -> str:
 
 
 @dataclass(frozen=True)
+class _PreparedContextPlan:
+    """The single semantic prefix shared by PLAN and COMPILE (INV-CTX-045)."""
+
+    intent: IntentContract
+    snapshot: ContextSnapshot
+    scope: TaskScope
+    resolution: SnapshotResolution
+    discovery: DiscoveryContext
+    activation: ActivationPlan
+    kernels: list[KernelBinding]
+    pipeline: dict[str, Any]
+    requirement_plan: ContextRequirementPlan
+    context_plan: ContextPlan
+
+
+@dataclass(frozen=True)
 class RootCompilation:
     """A compatibility compile against a bare repository root.
 
@@ -122,6 +148,7 @@ class CompilePipeline:
         pack: RuntimePack,
         *,
         context_snapshot: ContextSnapshot | None = None,
+        expected_context_plan_id: str | None = None,
     ) -> RuntimeBundle:
         # pack.resolve fails closed when the routing sources are absent.
         return self._compile(
@@ -131,7 +158,29 @@ class CompilePipeline:
             kernel_root=pack.provenance.root,
             provenance=pack.provenance,
             context_snapshot=context_snapshot,
+            expected_context_plan_id=expected_context_plan_id,
         ).bundle
+
+    def plan_context(
+        self,
+        request: CompileRequest,
+        pack: RuntimePack,
+        *,
+        discovery_snapshot: ContextSnapshot | None = None,
+    ) -> ContextPlan:
+        """Compile the demand contract an outer host must fulfill.
+
+        This is the PLAN view of the same semantic prefix used by COMPILE. It
+        performs no acquisition and creates no second composition spine.
+        """
+        return self._prepare_context_plan(
+            request=request,
+            rules_path=pack.resolve(RULES_REL),
+            pipeline_path=pack.resolve(PIPELINE_REL),
+            kernel_root=pack.provenance.root,
+            provenance=pack.provenance,
+            context_snapshot=discovery_snapshot,
+        ).context_plan
 
     def compile_from_root(
         self,
@@ -142,6 +191,7 @@ class CompilePipeline:
         include_terminal: bool = False,
         context_snapshot: ContextSnapshot | None = None,
         activation_plan: ActivationPlan | None = None,
+        expected_context_plan_id: str | None = None,
     ) -> RootCompilation:
         """Compatibility entry for the legacy ``runtime/`` CLIs (INV-CTX-002).
 
@@ -175,6 +225,7 @@ class CompilePipeline:
             context_snapshot=context_snapshot,
             include_terminal=include_terminal,
             activation_plan=activation_plan,
+            expected_context_plan_id=expected_context_plan_id,
         )
 
     def _compile(
@@ -188,34 +239,39 @@ class CompilePipeline:
         context_snapshot: ContextSnapshot | None,
         include_terminal: bool = False,
         activation_plan: ActivationPlan | None = None,
+        expected_context_plan_id: str | None = None,
     ) -> RootCompilation:
-        intent = ObjectiveDeriver().derive(request)
-        snapshot = context_snapshot if context_snapshot is not None else ContextSnapshot.empty()
-        # INV-CTX-007: bound the input before any of it is normalized, hashed,
-        # grouped, or resolved.
-        preflight_snapshot(snapshot)
-
-        # Task scope from typed intent + normalized caller hints. Hints may
-        # narrow scope; they never prove external facts (INV-CTX-006).
-        scope = TaskScopeCompiler().compile(intent)
-        # One resolution pass over the snapshot, shared by both projections, so
-        # a contradiction resolves identically wherever it is consumed.
-        resolution = resolve_snapshot(snapshot)
-        discovery = ContextDiscoveryCompiler().compile(scope, resolution)
-
-        plan = activation_plan or ActivationPlanner().plan(
-            intent,
+        prepared = self._prepare_context_plan(
+            request=request,
             rules_path=rules_path,
             pipeline_path=pipeline_path,
-            discovery=discovery,
+            kernel_root=kernel_root,
+            provenance=provenance,
+            context_snapshot=context_snapshot,
             include_terminal=include_terminal,
+            activation_plan=activation_plan,
         )
-        kernels = KernelResolver().resolve(plan.active_kernels, kernel_root)
-        pipeline = load_yaml_file(pipeline_path)
+        if (
+            expected_context_plan_id is not None
+            and prepared.context_plan.context_plan_id != expected_context_plan_id
+        ):
+            raise InvalidValueError(
+                "context planning inputs changed; replan required",
+                path="expected_context_plan_id",
+                details={
+                    "expected": expected_context_plan_id,
+                    "recomputed": prepared.context_plan.context_plan_id,
+                },
+            )
 
-        # Requirements are planned from scope/route/kernels only — never from
-        # obligations, which are derived below.
-        requirement_plan = ContextRequirementPlanner().plan(scope, discovery, plan, kernels)
+        intent = prepared.intent
+        scope = prepared.scope
+        resolution = prepared.resolution
+        discovery = prepared.discovery
+        plan = prepared.activation
+        kernels = prepared.kernels
+        pipeline = prepared.pipeline
+        requirement_plan = prepared.requirement_plan
         task_context = ContextCompiler().compile(
             intent=intent,
             scope=scope,
@@ -274,9 +330,10 @@ class CompilePipeline:
             handoff=handoff,
             graph=graph,
             kernels=kernels,
-            rules_path=rules_path,
-            pipeline_path=pipeline_path,
+            routing_rules_digest=prepared.context_plan.routing_rules_digest,
+            pipeline_digest=prepared.context_plan.pipeline_digest,
             context_digest=context_digest,
+            context_plan_id=prepared.context_plan.context_plan_id,
         )
         semantic_digest = sha256_digest(canonical_json(semantic_payload))
         packet = build_execution_packet(
@@ -287,11 +344,12 @@ class CompilePipeline:
             validation=validation,
             handoff=handoff,
             graph=graph,
-            routing_rules_digest=_file_sha256(rules_path),
-            pipeline_digest=_file_sha256(pipeline_path),
+            routing_rules_digest=prepared.context_plan.routing_rules_digest,
+            pipeline_digest=prepared.context_plan.pipeline_digest,
             semantic_digest=semantic_digest,
             task_context=task_context,
             context_digest=context_digest,
+            context_plan_id=prepared.context_plan.context_plan_id,
         )
         # INV-013: the packet is the hand-off surface, so it is validated on
         # every fresh compile — not only when an adapter is rendered.
@@ -322,8 +380,72 @@ class CompilePipeline:
             semantic_digest=semantic_digest,
             packet=packet,
             task_context=task_context,
+            context_plan=prepared.context_plan,
         )
         return RootCompilation(bundle=bundle, plan=plan, kernels=kernels)
+
+    def _prepare_context_plan(
+        self,
+        *,
+        request: CompileRequest,
+        rules_path: Path,
+        pipeline_path: Path,
+        kernel_root: Path,
+        provenance: PackProvenance,
+        context_snapshot: ContextSnapshot | None,
+        include_terminal: bool = False,
+        activation_plan: ActivationPlan | None = None,
+    ) -> _PreparedContextPlan:
+        """Compile the one semantic prefix shared by planning and execution.
+
+        The method deliberately performs no acquisition. The caller supplies a
+        finite governed snapshot; PLAN may use a minimal discovery snapshot and
+        COMPILE may use the fulfilled snapshot. Both recompute the exact same
+        task scope, discovery, activation, kernel bindings, and requirements.
+        """
+        intent = ObjectiveDeriver().derive(request)
+        snapshot = context_snapshot if context_snapshot is not None else ContextSnapshot.empty()
+        preflight_snapshot(snapshot)
+        scope = TaskScopeCompiler().compile(intent)
+        resolution = resolve_snapshot(snapshot)
+        discovery = ContextDiscoveryCompiler().compile(scope, resolution)
+        activation = activation_plan or ActivationPlanner().plan(
+            intent,
+            rules_path=rules_path,
+            pipeline_path=pipeline_path,
+            discovery=discovery,
+            include_terminal=include_terminal,
+        )
+        kernels = KernelResolver().resolve(activation.active_kernels, kernel_root)
+        pipeline = load_yaml_file(pipeline_path)
+        requirement_plan = ContextRequirementPlanner().plan(scope, discovery, activation, kernels)
+        context_plan = ContextPlan(
+            task_scope=scope,
+            discovery=discovery,
+            requirement_plan=requirement_plan,
+            active_kernel_digests={
+                binding.source_ref: binding.source_digest for binding in kernels
+            },
+            pack_manifest_digest=provenance.manifest_digest,
+            routing_rules_digest=_file_sha256(rules_path),
+            pipeline_digest=_file_sha256(pipeline_path),
+            compiler_identity=CompilerIdentity(
+                package_version=_package_version(),
+                semantics_version=CONTEXT_COMPILER_SEMANTICS_VERSION,
+            ),
+        )
+        return _PreparedContextPlan(
+            intent=intent,
+            snapshot=snapshot,
+            scope=scope,
+            resolution=resolution,
+            discovery=discovery,
+            activation=activation,
+            kernels=kernels,
+            pipeline=pipeline,
+            requirement_plan=requirement_plan,
+            context_plan=context_plan,
+        )
 
     @staticmethod
     def _semantic_payload(
@@ -334,9 +456,10 @@ class CompilePipeline:
         handoff: HandoffContract,
         graph: ExecutionGraph,
         kernels: list[KernelBinding],
-        rules_path: Path,
-        pipeline_path: Path,
+        routing_rules_digest: str,
+        pipeline_digest: str,
         context_digest: str,
+        context_plan_id: str,
     ) -> dict[str, object]:
         """Bundle semantic digest payload over every provenance-contract input.
 
@@ -358,7 +481,8 @@ class CompilePipeline:
             "active_kernel_digests": {
                 binding.source_ref: binding.source_digest for binding in kernels
             },
-            "routing_rules_digest": _file_sha256(rules_path),
-            "pipeline_digest": _file_sha256(pipeline_path),
+            "routing_rules_digest": routing_rules_digest,
+            "pipeline_digest": pipeline_digest,
             "context_digest": context_digest,
+            "context_plan_id": context_plan_id,
         }

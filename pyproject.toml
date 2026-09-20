@@ -21,7 +21,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "mcp>=2.1.1",
+  "mcp>=2.2.0",
   "pydantic>=2.8",
   "PyYAML>=6.0",
 ]
@@ -51,6 +51,11 @@ include = [
   "/README.md",
   "/pyproject.toml",
 ]
+
+[tool.uv]
+# Preserve the three-package public runtime dependency contract while resolving
+# the MCP transport's audited HTTP transitive dependency to a safe release.
+constraint-dependencies = ["httpx2>=2.13.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

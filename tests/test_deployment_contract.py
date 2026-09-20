@@ -10,7 +10,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / ".l9/deployment.yaml"
 RELEASE = ROOT / ".github/workflows/release-staging.yml"
-CORE_PIN = "d6e778c907e3711c4f610fe135ea8cc7a6c5350d"
+CORE_RELEASE_CHANNEL = "v2"
 HOST = "mcp-staging.quantumaipartners.com"
 
 
@@ -40,7 +40,12 @@ def test_deployment_profile_binds_staging_mcp_contract() -> None:
 def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
     text = RELEASE.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in text
-    assert text.count(f"@{CORE_PIN}") == 2
+    assert text.count(f"@{CORE_RELEASE_CHANNEL}") == 2
+    assert (
+        "Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml"
+        f"@{CORE_RELEASE_CHANNEL}" in text
+    )
+    assert f"Quantum-L9/l9-ci-core/.github/actions/container-release@{CORE_RELEASE_CHANNEL}" in text
     assert "profile: release" in text
     assert "event: release" in text
     assert "matrix-id: release-semgrep" in text

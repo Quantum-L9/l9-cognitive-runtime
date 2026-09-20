@@ -26,7 +26,6 @@ jobs:
       security-events: write
     with:
       profile: release
-      event: release
       matrix-id: release-semgrep
       language: python
 

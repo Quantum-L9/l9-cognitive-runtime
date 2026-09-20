@@ -66,8 +66,14 @@ def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
         f"Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@{CORE_RELEASE_CHANNEL}",
         f"Quantum-L9/l9-ci-core/.github/actions/container-release@{CORE_RELEASE_CHANNEL}",
     ]
+    analysis = workflow["jobs"]["analysis"]
+    assert isinstance(analysis, dict)
+    analysis_with = analysis.get("with")
+    assert isinstance(analysis_with, dict)
+    assert analysis_with.get("profile") == "release"
+    assert "event" not in analysis_with
+    assert analysis_with.get("matrix-id") == "release-semgrep"
     assert "profile: release" in text
-    assert "event: release" in text
     assert "matrix-id: release-semgrep" in text
     assert "github.ref == 'refs/heads/main'" in text
     assert "source-revision-build-arg-name: L9_SOURCE_REVISION" in text

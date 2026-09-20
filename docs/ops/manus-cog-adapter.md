@@ -13,7 +13,7 @@ The adapter starts only with `L9_MCP_TRANSPORT=stdio` and an explicit `L9_PACK_R
 | `cog_compile_runtime` | Compiles an in-memory runtime bundle against the bound pack. |
 | `cog_validate_runtime_bundle` | Compiles and validates bundle integrity. |
 
-No tool executes an execution graph, invokes a shell, writes a repository, accepts a pack path, or exposes arbitrary Cog code. The same six compiler operations remain the contract for a later OAuth-protected remote MCP deployment. This local Manus connector may be retained or replaced by that remote connection without changing the tool names or arguments.
+No tool executes an execution graph, invokes a shell, writes a repository, accepts a pack path, or exposes arbitrary Cog code. The same six compiler operations remain the contract for a later OAuth-protected remote MCP deployment. This stdio adapter exposes them under `cog_` names (`cog_runtime_capabilities`, and the five siblings in the table). The current HTTP MCP surface still registers the unprefixed `READ_ONLY_TOOLS` names (for example `runtime_capabilities`). Replacing this connector with that HTTP deployment is not a drop-in tool-name swap until those names are aligned.
 
 ## Connector posture
 

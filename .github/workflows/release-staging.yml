@@ -16,7 +16,9 @@ permissions:
 jobs:
   analysis:
     name: Canonical release analysis
-    uses: Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@d6e778c907e3711c4f610fe135ea8cc7a6c5350d
+    # Bounded Core compatibility channel: policy/v2-consumer-integration-channel.
+    # This is neither the organization-required workflow nor release evidence.
+    uses: Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@v2
     permissions:
       actions: read
       checks: write
@@ -61,7 +63,7 @@ jobs:
           # Intentional, explicit build. No implicit build is permitted above.
           uv run --no-sync --no-build python -m build
       - name: Publish and request deployment
-        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@d6e778c907e3711c4f610fe135ea8cc7a6c5350d
+        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@v2
         with:
           deployment-profile: .l9/deployment.yaml
           registered-profile-path: integrations/consumers/l9-cognitive-runtime.deployment.yaml

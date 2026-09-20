@@ -10,7 +10,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / ".l9/deployment.yaml"
 RELEASE = ROOT / ".github/workflows/release-staging.yml"
-CORE_PIN = "d6e778c907e3711c4f610fe135ea8cc7a6c5350d"
+CORE_RELEASE_CHANNEL = "v2"
 HOST = "mcp-staging.quantumaipartners.com"
 
 
@@ -37,10 +37,35 @@ def test_deployment_profile_binds_staging_mcp_contract() -> None:
     assert profile["network"]["public_ingress"]["tls"] == "automatic"
 
 
+def _core_uses(workflow: dict[str, Any]) -> list[str]:
+    jobs = workflow["jobs"]
+    assert isinstance(jobs, dict)
+    uses: list[str] = []
+    analysis = jobs["analysis"]
+    assert isinstance(analysis, dict)
+    analysis_uses = analysis.get("uses")
+    if isinstance(analysis_uses, str) and analysis_uses.startswith("Quantum-L9/l9-ci-core/"):
+        uses.append(analysis_uses)
+    release = jobs["release"]
+    assert isinstance(release, dict)
+    for step in release.get("steps") or []:
+        if not isinstance(step, dict):
+            continue
+        step_uses = step.get("uses")
+        if isinstance(step_uses, str) and step_uses.startswith("Quantum-L9/l9-ci-core/"):
+            uses.append(step_uses)
+    return uses
+
+
 def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
     text = RELEASE.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in text
-    assert text.count(f"@{CORE_PIN}") == 2
+    workflow = yaml.safe_load(text)
+    assert isinstance(workflow, dict)
+    assert _core_uses(workflow) == [
+        f"Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@{CORE_RELEASE_CHANNEL}",
+        f"Quantum-L9/l9-ci-core/.github/actions/container-release@{CORE_RELEASE_CHANNEL}",
+    ]
     assert "profile: release" in text
     assert "event: release" in text
     assert "matrix-id: release-semgrep" in text

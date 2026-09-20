@@ -40,6 +40,12 @@ def test_capabilities_identify_the_adapter_and_read_only_boundary(valid_pack: Pa
     data = _tool_data(_run(server.call_tool("cog_runtime_capabilities", {})))
     assert data["server"] == MANUS_SERVER_NAME
     assert data["tools"] == list(MANUS_READ_ONLY_TOOLS)
+    assert data["context_aware_tools"] == [
+        "cog_compile_runtime",
+        "cog_plan_kernel_activation",
+        "cog_plan_context_requirements",
+        "cog_validate_runtime_bundle",
+    ]
     assert data["writes"] is False
     assert data["execution"] is False
     assert data["shell"] is False

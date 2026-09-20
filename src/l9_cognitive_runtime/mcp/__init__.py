@@ -67,6 +67,7 @@ def _capabilities(
     authentication: str = "none",
     server_name: str = SERVER_NAME,
     tool_names: tuple[str, ...] = READ_ONLY_TOOLS,
+    context_aware_tool_names: tuple[str, ...] = CONTEXT_AWARE_TOOLS,
 ) -> dict[str, Any]:
     return {
         "server": server_name,
@@ -83,7 +84,7 @@ def _capabilities(
         # INV-CTX-043: governed context is useless if callers cannot discover
         # that this surface accepts it.
         "context_snapshot_input": True,
-        "context_aware_tools": list(CONTEXT_AWARE_TOOLS),
+        "context_aware_tools": list(context_aware_tool_names),
         "context_planning": True,
         "context_plan_schema": "context_plan.schema.json",
         "context_snapshot_schema": "context_snapshot.schema.json",
@@ -223,6 +224,7 @@ def build_server(
     hosted_auth = token_verifier is not None and auth_settings is not None
     auth_mode = "oauth2_bearer" if hosted_auth else "none"
     tool_names = tuple(f"{tool_name_prefix}{tool}" for tool in READ_ONLY_TOOLS)
+    context_aware_tool_names = tuple(f"{tool_name_prefix}{tool}" for tool in CONTEXT_AWARE_TOOLS)
 
     def _tool_name(name: str) -> str:
         return f"{tool_name_prefix}{name}"
@@ -247,6 +249,7 @@ def build_server(
             authentication=auth_mode,
             server_name=server_name,
             tool_names=tool_names,
+            context_aware_tool_names=context_aware_tool_names,
         )
 
     @mcp.tool(name=_tool_name("compile_intent"))
@@ -357,6 +360,7 @@ def build_server(
                 authentication=auth_mode,
                 server_name=server_name,
                 tool_names=tool_names,
+                context_aware_tool_names=context_aware_tool_names,
             ),
             indent=2,
             sort_keys=True,

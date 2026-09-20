@@ -61,16 +61,22 @@ CONTEXT_AWARE_TOOLS = (
 )
 
 
-def _capabilities(pack: RuntimePack, *, authentication: str = "none") -> dict[str, Any]:
+def _capabilities(
+    pack: RuntimePack,
+    *,
+    authentication: str = "none",
+    server_name: str = SERVER_NAME,
+    tool_names: tuple[str, ...] = READ_ONLY_TOOLS,
+) -> dict[str, Any]:
     return {
-        "server": SERVER_NAME,
+        "server": server_name,
         "version": __version__,
         "transport": "stdio",
         # Callers should be able to discover whether this surface is protected
         # without having to provoke a 401 to find out.
         "authentication": authentication,
         "mode": "read_only",
-        "tools": list(READ_ONLY_TOOLS),
+        "tools": list(tool_names),
         "writes": False,
         "execution": False,
         "shell": False,
@@ -146,6 +152,8 @@ def build_server(
     *,
     token_verifier: TokenVerifier | None = None,
     auth_settings: AuthSettings | None = None,
+    server_name: str = SERVER_NAME,
+    tool_name_prefix: str = "",
 ) -> MCPServer:
     """Create a read-only MCP server bound to an explicit, verified pack root.
 
@@ -154,7 +162,9 @@ def build_server(
     on the HTTP transport and every run is owned by the token's principal. Both
     default to ``None``, which is the local stdio posture — unauthenticated, owned
     by ``LOCAL_PRINCIPAL``. Authentication changes *who owns a run*; it never
-    changes what the compiler produces.
+    changes what the compiler produces. ``tool_name_prefix`` permits a bounded
+    local adapter to expose the same six operations in a collision-free namespace;
+    it does not add operations or make the pack caller-selectable.
     """
     root = pack_root.resolve()
     if not root.is_dir():
@@ -212,9 +222,13 @@ def build_server(
 
     hosted_auth = token_verifier is not None and auth_settings is not None
     auth_mode = "oauth2_bearer" if hosted_auth else "none"
+    tool_names = tuple(f"{tool_name_prefix}{tool}" for tool in READ_ONLY_TOOLS)
+
+    def _tool_name(name: str) -> str:
+        return f"{tool_name_prefix}{name}"
 
     mcp = MCPServer(
-        name=SERVER_NAME,
+        name=server_name,
         version=__version__,
         instructions=(
             "Read-only L9 Cognitive Runtime MCP. Compiles runtime bundles in memory "
@@ -225,12 +239,17 @@ def build_server(
         auth=auth_settings,
     )
 
-    @mcp.tool()
+    @mcp.tool(name=_tool_name("runtime_capabilities"))
     def runtime_capabilities() -> dict[str, Any]:
         """List the read-only capabilities of this MCP server."""
-        return _capabilities(pack, authentication=auth_mode)
+        return _capabilities(
+            pack,
+            authentication=auth_mode,
+            server_name=server_name,
+            tool_names=tool_names,
+        )
 
-    @mcp.tool()
+    @mcp.tool(name=_tool_name("compile_intent"))
     def compile_intent(mission: str, task_type: str = DEFAULT_TASK_TYPE) -> dict[str, Any]:
         """Compile the canonical intent contract for a mission (read-only)."""
         bundle = _compile(mission, task_type)
@@ -239,7 +258,7 @@ def build_server(
             "intent_digest": bundle.digests()["intent"],
         }
 
-    @mcp.tool()
+    @mcp.tool(name=_tool_name("plan_kernel_activation"))
     def plan_kernel_activation(
         mission: str, context_snapshot: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -257,7 +276,7 @@ def build_server(
             "context_digest": bundle.digests()["context"],
         }
 
-    @mcp.tool()
+    @mcp.tool(name=_tool_name("plan_context_requirements"))
     def plan_context_requirements(
         mission: str,
         task_type: str = DEFAULT_TASK_TYPE,
@@ -271,7 +290,7 @@ def build_server(
             "context_plan_digest": plan.sha256(),
         }
 
-    @mcp.tool()
+    @mcp.tool(name=_tool_name("compile_runtime"))
     def compile_runtime(
         mission: str,
         task_type: str = DEFAULT_TASK_TYPE,
@@ -309,7 +328,7 @@ def build_server(
         record = runs.create(principal=owner, payload=payload)
         return {**payload, "run_id": record.run_id, "resource_uri": record.resource_uri}
 
-    @mcp.tool()
+    @mcp.tool(name=_tool_name("validate_runtime_bundle"))
     def validate_runtime_bundle(
         mission: str, context_snapshot: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -333,7 +352,12 @@ def build_server(
     @mcp.resource("l9://runtime/capabilities")
     def runtime_capabilities_resource() -> str:
         return json.dumps(
-            _capabilities(pack, authentication=auth_mode),
+            _capabilities(
+                pack,
+                authentication=auth_mode,
+                server_name=server_name,
+                tool_names=tool_names,
+            ),
             indent=2,
             sort_keys=True,
         )

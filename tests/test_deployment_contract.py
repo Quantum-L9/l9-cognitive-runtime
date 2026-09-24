@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / ".l9/deployment.yaml"
 RELEASE = ROOT / ".github/workflows/release-staging.yml"
 CORE_RELEASE_CHANNEL = "v2"
+# Core v2 commit pinned by release-staging.yml container-release.
+CONTAINER_RELEASE_SHA = "450f6ec753435365c6e4212cc898ee9ba560bb7d"
 HOST = "mcp-staging.quantumaipartners.com"
 
 
@@ -64,7 +66,7 @@ def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
     assert isinstance(workflow, dict)
     assert _core_uses(workflow) == [
         f"Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@{CORE_RELEASE_CHANNEL}",
-        f"Quantum-L9/l9-ci-core/.github/actions/container-release@{CORE_RELEASE_CHANNEL}",
+        f"Quantum-L9/l9-ci-core/.github/actions/container-release@{CONTAINER_RELEASE_SHA}",
     ]
     analysis = workflow["jobs"]["analysis"]
     assert isinstance(analysis, dict)

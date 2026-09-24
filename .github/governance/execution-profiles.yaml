@@ -31,7 +31,7 @@
       "default_mode": "blocking",
       "providers": ["semgrep"],
       "policy": "",
-      "allowed_events": ["push", "workflow_dispatch"]
+      "allowed_events": ["push", "workflow_dispatch", "nightly"]
     },
     "supply_chain": {
       "sdk_profile": "ci_deep",

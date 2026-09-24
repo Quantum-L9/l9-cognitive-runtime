@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, cast
 
@@ -84,3 +85,15 @@ def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
         "l9-cognitive-runtime.deployment.yaml" in text
     )
     assert "DEPLOYMENT_BROKER_TOKEN" in text
+
+
+def test_release_profile_allows_core_dispatch_nightly_class() -> None:
+    """Core analyze-semgrep@v2 remaps workflow_dispatch to event class nightly."""
+    pack = json.loads((ROOT / ".github/governance/execution-profiles.yaml").read_text())
+    release = pack["profiles"]["release"]
+    assert release["sdk_profile"] == "ci_deep"
+    assert release["strict"] is True
+    assert release["default_mode"] == "blocking"
+    assert release["providers"] == ["semgrep"]
+    assert "nightly" in release["allowed_events"]
+    assert "workflow_dispatch" in release["allowed_events"]

@@ -23,7 +23,9 @@ def test_hosted_profile_requires_auth_before_public_ingress_starts() -> None:
     profile = _profile()
     env = profile["runtime"]["environment"]
 
-    assert profile["network"]["public_ingress"]["enabled"] is True
+    ingress = profile["targets"]["staging"]["ingress"]
+    assert ingress["mode"] == "caddy"
+    assert ingress["hostnames"] == [HOST]
     assert env["L9_ALLOWED_HOSTS"] == HOST
     assert env["L9_REQUIRE_AUTH"] == "true"
     assert env["L9_MCP_RESOURCE_URL"] == RESOURCE_URL

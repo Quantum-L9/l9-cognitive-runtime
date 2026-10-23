@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "l9-cognitive-runtime",
+  "version": "0.1.0",
+  "description": "Private workflow guidance for compiling plan-bound, provenance-checked runtime bundles through the existing read-only L9 Cognitive Runtime MCP server.",
+  "author": {
+    "name": "Quantum-L9"
+  },
+  "repository": "https://github.com/Quantum-L9/l9-cognitive-runtime",
+  "license": "Proprietary",
+  "keywords": ["l9", "cognitive-runtime", "mcp", "read-only", "context-plan"]
+}

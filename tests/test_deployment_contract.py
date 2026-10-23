@@ -13,8 +13,8 @@ PROFILE = ROOT / ".l9/deployment.yaml"
 RELEASE = ROOT / ".github/workflows/release-staging.yml"
 # Immutable Core revision carrying the blocking policy and strict release profile.
 CORE_RELEASE_CHANNEL = "edf799046023f44dae3bb8aad9aa91247124706b"
-# Core v2 commit pinned by release-staging.yml container-release.
-CONTAINER_RELEASE_SHA = "450f6ec753435365c6e4212cc898ee9ba560bb7d"
+# Core commit pinned by release-staging.yml container-release (l9-ci-core #224).
+CONTAINER_RELEASE_SHA = "8f301c97fb81251e530f3fac52d27230ab409014"
 HOST = "mcp-staging.quantumaipartners.com"
 
 

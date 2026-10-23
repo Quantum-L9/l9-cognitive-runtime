@@ -22,7 +22,9 @@ these holds:
 - `runtime_capabilities()` fails, or reports anything other than
   `mode: read_only`, `writes: false`, `execution: false`, `shell: false`.
 - A tool returns an error. Report the error text verbatim and stop; never retry
-  with altered inputs to obtain a success.
+  with altered inputs to obtain a success. The single exception is the
+  documented `replan required` error from `compile_runtime`, handled in workflow
+  step 4.
 - A governed `ContextSnapshot` is needed but none was supplied by an
   authoritative source. Ask for it; never author governed context yourself.
 
@@ -65,8 +67,11 @@ context exists. Never pass an empty or placeholder object as governed context.
 4. **Compile, bound to the plan.** Call
    `compile_runtime(mission, task_type?, context_snapshot?, expected_context_plan_id?)`
    passing `expected_context_plan_id` = the id from step 2. If the error says
-   `replan required`, the supplied context changed the plan: return to step 2
-   with that snapshot. Do not drop `expected_context_plan_id` to force a pass.
+   `replan required`, the supplied context changed the plan: tell the user, then
+   return to step 2 once, passing that same snapshot, and compile against the
+   new `context_plan_id`. Only the plan is recomputed; `mission`, `task_type`
+   and the snapshot stay exactly as supplied. If the second compile fails for
+   any reason, stop. Do not drop `expected_context_plan_id` to force a pass.
 5. **Verify before reporting.** All of the following must hold, or report the
    bundle as unverified:
    - returned `context_plan_id` equals the step 2 `context_plan_id`;
@@ -74,8 +79,11 @@ context exists. Never pass an empty or placeholder object as governed context.
      `provenance.manifest_digest` agrees;
    - `execution_packet.compiled_task_context_digest` equals `digests.context`;
    - every value in `digests` is non-empty.
-   Optionally call `validate_runtime_bundle(mission, context_snapshot?)` with the
-   same inputs and require `valid: true`.
+   Optionally, only when `task_type` was not supplied, call
+   `validate_runtime_bundle(mission, context_snapshot?)` with the same inputs and
+   require `valid: true`. It accepts no `task_type` and always compiles the
+   default, so for any other `task_type` skip it and say the check was not
+   applicable.
 
 ## Reporting
 
@@ -84,3 +92,5 @@ Report only observed values: `run_id`, `resource_uri`, `context_plan_id`, the
 anything not returned by a tool as `Unknown`. Optional supporting views are
 `compile_intent(mission, task_type?)` and `plan_kernel_activation(mission, context_snapshot?)`;
 use them only when the user asks for intent or kernel routing detail.
+`plan_kernel_activation` likewise accepts no `task_type`; when one was supplied,
+report its output as describing the default task type, not the compiled bundle.

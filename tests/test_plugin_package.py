@@ -10,6 +10,7 @@ against a verified pack, and missing connection or invalid context fails closed.
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 import re
 import tomllib
@@ -18,11 +19,11 @@ from typing import Any, cast
 
 import pytest
 import yaml
-from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from mcp.server.mcpserver.exceptions import ToolError
 
 from l9_cognitive_runtime.mcp import READ_ONLY_TOOLS, build_server, main
 from l9_cognitive_runtime.models.errors import InvalidValueError
+from tests.conftest import governed_signal_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "l9-cognitive-runtime"
@@ -83,6 +84,17 @@ def _tool_data(result: Any) -> dict[str, Any]:
     return cast("dict[str, Any]", json.loads(result.content[0].text))
 
 
+def _schema_errors(schema: dict[str, Any], instance: Any) -> list[str]:
+    """Typed boundary over jsonschema, which ships no type information.
+
+    Imported by name (a hard failure if absent, never a skip) so the untyped
+    module stays behind this signature instead of a type-check suppression.
+    """
+    jsonschema = importlib.import_module("jsonschema")
+    validator = jsonschema.Draft202012Validator(schema)
+    return sorted(str(error.message) for error in validator.iter_errors(instance))
+
+
 def _manifest() -> dict[str, Any]:
     return cast("dict[str, Any]", json.loads((PLUGIN / "plugin.json").read_text("utf-8")))
 
@@ -112,8 +124,9 @@ def _documented_calls() -> list[tuple[str, set[str]]]:
 
 def test_manifest_is_schema_valid_and_identity_consistent() -> None:
     manifest = _manifest()
-    errors = sorted(Draft202012Validator(PLUGIN_SCHEMA).iter_errors(manifest), key=str)
-    assert not errors, [e.message for e in errors]
+    assert _schema_errors(PLUGIN_SCHEMA, manifest) == []
+    # The boundary must actually reject: a closed schema refuses unknown keys.
+    assert _schema_errors(PLUGIN_SCHEMA, {**manifest, "skills": "./skills"})
 
     project = tomllib.loads((ROOT / "pyproject.toml").read_text("utf-8"))["project"]
     assert manifest["name"] == PLUGIN.name == project["name"]
@@ -207,6 +220,46 @@ def test_documented_workflow_compiles_plan_bound_and_verifiable(valid_pack: Path
 
     validated = _tool_data(_run(server.call_tool("validate_runtime_bundle", {"mission": MISSION})))
     assert validated["valid"] is True
+
+
+def test_documented_replan_recovers_once_with_the_same_snapshot(valid_pack: Path) -> None:
+    """SKILL.md step 4: on `replan required`, replan with the supplied snapshot."""
+    server = build_server(valid_pack)
+    snapshot = governed_signal_snapshot("multiple_workers").to_canonical_dict()
+    stale = _tool_data(_run(server.call_tool("plan_context_requirements", {"mission": MISSION})))
+
+    first = server.call_tool(
+        "compile_runtime",
+        {
+            "mission": MISSION,
+            "context_snapshot": snapshot,
+            "expected_context_plan_id": stale["context_plan_id"],
+        },
+    )
+    with pytest.raises(ToolError, match="replan required"):
+        _run(first)
+
+    replanned = _tool_data(
+        _run(
+            server.call_tool(
+                "plan_context_requirements", {"mission": MISSION, "context_snapshot": snapshot}
+            )
+        )
+    )
+    assert replanned["context_plan_id"] != stale["context_plan_id"]
+    compiled = _tool_data(
+        _run(
+            server.call_tool(
+                "compile_runtime",
+                {
+                    "mission": MISSION,
+                    "context_snapshot": snapshot,
+                    "expected_context_plan_id": replanned["context_plan_id"],
+                },
+            )
+        )
+    )
+    assert compiled["context_plan_id"] == replanned["context_plan_id"]
 
 
 # --- fail closed -------------------------------------------------------------

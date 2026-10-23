@@ -16,15 +16,19 @@ permissions:
 jobs:
   analysis:
     name: Canonical release analysis
-    # Bounded Core compatibility channel: policy/v2-consumer-integration-channel.
+    # Core pinned to the immutable revision that carries the blocking finding
+    # policy and the strict release profile (l9-ci-core #218, #221, #223).
     # This is neither the organization-required workflow nor release evidence.
-    uses: Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@v2
+    uses: Quantum-L9/l9-ci-core/.github/workflows/analyze-semgrep.yml@edf799046023f44dae3bb8aad9aa91247124706b
     permissions:
       actions: read
       checks: write
       contents: read
       security-events: write
     with:
+      # Explicit class: without it Core maps workflow_dispatch to `nightly`,
+      # which the `release` profile does not admit.
+      event: release
       profile: release
       matrix-id: release-semgrep
       language: python

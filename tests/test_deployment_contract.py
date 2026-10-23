@@ -11,7 +11,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / ".l9/deployment.yaml"
 RELEASE = ROOT / ".github/workflows/release-staging.yml"
-CORE_RELEASE_CHANNEL = "v2"
+# Immutable Core revision carrying the blocking policy and strict release profile.
+CORE_RELEASE_CHANNEL = "edf799046023f44dae3bb8aad9aa91247124706b"
 # Core v2 commit pinned by release-staging.yml container-release.
 CONTAINER_RELEASE_SHA = "450f6ec753435365c6e4212cc898ee9ba560bb7d"
 HOST = "mcp-staging.quantumaipartners.com"
@@ -74,7 +75,7 @@ def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
     analysis_with = analysis.get("with")
     assert isinstance(analysis_with, dict)
     assert analysis_with.get("profile") == "release"
-    assert "event" not in analysis_with
+    assert analysis_with.get("event") == "release"
     assert analysis_with.get("matrix-id") == "release-semgrep"
     assert "profile: release" in text
     assert "matrix-id: release-semgrep" in text

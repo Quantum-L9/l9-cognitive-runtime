@@ -26,19 +26,32 @@ def _profile() -> dict[str, Any]:
 
 def test_deployment_profile_binds_staging_mcp_contract() -> None:
     profile = _profile()
-    assert profile["schema"] == "l9.deployment-profile/v1"
+    # l9-deploy accepts only l9.deployment-profile/v2.
+    assert profile["schema"] == "l9.deployment-profile/v2"
     assert profile["project"]["repository"] == "Quantum-L9/l9-cognitive-runtime"
     assert profile["project"]["runtime_profile"] == "container-service"
     assert profile["artifact"]["image"] == "ghcr.io/quantum-l9/l9-cognitive-runtime"
-    assert profile["artifact"]["require_digest"] is True
     assert profile["runtime"]["container_port"] == 8080
     assert profile["runtime"]["user"] == "non_root"
     assert profile["runtime"]["read_only_root_filesystem"] is True
     assert profile["runtime"]["environment"]["L9_ALLOWED_HOSTS"] == HOST
     assert profile["health"]["startup"]["path"] == "/readyz"
     assert profile["health"]["post_deploy"]["path"] == "/readyz"
-    assert profile["network"]["public_ingress"]["hostnames"] == [HOST]
-    assert profile["network"]["public_ingress"]["tls"] == "automatic"
+    assert profile["secrets"]["project_slug"] == "l9-cognitive-runtime"
+
+
+def test_staging_target_is_c1_without_changing_its_runtime() -> None:
+    staging = _profile()["targets"]["staging"]
+    assert staging["server"]["address"] == "46.62.243.82"
+    assert staging["server"]["ssh"] == {"user": "root", "port": 22}
+    assert staging["server"]["host_key"].startswith("ssh-ed25519 ")
+    # C1 is shared and protected: verify its Docker, never manage it.
+    assert staging["host"] == {"docker": "verify", "backup_tools": "none"}
+    assert staging["ingress"]["mode"] == "caddy"
+    assert staging["ingress"]["hostnames"] == [HOST]
+    assert staging["ingress"]["host_port"] == 18080
+    assert staging["allowed_source_refs"] == ["refs/heads/main"]
+    assert staging["secrets_environment"] == "staging"
 
 
 def _core_uses(workflow: dict[str, Any]) -> list[str]:

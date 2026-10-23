@@ -9,7 +9,7 @@
 # owner: platform
 # status: active
 # --- /L9_META ---
-schema: l9.deployment-profile/v1
+schema: l9.deployment-profile/v2
 project:
   id: l9-cognitive-runtime
   repository: Quantum-L9/l9-cognitive-runtime
@@ -18,9 +18,6 @@ project:
 artifact:
   registry: ghcr.io
   image: ghcr.io/quantum-l9/l9-cognitive-runtime
-  require_digest: true
-  require_provenance_attestation: true
-  require_sbom_attestation: true
 runtime:
   architecture: linux/amd64
   container_port: 8080
@@ -47,10 +44,8 @@ health:
     interval_seconds: 5
     attempts: 12
 release:
-  strategy: rolling-single-host
-  retain_successful_releases: 5
+  strategy: replace
   automatic_rollback: true
-  production_approval_required: true
   stabilization_seconds: 30
 migrations:
   enabled: false
@@ -59,21 +54,27 @@ secrets:
   authority: infisical
   runtime_mode: deploy_render
   project_slug: l9-cognitive-runtime
-  environment_mapping:
-    staging: staging
-    production: prod
-network:
-  public_ingress:
-    enabled: true
-    hostnames:
-      - mcp-staging.quantumaipartners.com
-    tls: automatic
-  private_dependencies_only: true
-policy:
-  allowed_source_refs:
-    staging:
+targets:
+  # C1 is a shared, protected host (Cursor-Governance rules/93-c1-server-protection).
+  # docker: verify checks its existing Docker runtime without changing it. Caddy
+  # already terminates TLS on C1; l9-deploy adds only this release's site file under
+  # /etc/caddy/sites and refuses to run unless the host Caddyfile imports that
+  # directory. host_port keeps the container off ports other C1 services bind.
+  staging:
+    server:
+      address: 46.62.243.82
+      ssh:
+        user: root
+        port: 22
+      host_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICMwpLXB2J962/OrrUqXNGwiHb39e7f9jSKixo97xJxU
+    host:
+      docker: verify
+      backup_tools: none
+    ingress:
+      mode: caddy
+      hostnames:
+        - mcp-staging.quantumaipartners.com
+      host_port: 18080
+    allowed_source_refs:
       - refs/heads/main
-    production:
-      - refs/tags/v*
-  require_clean_ci_gate: true
-  require_profile_digest_match: true
+    secrets_environment: staging

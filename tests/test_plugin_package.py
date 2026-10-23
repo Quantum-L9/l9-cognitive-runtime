@@ -128,8 +128,10 @@ def test_exactly_one_spec_conformant_skill() -> None:
     front, body = _skill()
     assert set(front) <= SKILL_FIELDS
     assert front["name"] == dirs[0].name
-    assert len(front["name"]) <= 64 and SKILL_NAME.match(front["name"])
-    assert isinstance(front["description"], str) and 0 < len(front["description"]) <= 1024
+    assert len(front["name"]) <= 64
+    assert SKILL_NAME.match(front["name"])
+    assert isinstance(front["description"], str)
+    assert 0 < len(front["description"]) <= 1024
     assert 0 < len(front.get("compatibility", "x")) <= 500
     assert body.strip()
 
@@ -226,21 +228,17 @@ def test_unverifiable_pack_root_refuses_to_start(tmp_path: Path) -> None:
 
 
 def test_stale_context_plan_requires_replan(valid_pack: Path) -> None:
-    server = build_server(valid_pack)
+    call = build_server(valid_pack).call_tool(
+        "compile_runtime",
+        {"mission": MISSION, "expected_context_plan_id": "context-plan.sha256:stale"},
+    )
     with pytest.raises(ToolError, match="replan required"):
-        _run(
-            server.call_tool(
-                "compile_runtime",
-                {"mission": MISSION, "expected_context_plan_id": "context-plan.sha256:stale"},
-            )
-        )
+        _run(call)
 
 
 def test_malformed_context_snapshot_is_refused(valid_pack: Path) -> None:
-    server = build_server(valid_pack)
+    call = build_server(valid_pack).call_tool(
+        "compile_runtime", {"mission": MISSION, "context_snapshot": {"bogus": 1}}
+    )
     with pytest.raises(ToolError, match="not a valid governed snapshot"):
-        _run(
-            server.call_tool(
-                "compile_runtime", {"mission": MISSION, "context_snapshot": {"bogus": 1}}
-            )
-        )
+        _run(call)

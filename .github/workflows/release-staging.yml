@@ -66,7 +66,8 @@ jobs:
           # Intentional, explicit build. No implicit build is permitted above.
           uv run --no-sync --no-build python -m build
       - name: Publish and request deployment
-        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@450f6ec753435365c6e4212cc898ee9ba560bb7d # v2
+        # Core main after l9-ci-core #224 (build context no longer passed in DOCKER_CONTEXT).
+        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@8f301c97fb81251e530f3fac52d27230ab409014
         with:
           deployment-profile: .l9/deployment.yaml
           registered-profile-path: integrations/consumers/l9-cognitive-runtime.deployment.yaml

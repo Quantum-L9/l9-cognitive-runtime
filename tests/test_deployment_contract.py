@@ -13,8 +13,8 @@ PROFILE = ROOT / ".l9/deployment.yaml"
 RELEASE = ROOT / ".github/workflows/release-staging.yml"
 # Immutable Core revision carrying the blocking policy and strict release profile.
 CORE_RELEASE_CHANNEL = "edf799046023f44dae3bb8aad9aa91247124706b"
-# Core commit pinned by release-staging.yml container-release (l9-ci-core #224).
-CONTAINER_RELEASE_SHA = "8f301c97fb81251e530f3fac52d27230ab409014"
+# Core commit pinned by release-staging.yml container-release (l9-ci-core #225).
+CONTAINER_RELEASE_SHA = "89c9bc4e5ceafab932c92a2fdca2d3739fccf95f"
 HOST = "mcp-staging.quantumaipartners.com"
 
 
@@ -81,11 +81,10 @@ def test_release_workflow_is_manual_pinned_and_source_bound() -> None:
     assert "matrix-id: release-semgrep" in text
     assert "github.ref == 'refs/heads/main'" in text
     assert "source-revision-build-arg-name: L9_SOURCE_REVISION" in text
-    assert (
-        "registered-profile-path: integrations/consumers/"
-        "l9-cognitive-runtime.deployment.yaml" in text
-    )
-    assert "DEPLOYMENT_BROKER_TOKEN" in text
+    # l9.deployment-request/v2 fixes the profile path; Core #225 dropped the input.
+    assert "registered-profile-path" not in text
+    assert "deployment-profile: .l9/deployment.yaml" in text
+    assert "deployment-broker-token: ${{ secrets.GH_TOKEN }}" in text
 
 
 def test_release_profile_allows_core_dispatch_nightly_class() -> None:

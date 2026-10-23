@@ -66,15 +66,17 @@ jobs:
           # Intentional, explicit build. No implicit build is permitted above.
           uv run --no-sync --no-build python -m build
       - name: Publish and request deployment
-        # Core main after l9-ci-core #224 (build context no longer passed in DOCKER_CONTEXT).
-        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@8f301c97fb81251e530f3fac52d27230ab409014
+        # Core main after l9-ci-core #225 (dispatches l9.deployment-request/v2
+        # as l9.release.requested.v2, the only event l9-deploy accepts).
+        uses: Quantum-L9/l9-ci-core/.github/actions/container-release@89c9bc4e5ceafab932c92a2fdca2d3739fccf95f
         with:
           deployment-profile: .l9/deployment.yaml
-          registered-profile-path: integrations/consumers/l9-cognitive-runtime.deployment.yaml
           image-repository: ghcr.io/quantum-l9/l9-cognitive-runtime
           environment: ${{ inputs.environment }}
           analysis-artifact: ${{ needs.analysis.outputs.artifact-name }}
           matrix-id: release-semgrep
           source-revision-build-arg-name: L9_SOURCE_REVISION
           github-token: ${{ github.token }}
-          deployment-broker-token: ${{ secrets.DEPLOYMENT_BROKER_TOKEN }}
+          # Organization secret; it must be able to POST repository_dispatch to
+          # Quantum-L9/l9-deploy.
+          deployment-broker-token: ${{ secrets.GH_TOKEN }}

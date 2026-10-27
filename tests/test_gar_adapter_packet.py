@@ -271,3 +271,32 @@ def test_provider_receipt_digest_mismatch_fails(valid_pack: Path) -> None:
     )
     with pytest.raises(InvalidValueError, match="digest mismatch"):
         validate_provider_acceptance(packet, acceptance)
+
+
+def test_provider_receipt_digest_binds_unsupported_obligation_ids(valid_pack: Path) -> None:
+    """RG-011a: the receipt digest binds the full acceptance it reports, so the
+    unsupported set cannot be altered after the receipt is digested."""
+    packet = _gar_packet(valid_pack)
+    required_ids = {o["obligation_id"] for o in packet["required_obligations"]}
+    unsupported = ("OBL.DELIVERY",)
+    accepted = tuple(sorted(required_ids - set(unsupported)))
+    honest = ProviderAcceptance(
+        provider_id="partial-host",
+        accepted_obligation_ids=accepted,
+        unsupported_obligation_ids=unsupported,
+        capabilities=("files",),
+        authority_limits=("read_only",),
+        receipt_digest="",
+    )
+    digest = acceptance_receipt_digest(packet, honest)
+    for altered in ((), ("OBL.DELIVERY", "OBL.NOT_REQUIRED")):
+        tampered = ProviderAcceptance(
+            provider_id=honest.provider_id,
+            accepted_obligation_ids=honest.accepted_obligation_ids,
+            unsupported_obligation_ids=altered,
+            capabilities=honest.capabilities,
+            authority_limits=honest.authority_limits,
+            receipt_digest=digest,
+        )
+        with pytest.raises(InvalidValueError, match="digest mismatch"):
+            validate_provider_acceptance(packet, tampered)

@@ -107,6 +107,33 @@ def test_build_server_refuses_an_unknown_transport(valid_pack: Path) -> None:
         build_server(valid_pack, transport="sse")
 
 
+def test_oversized_context_snapshot_is_refused_before_typing(
+    valid_pack: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RG-016b: an MCP context_snapshot over the byte ceiling fails as a
+    ToolError at ingress, before any candidate is typed (INV-CTX-007)."""
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    from l9_cognitive_runtime.models.context import ContextSnapshot, payload_item_count
+    from tests.test_context_planning_bridge import _oversized_snapshot_payload
+
+    payload = _oversized_snapshot_payload()
+    assert payload_item_count(payload) == 1
+    typed: list[dict[str, Any]] = []
+    original = ContextSnapshot.from_mapping
+
+    def _spy(cls: type[ContextSnapshot], data: dict[str, Any]) -> ContextSnapshot:
+        typed.append(data)
+        return original(data)
+
+    monkeypatch.setattr(ContextSnapshot, "from_mapping", classmethod(_spy))
+    server = build_server(valid_pack)
+    for tool in ("compile_runtime", "plan_context_requirements"):
+        with pytest.raises(ToolError, match="maximum canonical byte size"):
+            _run(server.call_tool(tool, {"mission": "e2e compile", "context_snapshot": payload}))
+    assert typed == []
+
+
 # --- resources ---------------------------------------------------------------
 
 

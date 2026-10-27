@@ -80,6 +80,23 @@ def payload_item_count(payload: dict[str, Any]) -> int:
     )
 
 
+def payload_canonical_byte_size(payload: dict[str, Any]) -> int:
+    """Canonical UTF-8 byte size of a *raw* snapshot payload, without typing it.
+
+    The measure is the one ``ContextSnapshot.canonical_byte_size`` applies in
+    the compiler preflight — ``canonical_json_bytes`` (sorted keys, no
+    insignificant whitespace) — applied to the mapping as supplied. It is
+    independent of file or wire formatting, and for a payload in canonical form
+    (what ``to_canonical_dict`` emits) it equals the preflight measure exactly,
+    so the ingress bound never refuses such a payload that the preflight would
+    accept. A payload is measured as supplied: one that typing would shrink
+    (duplicate references collapsed, lax coercions) is bounded by what the host
+    sent, which is the input INV-CTX-007 bounds. Hosts apply it after
+    ``payload_item_count`` and before ``ContextSnapshot.from_mapping``.
+    """
+    return len(canonical_json_bytes(payload))
+
+
 class ContextKind(StrEnum):
     RELEVANT_ENTITY = "relevant_entity"
     REPOSITORY_STATE = "repository_state"
@@ -1168,5 +1185,6 @@ __all__ = [
     "authority_semantic_key",
     "canonical_cost",
     "derive_id",
+    "payload_canonical_byte_size",
     "payload_item_count",
 ]

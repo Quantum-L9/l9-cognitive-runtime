@@ -27,8 +27,10 @@ from mcp.server.mcpserver.exceptions import ToolError
 from l9_cognitive_runtime import __version__
 from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore, RunNotFoundError
 from l9_cognitive_runtime.models.context import (
+    SNAPSHOT_MAX_BYTES,
     SNAPSHOT_MAX_ITEMS,
     ContextSnapshot,
+    payload_canonical_byte_size,
     payload_item_count,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
@@ -119,6 +121,15 @@ def parse_context_snapshot(payload: dict[str, Any] | None) -> ContextSnapshot | 
             "context_snapshot exceeds the maximum item count",
             path="context_snapshot",
             details={"items": count, "max_items": SNAPSHOT_MAX_ITEMS},
+        )
+    # Then the byte ceiling, with the preflight's own canonical measure, so an
+    # oversized payload is refused before any candidate is typed and hashed.
+    size = payload_canonical_byte_size(payload)
+    if size > SNAPSHOT_MAX_BYTES:
+        raise InvalidValueError(
+            "context_snapshot exceeds the maximum canonical byte size",
+            path="context_snapshot",
+            details={"bytes": size, "max_bytes": SNAPSHOT_MAX_BYTES},
         )
     try:
         return ContextSnapshot.from_mapping(payload)

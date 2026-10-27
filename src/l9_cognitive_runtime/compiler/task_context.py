@@ -1271,11 +1271,13 @@ def _compile_authority(
     sources = _requirement_sources(intent, activation, kernels)
     required: list[AuthorityRequirement] = []
 
-    def need(authority_id: str, reason: str, action_scope: list[str]) -> None:
+    def need(
+        authority_id: str, reason: str, action_scope: list[str], subject_ref: str | None = None
+    ) -> None:
         required.append(
             AuthorityRequirement(
                 authority_id=authority_id,
-                subject_ref=None,
+                subject_ref=subject_ref,
                 action_scope=action_scope,
                 reason=reason,
                 source_refs=sources,
@@ -1283,11 +1285,13 @@ def _compile_authority(
         )
 
     if intent.objective.realization_mode.value == "MUTATION":
-        need(
-            "repository_write",
-            "realization mode MUTATION writes to the workspace",
-            list(scope.target_refs),
-        )
+        for subject_ref, targets in _repository_subjects(scope, selected):
+            need(
+                "repository_write",
+                "realization mode MUTATION writes to the workspace",
+                targets,
+                subject_ref,
+            )
     if intent.objective.delivery_required:
         need(
             "delivery",
@@ -1340,6 +1344,40 @@ def _compile_authority(
         ),
         unknowns,
     )
+
+
+def _repository_subjects(
+    scope: TaskScope, selected: Sequence[ContextItemIdentity]
+) -> list[tuple[str | None, list[str]]]:
+    """The subjects a repository write is needed over, with their target refs.
+
+    Decision D-02 option A (INV-CTX-022): the subject is the ``repository_id``
+    of the governed ``RepositoryState`` selected for the targets — a governed
+    fact names a target as its subject or in its scope — and the targets stay
+    the action scope. One requirement per repository, in canonical order, so
+    identity is independent of input order (INV-CTX-012).
+
+    The subject derives only from governed snapshot items, never from caller
+    context (INV-CTX-006). Targets no governed repository fact names stay in a
+    subject-less requirement: only a grant leaving the subject unstated
+    contains it, so a missing identity is never read as a grant.
+    """
+    targets = set(scope.target_refs)
+    by_repository: dict[str, set[str]] = {}
+    for item in selected:
+        if not isinstance(item, RepositoryState) or item.authority_level not in GOVERNED_LEVELS:
+            continue
+        named = targets & ({item.subject_ref} | set(item.scope_refs))
+        if named:
+            by_repository.setdefault(item.repository_id, set()).update(named)
+    subjects: list[tuple[str | None, list[str]]] = [
+        (repository_id, sorted(by_repository[repository_id]))
+        for repository_id in sorted(by_repository)
+    ]
+    unnamed = targets - set().union(*by_repository.values())
+    if unnamed or not subjects:
+        subjects.append((None, sorted(unnamed)))
+    return subjects
 
 
 def _effective_authority_order(

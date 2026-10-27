@@ -65,6 +65,7 @@ from l9_cognitive_runtime.models.context import (
     GovernedConstraint,
     MissingPolicy,
     PriorDecision,
+    RepositoryState,
     UnknownMateriality,
     UnknownReasonCode,
     authority_semantic_key,
@@ -846,6 +847,164 @@ def test_rg001d_governed_law_with_precedence_still_defines_the_order(
     authority = _compile(valid_pack, MUTATION_MISSION, snapshot).task_context.authority
     assert authority.effective_order_source is EffectiveAuthorityOrderSource.GOVERNED_CONTEXT
     assert authority.effective_order == ["governed-law"]
+
+
+# ---------------------------------------------------------------------------
+# INV-CTX-022, decision D-02 option A: a compiler-derived authority requirement
+# names the governed repository it is needed over; target refs stay its scope.
+# ---------------------------------------------------------------------------
+
+TOKENIZER = "src/tokenizer.py"
+GREETER = "src/greeter.py"
+
+
+def repository_fact(
+    repository_id: str,
+    target: str,
+    *,
+    authority: AuthorityLevel = AuthorityLevel.GOVERNED_VERIFIED,
+) -> RepositoryState:
+    return RepositoryState(
+        semantic_key=f"{repository_id}:{target}:exists",
+        authority_level=authority,
+        source_ref=(
+            source(f"repo-{repository_id}")
+            if authority in GOVERNED_LEVELS
+            else unprovenanced(f"repo-{repository_id}")
+        ),
+        scope_mode=ContextScopeMode.SCOPED,
+        scope_refs=[target],
+        repository_id=repository_id,
+        revision="rev-1",
+        subject_ref=target,
+        fact_type="exists",
+        value=True,
+    )
+
+
+def repository_grant(subject_ref: str | None, action_scope: list[str]) -> AuthorityFact:
+    return AuthorityFact(
+        semantic_key=authority_semantic_key("repository_write", subject_ref, action_scope),
+        authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+        source_ref=source("grants"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id="repository_write",
+        state="granted",
+        subject_ref=subject_ref,
+        action_scope=action_scope,
+    )
+
+
+def _write_requirements(context: Any) -> list[AuthorityRequirement]:
+    return [r for r in context.authority.required if r.authority_id == "repository_write"]
+
+
+def test_rg002a_a_grant_over_the_governed_repository_closes_the_gap(
+    valid_pack: Path,
+) -> None:
+    snapshot = ContextSnapshot(
+        repository_state=[repository_fact("repo-a", TOKENIZER)],
+        authority_facts=[repository_grant("repo-a", [TOKENIZER])],
+    )
+    context = _compile(valid_pack, MUTATION_MISSION, snapshot, target_refs=[TOKENIZER]).task_context
+    required = _write_requirements(context)
+    assert [(r.subject_ref, r.action_scope) for r in required] == [("repo-a", [TOKENIZER])]
+    assert not _authority_gap(context, "repository_write")
+
+
+def test_rg002a_each_repository_gets_its_own_deterministic_requirement(
+    valid_pack: Path,
+) -> None:
+    facts = [repository_fact("repo-a", TOKENIZER), repository_fact("repo-b", GREETER)]
+    grant = repository_grant("repo-a", [TOKENIZER])
+    contexts = [
+        _compile(
+            valid_pack,
+            MUTATION_MISSION,
+            ContextSnapshot(repository_state=ordering, authority_facts=[grant]),
+            target_refs=targets,
+        ).task_context
+        for ordering, targets in [
+            (facts, [TOKENIZER, GREETER]),
+            (list(reversed(facts)), [GREETER, TOKENIZER]),
+        ]
+    ]
+    first, second = contexts
+    assert first.authority.required == second.authority.required
+    assert first.sha256() == second.sha256()
+    assert sorted((r.subject_ref, r.action_scope) for r in _write_requirements(first)) == [
+        ("repo-a", [TOKENIZER]),
+        ("repo-b", [GREETER]),
+    ]
+    # repo-a is covered; the grant over repo-a does not reach repo-b.
+    gaps = _authority_gap(first, "repository_write")
+    assert [(g.details["subject_ref"], g.details["state"]) for g in gaps] == [
+        ("repo-b", "insufficient_scope")
+    ]
+    assert gaps[0].materiality is UnknownMateriality.BLOCKING
+
+
+def test_rg002b_a_grant_over_another_repository_is_insufficient_scope(
+    valid_pack: Path,
+) -> None:
+    snapshot = ContextSnapshot(
+        repository_state=[repository_fact("repo-a", TOKENIZER)],
+        authority_facts=[repository_grant("repo-b", [TOKENIZER])],
+    )
+    context = _compile(valid_pack, MUTATION_MISSION, snapshot, target_refs=[TOKENIZER]).task_context
+    gap = _authority_gap(context, "repository_write")
+    assert len(gap) == 1
+    assert gap[0].details["state"] == "insufficient_scope"
+    assert gap[0].details["subject_ref"] == "repo-a"
+    assert gap[0].materiality is UnknownMateriality.BLOCKING
+    assert "insufficient_scope" in AUTHORITY_PROVEN_NEGATIVE
+
+
+@pytest.mark.parametrize("identity", ["none", "informative_state", "caller_hint"])
+def test_rg002c_without_a_governed_repository_identity_nothing_is_granted(
+    valid_pack: Path, identity: str
+) -> None:
+    """Adopted D-02 behaviour: the requirement stays subject-less.
+
+    No subject is invented — not from non-governed repository facts, not from
+    caller hints (INV-CTX-006). A subject-less requirement is contained only by
+    a grant that leaves the subject unstated, so a grant naming any subject is a
+    blocking proven negative, and no grant at all stays an explicit absence.
+    """
+    states = (
+        [repository_fact("repo-a", TOKENIZER, authority=AuthorityLevel.INFORMATIVE)]
+        if identity == "informative_state"
+        else []
+    )
+    hints: dict[str, Any] = {"target_refs": [TOKENIZER]}
+    if identity == "caller_hint":
+        hints["repository_id"] = "repo-a"
+
+    granted = _compile(
+        valid_pack,
+        MUTATION_MISSION,
+        ContextSnapshot(
+            repository_state=states, authority_facts=[repository_grant("repo-a", [TOKENIZER])]
+        ),
+        **hints,
+    ).task_context
+    assert [(r.subject_ref, r.action_scope) for r in _write_requirements(granted)] == [
+        (None, [TOKENIZER])
+    ]
+    assert granted.authority.granted  # the grant is visible ...
+    gap = _authority_gap(granted, "repository_write")
+    assert len(gap) == 1  # ... but it never closes the subject-less gap
+    assert gap[0].details["state"] == "insufficient_scope"
+    assert gap[0].materiality is UnknownMateriality.BLOCKING
+
+    ungranted = _compile(
+        valid_pack, MUTATION_MISSION, ContextSnapshot(repository_state=states), **hints
+    ).task_context
+    gap = _authority_gap(ungranted, "repository_write")
+    assert len(gap) == 1
+    assert gap[0].details["subject_ref"] is None
+    assert gap[0].details["state"] == "absent"
+    assert gap[0].materiality is UnknownMateriality.NON_BLOCKING
 
 
 # ---------------------------------------------------------------------------

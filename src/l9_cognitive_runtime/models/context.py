@@ -37,7 +37,7 @@ from l9_cognitive_runtime.models.canonical import canonical_json_bytes, sha256_d
 # Semantics version of the canonical context compiler. Bump this whenever the
 # canonical compiled-context semantics change. It is deliberately explicit and
 # installed-artifact safe: never derived from Git (INV-CTX-032).
-CONTEXT_COMPILER_SEMANTICS_VERSION = "1.2.0"
+CONTEXT_COMPILER_SEMANTICS_VERSION = "1.3.0"
 CONTEXT_PLAN_SCHEMA_VERSION: Final = "l9.context-plan/v1"
 
 # Finite input ceilings for an injected governed snapshot (INV-CTX-007). These

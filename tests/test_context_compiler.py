@@ -2112,6 +2112,91 @@ def test_a_global_byte_witness_with_altered_observed_bytes_is_rejected(
 
 
 # ---------------------------------------------------------------------------
+# F-007: a conflict unknown disposes only its own semantic key.
+# ---------------------------------------------------------------------------
+
+
+def _required_keyed(**overrides: Any) -> ContextRequirement:
+    payload: dict[str, Any] = {
+        "coverage_mode": CoverageMode.SEMANTIC_KEYS,
+        "required_semantic_keys": ["LAW_1", "LAW_2"],
+        "min_items": 2,
+        "required": True,
+        "missing_policy": MissingPolicy.PRESERVE_UNKNOWN,
+    }
+    payload.update(overrides)
+    return _requirement(**payload)
+
+
+def _without_missing(context: CompiledTaskContext) -> CompiledTaskContext:
+    kept = [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is not UnknownReasonCode.MISSING_REQUIRED_CONTEXT
+    ]
+    assert kept != context.unresolved_unknowns
+    return context.model_copy(update={"unresolved_unknowns": kept})
+
+
+def test_a_conflict_on_one_key_does_not_dispose_another_absent_key() -> None:
+    """RG-007a: K1 conflicted, K2 absent, the MISSING unknown suppressed."""
+    requirement = _required_keyed()
+    context, plan, resolution = _select_requirement(requirement, tuple(_contested("LAW_1")))
+    assert {
+        (unknown.reason_code, unknown.semantic_key) for unknown in context.unresolved_unknowns
+    } == {
+        (UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS, "LAW_1"),
+        (UnknownReasonCode.MISSING_REQUIRED_CONTEXT, None),
+    }
+    with pytest.raises(InvalidValueError, match="per_requirement_and_global_budgets"):
+        ContextClosureValidator().validate(
+            context=_without_missing(context),
+            requirement_plan=plan,
+            resolution=resolution,
+            kernels=[],
+        )
+
+
+def test_a_conflict_plus_a_missing_unknown_for_the_absent_key_passes() -> None:
+    """RG-007b: the discriminator — the compiler's own disposition is legal."""
+    requirement = _required_keyed()
+    context, plan, resolution = _select_requirement(requirement, tuple(_contested("LAW_1")))
+    missing = [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.MISSING_REQUIRED_CONTEXT
+    ]
+    assert [unknown.details["missing_semantic_keys"] for unknown in missing] == [["LAW_2"]]
+    report = ContextClosureValidator().validate(
+        context=context, requirement_plan=plan, resolution=resolution, kernels=[]
+    )
+    assert report.passed
+
+
+def test_a_conflict_does_not_dispose_a_min_items_shortfall_beyond_its_key() -> None:
+    """One conflicted key accounts for one item, not for the whole floor."""
+    requirement = _requirement(
+        coverage_mode=CoverageMode.MINIMUM,
+        min_items=2,
+        required=True,
+        missing_policy=MissingPolicy.PRESERVE_UNKNOWN,
+    )
+    context, plan, resolution = _select_requirement(requirement, tuple(_contested("LAW_1")))
+    assert (
+        ContextClosureValidator()
+        .validate(context=context, requirement_plan=plan, resolution=resolution, kernels=[])
+        .passed
+    )
+    with pytest.raises(InvalidValueError, match="per_requirement_and_global_budgets"):
+        ContextClosureValidator().validate(
+            context=_without_missing(context),
+            requirement_plan=plan,
+            resolution=resolution,
+            kernels=[],
+        )
+
+
+# ---------------------------------------------------------------------------
 # R21: a supersession-derived unknown names who caused it.
 # ---------------------------------------------------------------------------
 

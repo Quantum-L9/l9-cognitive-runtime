@@ -87,32 +87,18 @@ def load_yaml_mapping(text: str, *, source: str = "<yaml>") -> dict[str, Any]:
     return data
 
 
-def _recognized_input_root(path: Path) -> Path:
-    """Find the nearest repository or verified-pack boundary for an input file."""
-    for parent in (path.parent, *path.parents):
-        if (parent / "MANIFEST.json").is_file() or (parent / "pyproject.toml").is_file():
-            return parent.resolve()
-    raise InvalidValueError(
-        "input file is outside a recognized repository or runtime pack",
-        path=str(path),
-    )
-
-
-def confined_input_file(path: Path | str, *, allow_root: Path | None = None) -> Path:
+def confined_input_file(path: Path | str, *, allow_root: Path) -> Path:
     """Resolve an input file and prove it stays beneath an authority root.
 
     File-bearing CLI and compatibility inputs are untrusted boundary data. An
     absolute path, ``..`` segment, or symlink must not turn a repository/pack
-    read into arbitrary filesystem access. Callers may provide the authority
-    root explicitly; otherwise the nearest repository or verified-pack marker
-    becomes the root. Inputs outside either boundary fail closed.
+    read into arbitrary filesystem access. The authority root is always the
+    caller's trusted root: it is never derived from the input, because a root
+    found by walking up from the target lets any directory carrying a marker
+    file vouch for itself. Inputs outside ``allow_root`` fail closed.
     """
     candidate = Path(path).expanduser().resolve()
-    root = (
-        allow_root.expanduser().resolve()
-        if allow_root is not None
-        else _recognized_input_root(candidate)
-    )
+    root = allow_root.expanduser().resolve()
     try:
         candidate.relative_to(root)
     except ValueError as exc:
@@ -126,7 +112,7 @@ def confined_input_file(path: Path | str, *, allow_root: Path | None = None) -> 
     return candidate
 
 
-def load_yaml_file(path: Path, *, allow_root: Path | None = None) -> dict[str, Any]:
+def load_yaml_file(path: Path, *, allow_root: Path) -> dict[str, Any]:
     resolved = confined_input_file(path, allow_root=allow_root)
     return load_yaml_mapping(resolved.read_text(encoding="utf-8"), source=str(resolved))
 

@@ -54,14 +54,14 @@ def test_valid_yaml_loads() -> None:
     assert data["a"] == 1
 
 
-def test_yaml_file_read_is_confined_to_recognized_root(tmp_path: Path) -> None:
+def test_yaml_file_read_is_confined_to_the_caller_root(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / "pyproject.toml").write_text("[project]\nname='fixture'\n", encoding="utf-8")
     config = repo / "config.yaml"
     config.write_text("safe: true\n", encoding="utf-8")
 
-    assert load_yaml_file(config) == {"safe": True}
+    assert load_yaml_file(config, allow_root=repo) == {"safe": True}
 
 
 def test_confined_input_rejects_parent_escape_and_symlink(tmp_path: Path) -> None:
@@ -80,8 +80,10 @@ def test_confined_input_rejects_parent_escape_and_symlink(tmp_path: Path) -> Non
         confined_input_file(link, allow_root=repo)
 
 
-def test_yaml_file_without_repository_or_pack_boundary_fails_closed(tmp_path: Path) -> None:
+def test_yaml_file_outside_the_trusted_root_fails_closed(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
     orphan = tmp_path / "orphan.yaml"
     orphan.write_text("unsafe: true\n", encoding="utf-8")
-    with pytest.raises(InvalidValueError, match="recognized repository or runtime pack"):
-        load_yaml_file(orphan)
+    with pytest.raises(InvalidValueError, match="escapes allow_root"):
+        load_yaml_file(orphan, allow_root=repo)

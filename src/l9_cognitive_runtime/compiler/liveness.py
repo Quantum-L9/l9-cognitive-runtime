@@ -349,20 +349,29 @@ def validate_runtime_semantic_liveness(
         {"context": len(task_context.selected_kernels), "downstream": len(kernels)},
     )
     # 21. A contradiction that reached the context is visible as an Unknown and
-    # never also selected.
-    conflict_keys = {
-        unknown.semantic_key
-        for unknown in task_context.unresolved_unknowns
-        if unknown.reason_code is UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS
-        and unknown.semantic_key
-    }
+    # never also selected. Semantic keys are unique only within a kind, so a
+    # conflict is keyed by (context_kind, semantic_key); a conflict whose kind
+    # cannot be read fails closed against a selected item of any kind.
+    conflict_keys: set[tuple[str | None, str]] = set()
+    for unknown in task_context.unresolved_unknowns:
+        if (
+            unknown.reason_code is UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS
+            and unknown.semantic_key
+        ):
+            kind = unknown.details.get("context_kind")
+            conflict_keys.add((str(kind) if kind else None, unknown.semantic_key))
     selected_conflicts = sorted(
-        {item.semantic_key for item in selected if item.semantic_key in conflict_keys}
+        {
+            (item.context_kind.value, item.semantic_key)
+            for item in selected
+            if (item.context_kind.value, item.semantic_key) in conflict_keys
+            or (None, item.semantic_key) in conflict_keys
+        }
     )
     check(
         "no_unresolved_equal_authority_conflict_is_silently_selected",
         not selected_conflicts,
-        {"semantic_keys": selected_conflicts},
+        {"conflicts": [{"context_kind": k, "semantic_key": s} for k, s in selected_conflicts]},
     )
     # 22. INV-CTX-029: the context digest is part of runtime semantic identity.
     check(

@@ -109,6 +109,25 @@ def _read_source(relative: str, *, root: Path, pack: RuntimePack | None) -> byte
     return confined_input_file(root / relative, allow_root=root).read_bytes()
 
 
+def _unverified_root(
+    root: Path, mission: str, task_type: str | None
+) -> tuple[Path, CompileRequest, PackProvenance]:
+    """Request and labelled-unverified provenance for a bare repository root."""
+    resolved = root.resolve()
+    request = (
+        CompileRequest(mission=mission, pack_root=resolved, task_type=task_type)
+        if task_type is not None
+        else CompileRequest(mission=mission, pack_root=resolved)
+    )
+    provenance = PackProvenance(
+        pack_ref=str(resolved),
+        root=resolved,
+        manifest_digest=UNVERIFIED_ROOT_MANIFEST,
+        file_digests={},
+    )
+    return resolved, request, provenance
+
+
 def _package_version() -> str:
     """The canonical compiler package version (INV-CTX-032).
 
@@ -214,18 +233,7 @@ class CompilePipeline:
         handed a plan rather than routing one. The plan replaces routing; it
         replaces nothing else.
         """
-        resolved = root.resolve()
-        request = (
-            CompileRequest(mission=mission, pack_root=resolved, task_type=task_type)
-            if task_type is not None
-            else CompileRequest(mission=mission, pack_root=resolved)
-        )
-        provenance = PackProvenance(
-            pack_ref=str(resolved),
-            root=resolved,
-            manifest_digest=UNVERIFIED_ROOT_MANIFEST,
-            file_digests={},
-        )
+        resolved, request, provenance = _unverified_root(root, mission, task_type)
         return self._compile(
             request=request,
             pack=None,
@@ -236,6 +244,32 @@ class CompilePipeline:
             activation_plan=activation_plan,
             expected_context_plan_id=expected_context_plan_id,
         )
+
+    def plan_activation_from_root(
+        self,
+        root: Path,
+        mission: str,
+        *,
+        include_terminal: bool = False,
+    ) -> ActivationPlan:
+        """PLAN-only projection of the activation plan for the planner CLI.
+
+        Returns the activation plan of the same semantic prefix ``compile`` and
+        ``plan_context`` run (INV-CTX-045), so an unblocked plan is exactly the
+        plan a full compile uses. It exists because execution compilation
+        rejects a plan with blockers: the planner CLI must still be able to
+        show such a plan and exit non-zero. It compiles no execution semantics
+        and yields no bundle, so nothing executable bypasses context closure.
+        """
+        resolved, request, provenance = _unverified_root(root, mission, None)
+        return self._prepare_context_plan(
+            request=request,
+            pack=None,
+            root=resolved,
+            provenance=provenance,
+            context_snapshot=None,
+            include_terminal=include_terminal,
+        ).activation
 
     def _compile(
         self,

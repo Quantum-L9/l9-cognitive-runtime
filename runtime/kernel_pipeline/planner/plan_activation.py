@@ -4,9 +4,14 @@
 All routing, phase ordering, terminal gating, and kernel selection live in
 ``l9_cognitive_runtime.compiler.activation.ActivationPlanner``. This script
 does not sequence compiler stages itself (INV-CTX-002): it delegates to
-``CompilePipeline.compile_from_root`` and projects the activation plan out of
-the result, then emits KERNEL_ACTIVATION_PLAN.yaml content. It does not execute
-kernels.
+``CompilePipeline.plan_activation_from_root``, the PLAN view of the spine's
+shared semantic prefix, then emits KERNEL_ACTIVATION_PLAN.yaml content. It does
+not execute kernels.
+
+The projection is the prefix rather than a full compile because execution
+compilation rejects a plan with blockers; projecting from a full compile would
+make the blocked plan — and this CLI's exit-1 branch — unreachable. An
+unblocked plan is identical to the one a full compile uses.
 
 Composing ``ObjectiveDeriver`` and ``ActivationPlanner`` here would be a second
 semantic composition site, and it would also route with no governed discovery
@@ -35,12 +40,12 @@ RULES_PATH = ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RU
 
 def build_plan(task: str, include_terminal: bool = False) -> dict[str, Any]:
     """Build an activation plan for a task by projecting the canonical spine."""
-    result = CompilePipeline().compile_from_root(
+    plan = CompilePipeline().plan_activation_from_root(
         ROOT,
         task,
         include_terminal=include_terminal,
     )
-    return result.plan.to_dict()
+    return plan.to_dict()
 
 
 def main() -> int:

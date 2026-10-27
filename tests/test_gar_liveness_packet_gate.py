@@ -11,6 +11,7 @@ not run (a false-completion signal the contract forbids).
 from __future__ import annotations
 
 import copy
+import dataclasses
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ from l9_cognitive_runtime.compiler.liveness import (
     validate_runtime_semantic_liveness,
 )
 from l9_cognitive_runtime.compiler.objective import ObjectiveDeriver
+from l9_cognitive_runtime.compiler.pipeline import CompilePipeline
 from l9_cognitive_runtime.models.context import (
     ApplicableLaw,
     AuthorityLevel,
@@ -38,7 +40,9 @@ from l9_cognitive_runtime.models.context import (
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 from l9_cognitive_runtime.types import RuntimeBundle
-from tests.conftest import discovery_for, governed_signal_snapshot
+from tests.conftest import discovery_for, empty_discovery, governed_signal_snapshot
+
+ROOT = Path(__file__).resolve().parents[1]
 
 MISSION = "Add safe retry behavior to this asynchronous payment worker."
 # INV-CTX-014: the same architecture signals, proven as governed constraints
@@ -250,3 +254,39 @@ def test_conflict_unknown_without_context_kind_matches_every_kind(valid_pack: Pa
             snapshot=snapshot,
             task_context=bundle.task_context.model_copy(update={"unresolved_unknowns": kindless}),
         )
+
+
+# ---------------------------------------------------------------------------
+# F-006: `every_required_execution_obligation_has_realization_path` compared
+# required pending obligations with graph.obligation_refs, which the graph
+# copies from the same contract — so it held for any contract. The realized
+# set is now what the graph nodes actually carry.
+# ---------------------------------------------------------------------------
+
+
+def test_supplied_plan_without_p0_fails_realization_path_liveness() -> None:
+    """RG-006a: an activation plan that drops the only phase realizing an
+    obligation fails closed, naming the obligation no node carries."""
+    mission = "compile a kernel contract"
+    intent = ObjectiveDeriver().derive(CompileRequest(mission=mission))
+    plan = ActivationPlanner().plan(
+        intent,
+        rules_path=ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
+        pipeline_path=ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        discovery=empty_discovery(intent),
+    )
+    assert plan.matched_route == "prompt_or_kernel_compilation"
+    assert "P0_UNPACK" in plan.phase_sequence
+    # The router's own plan realizes every obligation (control).
+    CompilePipeline().compile_from_root(ROOT, plan.task_summary, activation_plan=plan)
+
+    without_p0 = dataclasses.replace(
+        plan, phase_sequence=[phase for phase in plan.phase_sequence if phase != "P0_UNPACK"]
+    )
+    with pytest.raises(
+        InvalidValueError, match="every_required_execution_obligation_has_realization_path"
+    ) as excinfo:
+        CompilePipeline().compile_from_root(
+            ROOT, without_p0.task_summary, activation_plan=without_p0
+        )
+    assert excinfo.value.details["missing"] == ["OBL.EPISTEMIC.REALIZATION_RESOLUTION"]

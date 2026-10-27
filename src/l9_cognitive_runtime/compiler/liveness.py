@@ -205,11 +205,15 @@ def validate_runtime_semantic_liveness(
         all(output.consumer_refs for _, output in required_outputs),
         {},
     )
-    # 7. Every required execution obligation has a graph realization path.
+    # 7. Every required execution obligation has a graph realization path: a
+    # node that actually carries it. Not graph.obligation_refs — the graph
+    # copies that list from this same contract, so comparing against it is a
+    # tautology over the declaration this check exists to verify.
+    node_obligations = {ref for node in graph.nodes for ref in node.obligation_refs}
     check(
         "every_required_execution_obligation_has_realization_path",
-        required_pending <= set(graph.obligation_refs),
-        {"missing": sorted(required_pending - set(graph.obligation_refs))},
+        required_pending <= node_obligations,
+        {"missing": sorted(required_pending - node_obligations)},
     )
     # 8. Every required validation obligation has an evidence path; GAR
     # architecture obligations reach validation too (DONE-010).

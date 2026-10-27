@@ -16,8 +16,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+import yaml
+
+from l9_cognitive_runtime.compiler.pipeline import CompilePipeline
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 from l9_cognitive_runtime.types import RuntimeBundle
+
+ROOT = Path(__file__).resolve().parents[1]
+ROUTES: dict[str, dict[str, list[str]]] = yaml.safe_load(
+    (ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml").read_text(
+        encoding="utf-8"
+    )
+)["task_routes"]
 
 
 def _compile(valid_pack: Path, mission: str) -> RuntimeBundle:
@@ -40,6 +51,31 @@ def test_graph_kernel_refs_originate_from_contract(valid_pack: Path) -> None:
 def test_required_obligations_have_node_realization_path(valid_pack: Path) -> None:
     bundle = _compile(valid_pack, "Audit and fix this repository.")
     required = {o.obligation_id for o in bundle.execution.obligations if o.required}
+    realized = {ref for node in bundle.graph.nodes for ref in node.obligation_refs}
+    assert required <= realized
+
+
+@pytest.mark.parametrize("include_terminal", [False, True])
+@pytest.mark.parametrize("route", sorted(ROUTES))
+def test_router_plan_for_every_route_realizes_every_obligation_on_a_node(
+    route: str, include_terminal: bool
+) -> None:
+    """RG-006b: liveness now demands a node for every required pending
+    obligation; every router-produced plan must still meet it."""
+    for token in ROUTES[route]["match_any"]:
+        result = CompilePipeline().compile_from_root(
+            ROOT, f"Representative {token} mission", include_terminal=include_terminal
+        )
+        if result.plan.matched_route == route:
+            break
+    else:
+        pytest.fail(f"no match_any token routes to {route}")
+    bundle = result.bundle
+    required = {
+        o.obligation_id
+        for o in bundle.execution.obligations
+        if o.required and o.disposition.value == "PENDING"
+    }
     realized = {ref for node in bundle.graph.nodes for ref in node.obligation_refs}
     assert required <= realized
 

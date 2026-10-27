@@ -37,7 +37,7 @@ from l9_cognitive_runtime.models.canonical import canonical_json_bytes, sha256_d
 # Semantics version of the canonical context compiler. Bump this whenever the
 # canonical compiled-context semantics change. It is deliberately explicit and
 # installed-artifact safe: never derived from Git (INV-CTX-032).
-CONTEXT_COMPILER_SEMANTICS_VERSION = "1.1.0"
+CONTEXT_COMPILER_SEMANTICS_VERSION = "1.2.0"
 CONTEXT_PLAN_SCHEMA_VERSION: Final = "l9.context-plan/v1"
 
 # Finite input ceilings for an injected governed snapshot (INV-CTX-007). These
@@ -117,6 +117,12 @@ AUTHORITY_RANK: dict[AuthorityLevel, int] = {
 GOVERNED_LEVELS = frozenset(
     {AuthorityLevel.GOVERNED_AUTHORITATIVE, AuthorityLevel.GOVERNED_VERIFIED}
 )
+
+# Kinds whose facts can close an authority or capability gap. Only governed
+# material may prove a grant or an availability (INV-CTX-021/022, decision D-01
+# option B), so these kinds are eligible only at a governed level, whatever
+# floor a requirement — a kernel-declared need included — advertises.
+GOVERNED_ONLY_KINDS = frozenset({ContextKind.AUTHORITY_FACT, ContextKind.CAPABILITY_FACT})
 
 
 class DecisionStatus(StrEnum):
@@ -1118,6 +1124,7 @@ __all__ = [
     "CONTEXT_COMPILER_SEMANTICS_VERSION",
     "CONTEXT_PLAN_SCHEMA_VERSION",
     "GOVERNED_LEVELS",
+    "GOVERNED_ONLY_KINDS",
     "SNAPSHOT_BUCKETS",
     "SNAPSHOT_MAX_BYTES",
     "SNAPSHOT_MAX_ITEMS",

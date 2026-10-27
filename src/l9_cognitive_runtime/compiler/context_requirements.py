@@ -40,6 +40,8 @@ from l9_cognitive_runtime.compiler.activation import ActivationPlan
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelContextNeed
 from l9_cognitive_runtime.compiler.task_scope import scope_reference_set
 from l9_cognitive_runtime.models.context import (
+    AUTHORITY_RANK,
+    GOVERNED_ONLY_KINDS,
     AuthorityLevel,
     ContextBudget,
     ContextKind,
@@ -95,6 +97,21 @@ MEMORY_MIN_ITEMS = 3
 PER_REQUIREMENT_MAX_BYTES = 65_536
 
 
+def _authority_floor(kind: ContextKind, minimum: AuthorityLevel) -> AuthorityLevel:
+    """The floor a requirement of this kind advertises.
+
+    Authority and capability facts close gaps, so only governed material is
+    eligible for them (INV-CTX-021/022, D-01 option B): a weaker declared floor
+    is raised to ``governed_verified``. ``matches_requirement`` enforces the
+    same floor, so this keeps the advertised plan honest rather than being the
+    only guard.
+    """
+    floor = AuthorityLevel.GOVERNED_VERIFIED
+    if kind in GOVERNED_ONLY_KINDS and AUTHORITY_RANK[minimum] > AUTHORITY_RANK[floor]:
+        return floor
+    return minimum
+
+
 def _need_signature(need: KernelContextNeed) -> tuple[str, bool, str, str, str, tuple[str, ...]]:
     """Semantic identity of a need, so identical needs merge into one requirement."""
     return (
@@ -102,7 +119,7 @@ def _need_signature(need: KernelContextNeed) -> tuple[str, bool, str, str, str, 
         need.required,
         need.reason,
         need.coverage.value,
-        need.minimum_authority.value,
+        _authority_floor(need.context_kind, need.minimum_authority).value,
         need.required_semantic_keys,
     )
 
@@ -266,6 +283,7 @@ class ContextRequirementPlanner:
                 missing_policy=MissingPolicy.OPTIONAL,
                 scope_mode=authority_mode,
                 scope_refs=authority_refs,
+                minimum_authority=AuthorityLevel.GOVERNED_VERIFIED,
             )
         )
 
@@ -277,6 +295,7 @@ class ContextRequirementPlanner:
                 coverage_mode=CoverageMode.ALL_ELIGIBLE,
                 min_items=0,
                 missing_policy=MissingPolicy.OPTIONAL,
+                minimum_authority=AuthorityLevel.GOVERNED_VERIFIED,
             )
         )
 
@@ -354,7 +373,7 @@ class ContextRequirementPlanner:
                     ),
                     scope_mode=scope_mode,
                     scope_refs=scoped_refs if scope_mode is ContextScopeMode.SCOPED else [],
-                    minimum_authority=need.minimum_authority,
+                    minimum_authority=_authority_floor(need.context_kind, need.minimum_authority),
                     priority=PRIORITY[need.context_kind] + KERNEL_NEED_PRIORITY_OFFSET,
                     required_semantic_keys=list(need.required_semantic_keys),
                     max_items=max(PER_REQUIREMENT_MAX_ITEMS, min_items),

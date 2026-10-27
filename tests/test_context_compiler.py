@@ -21,6 +21,7 @@ from l9_cognitive_runtime.compiler.context_closure import (
     ContextClosureValidator,
 )
 from l9_cognitive_runtime.compiler.context_requirements import ContextRequirementPlanner
+from l9_cognitive_runtime.compiler.execution import AUTHORITY_ORDER
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelContextNeed
 from l9_cognitive_runtime.compiler.task_context import (
     AUTHORITY_PROVEN_NEGATIVE,
@@ -36,6 +37,7 @@ from l9_cognitive_runtime.compiler.task_scope import TaskScopeCompiler
 from l9_cognitive_runtime.models.context import (
     APPLICABILITY_FIELDS,
     CLAIM_EXCLUDED_FIELDS,
+    GOVERNED_LEVELS,
     ApplicableLaw,
     AuthorityContext,
     AuthorityFact,
@@ -668,6 +670,182 @@ def test_a_limit_without_a_grant_is_blocking(valid_pack: Path) -> None:
     assert limited
     assert limited[0].materiality is UnknownMateriality.BLOCKING
     assert limited[0].details["state"] == "limited_without_grant"
+
+
+# ---------------------------------------------------------------------------
+# INV-CTX-021 / INV-CTX-022, decision D-01 option B: only governed facts may
+# close an authority or capability gap, or define a governed effective order.
+# ---------------------------------------------------------------------------
+
+
+def unprovenanced(source_id: str) -> ContextSourceRef:
+    """A source with no immutable coordinate: only non-governed tiers accept it."""
+    return ContextSourceRef(source_id=source_id, source_kind="host", locator=f"host://{source_id}")
+
+
+def _authority_gap(context: Any, authority_id: str) -> list[ContextUnknown]:
+    return [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.MISSING_AUTHORITY
+        and unknown.details.get("authority_id") == authority_id
+    ]
+
+
+def test_rg001a_an_informative_grant_does_not_close_the_authority_gap(
+    valid_pack: Path,
+) -> None:
+    grant = AuthorityFact(
+        semantic_key="repository_write::",
+        authority_level=AuthorityLevel.INFORMATIVE,
+        source_ref=unprovenanced("host-grants"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id="repository_write",
+        state="granted",
+    )
+    bundle = _compile(valid_pack, MUTATION_MISSION, ContextSnapshot(authority_facts=[grant]))
+    context = bundle.task_context
+    assert grant.item_id not in {fact.item_id for fact in context.authority.granted}
+    gap = _authority_gap(context, "repository_write")
+    assert gap
+    assert gap[0].details["state"] == "absent"
+    assert gap[0].materiality is UnknownMateriality.NON_BLOCKING
+
+
+def test_rg001a_a_kernel_need_cannot_lower_the_authority_floor() -> None:
+    need = KernelContextNeed(
+        need_id="authority_plane",
+        context_kind=ContextKind.AUTHORITY_FACT,
+        required=False,
+        reason="this kernel reads the authority plane",
+        coverage=CoverageMode.ALL_ELIGIBLE,
+        minimum_authority=AuthorityLevel.INFORMATIVE,
+    )
+    plan = _plan_for([binding("runtime/kernels/task/plain.yaml", need)])
+    planned = [
+        requirement
+        for requirement in plan.requirements
+        if requirement.context_kind in {ContextKind.AUTHORITY_FACT, ContextKind.CAPABILITY_FACT}
+    ]
+    assert any(requirement.kernel_need_refs for requirement in planned)
+    assert {requirement.minimum_authority for requirement in planned} == {
+        AuthorityLevel.GOVERNED_VERIFIED
+    }
+    # The eligibility rule itself holds the floor, so even a requirement that
+    # advertises a weaker one never matches an informative authority fact.
+    advertised = _requirement(
+        context_kind=ContextKind.AUTHORITY_FACT, minimum_authority=AuthorityLevel.UNVERIFIED
+    )
+    informative = AuthorityFact(
+        semantic_key="repository_write::",
+        authority_level=AuthorityLevel.INFORMATIVE,
+        source_ref=unprovenanced("host-grants"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id="repository_write",
+        state="granted",
+    )
+    assert not matches_requirement(advertised, informative)
+
+
+@pytest.mark.parametrize("plane", ["authority_fact", "applicable_law"])
+def test_rg001b_informative_precedence_never_defines_a_governed_order(
+    valid_pack: Path, plane: str
+) -> None:
+    if plane == "authority_fact":
+        snapshot = ContextSnapshot(
+            authority_facts=[
+                AuthorityFact(
+                    semantic_key="repository_write::",
+                    authority_level=AuthorityLevel.INFORMATIVE,
+                    source_ref=unprovenanced("host-grants"),
+                    scope_mode=ContextScopeMode.GLOBAL,
+                    authority_id="repository_write",
+                    state="granted",
+                    precedence=0,
+                )
+            ]
+        )
+    else:
+        snapshot = ContextSnapshot(
+            applicable_law=[law("host-law", precedence=0, authority=AuthorityLevel.INFORMATIVE)]
+        )
+    bundle = _compile(valid_pack, MUTATION_MISSION, snapshot)
+    authority = bundle.task_context.authority
+    assert authority.effective_order_source is EffectiveAuthorityOrderSource.COMPILER_DEFAULT
+    assert authority.effective_order == AUTHORITY_ORDER
+    assert bundle.execution.authority_order == AUTHORITY_ORDER
+
+
+def test_rg001c_an_informative_capability_does_not_close_the_capability_gap(
+    valid_pack: Path,
+) -> None:
+    available = CapabilityFact(
+        semantic_key="workspace_mutation",
+        authority_level=AuthorityLevel.INFORMATIVE,
+        source_ref=unprovenanced("host-env"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        capability_id="workspace_mutation",
+        state="available",
+    )
+    context = _compile(
+        valid_pack, MUTATION_MISSION, ContextSnapshot(capability_facts=[available])
+    ).task_context
+    assert context.capabilities.available == []
+    gap = [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.UNSUPPORTED_CAPABILITY
+        and unknown.details.get("capability_id") == "workspace_mutation"
+    ]
+    assert gap
+    assert gap[0].details["state"] == "absent"
+    assert gap[0].materiality is UnknownMateriality.NON_BLOCKING
+
+
+@pytest.mark.parametrize("level", sorted(GOVERNED_LEVELS))
+def test_rg001d_a_governed_grant_with_precedence_still_closes_and_orders(
+    valid_pack: Path, level: AuthorityLevel
+) -> None:
+    grant = AuthorityFact(
+        semantic_key="repository_write::",
+        authority_level=level,
+        source_ref=source("grants"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id="repository_write",
+        state="granted",
+        precedence=0,
+    )
+    available = CapabilityFact(
+        semantic_key="workspace_mutation",
+        authority_level=level,
+        source_ref=source("env"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        capability_id="workspace_mutation",
+        state="available",
+    )
+    bundle = _compile(
+        valid_pack,
+        MUTATION_MISSION,
+        ContextSnapshot(authority_facts=[grant], capability_facts=[available]),
+    )
+    context = bundle.task_context
+    assert {fact.item_id for fact in context.authority.granted} == {grant.item_id}
+    assert not _authority_gap(context, "repository_write")
+    assert {fact.item_id for fact in context.capabilities.available} == {available.item_id}
+    assert context.authority.effective_order_source is (
+        EffectiveAuthorityOrderSource.GOVERNED_CONTEXT
+    )
+    assert context.authority.effective_order == ["repository_write"]
+    assert bundle.execution.authority_order == ["repository_write"]
+
+
+def test_rg001d_governed_law_with_precedence_still_defines_the_order(
+    valid_pack: Path,
+) -> None:
+    snapshot = ContextSnapshot(applicable_law=[law("governed-law", precedence=0)])
+    authority = _compile(valid_pack, MUTATION_MISSION, snapshot).task_context.authority
+    assert authority.effective_order_source is EffectiveAuthorityOrderSource.GOVERNED_CONTEXT
+    assert authority.effective_order == ["governed-law"]
 
 
 # ---------------------------------------------------------------------------

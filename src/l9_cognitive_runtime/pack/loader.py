@@ -49,6 +49,29 @@ class RuntimePack:
             raise InvalidValueError("pack path missing", path=relative)
         return candidate
 
+    def read_verified(self, relative: str) -> bytes:
+        """Read a pack file once and prove it is the manifest-verified content.
+
+        Verification at load time proves nothing about a later read, so every
+        semantic source the compiler consumes comes through here: the bytes
+        returned are the bytes that were hashed, and they must equal the
+        manifest digest. An unlisted file was never verified and fails closed.
+        """
+        expected = self.provenance.file_digests.get(relative)
+        if expected is None:
+            raise InvalidValueError(
+                "pack file is not listed in the verified manifest", path=relative
+            )
+        data = self.resolve(relative).read_bytes()
+        actual = hashlib.sha256(data).hexdigest()
+        if actual != expected:
+            raise InvalidValueError(
+                "pack file no longer matches its manifest digest (tamper detected)",
+                path=relative,
+                details={"expected": expected, "actual": actual},
+            )
+        return data
+
 
 class PackLoader:
     """Load an explicit pack_ref, verify MANIFEST.json digests, return immutable pack."""

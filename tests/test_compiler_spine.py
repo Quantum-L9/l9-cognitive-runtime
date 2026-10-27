@@ -18,8 +18,11 @@ from pathlib import Path
 import pytest
 import yaml
 
+from l9_cognitive_runtime.compiler import CompilePipeline
+from l9_cognitive_runtime.compiler.pipeline import UNVERIFIED_ROOT_MANIFEST
 from l9_cognitive_runtime.models import ExecutionContract
 from l9_cognitive_runtime.models.errors import InvalidValueError
+from l9_cognitive_runtime.pack import PackLoader
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,13 +106,13 @@ def test_legacy_execution_compiler_wraps_same_compiler(tmp_path: Path) -> None:
     from l9_cognitive_runtime.compiler.context import compile_execution_from_plan
     from l9_cognitive_runtime.compiler.kernels import KernelResolver
     from l9_cognitive_runtime.types import CompileRequest
-    from tests.conftest import empty_discovery
+    from tests.conftest import empty_discovery, kernel_pipeline, routing_rules
 
     intent = ObjectiveDeriver().derive(CompileRequest(mission="compile a kernel contract"))
     plan = ActivationPlanner().plan(
         intent,
-        rules_path=ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
-        pipeline_path=ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        rules=routing_rules(ROOT),
+        pipeline=kernel_pipeline(ROOT),
         discovery=empty_discovery(intent),
     )
     plan_path.write_text(yaml.safe_dump(plan.to_dict(), sort_keys=False), encoding="utf-8")
@@ -153,7 +156,7 @@ def test_graph_cli_requires_a_contract_with_structured_steps(tmp_path: Path) -> 
     from l9_cognitive_runtime.compiler import ActivationPlanner, ObjectiveDeriver
     from l9_cognitive_runtime.compiler.context import compile_execution_from_plan
     from l9_cognitive_runtime.types import CompileRequest
-    from tests.conftest import empty_discovery
+    from tests.conftest import empty_discovery, kernel_pipeline, routing_rules
 
     script = ROOT / "runtime" / "execution_graph" / "build_execution_graph.py"
 
@@ -166,8 +169,8 @@ def test_graph_cli_requires_a_contract_with_structured_steps(tmp_path: Path) -> 
     intent = ObjectiveDeriver().derive(CompileRequest(mission="compile a kernel contract"))
     plan = ActivationPlanner().plan(
         intent,
-        rules_path=ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
-        pipeline_path=ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        rules=routing_rules(ROOT),
+        pipeline=kernel_pipeline(ROOT),
         discovery=empty_discovery(intent),
     )
     contract = compile_execution_from_plan(ROOT, plan).to_canonical_dict()
@@ -193,3 +196,37 @@ def test_graph_cli_requires_a_contract_with_structured_steps(tmp_path: Path) -> 
     assert built.returncode == 0, built.stdout + built.stderr
     graph = json.loads((tmp_path / "GRAPH.json").read_text(encoding="utf-8"))
     assert len(graph["nodes"]) == len(contract["execution_steps"])
+
+
+def test_kernel_modified_after_pack_load_fails_closed(valid_pack: Path) -> None:
+    """RG-003b: verification binds the bytes the compiler consumes.
+
+    A kernel rewritten between ``PackLoader.load`` and kernel resolution must
+    fail with a manifest-mismatch error; its new digest is never recorded.
+    """
+    request = CompileRequest(mission="Audit this repository.", pack_root=valid_pack)
+    kernel = CognitiveRuntimeService().compile_runtime(request).execution.kernel_activation[0]
+    pack = PackLoader().load(valid_pack)
+    target = valid_pack / kernel
+    target.write_text(
+        target.read_text(encoding="utf-8") + "\n# edited after verification\n", encoding="utf-8"
+    )
+
+    with pytest.raises(InvalidValueError) as excinfo:
+        CompilePipeline().compile(request, pack)
+    assert excinfo.value.path == kernel
+    assert "manifest" in excinfo.value.message
+    assert excinfo.value.details["expected"] == pack.provenance.file_digests[kernel]
+
+
+def test_compile_from_bare_root_stays_explicitly_unverified() -> None:
+    """RG-003c: the compatibility entry keeps its labelled unverified mode.
+
+    A repository root is not a verified pack: whatever MANIFEST.json it carries
+    is never consulted, and the provenance says so rather than claiming a
+    verification that did not happen.
+    """
+    result = CompilePipeline().compile_from_root(ROOT, "Audit this repository.")
+    assert result.bundle.provenance.manifest_digest == UNVERIFIED_ROOT_MANIFEST
+    assert result.bundle.provenance.file_digests == {}
+    assert result.kernels

@@ -32,7 +32,8 @@ from l9_cognitive_runtime.models.context import (
     CoverageMode,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError
-from l9_cognitive_runtime.parsing import ParseErrorCode, StrictParseError, load_yaml_file
+from l9_cognitive_runtime.pack import RuntimePack
+from l9_cognitive_runtime.parsing import ParseErrorCode, StrictParseError, load_yaml_mapping
 
 # Consumer surfaces a kernel output may bind to. Anything else fails closed.
 CONSUMER_SURFACES = (
@@ -292,7 +293,20 @@ def _parse_context_needs(
 class KernelResolver:
     """Resolve activated kernel references against a pack root, fail closed."""
 
-    def resolve(self, active_kernels: list[str], root: Path) -> list[KernelBinding]:
+    def resolve(
+        self,
+        active_kernels: list[str],
+        root: Path,
+        *,
+        pack: RuntimePack | None = None,
+    ) -> list[KernelBinding]:
+        """Bind each activated kernel to the exact bytes it was parsed from.
+
+        With a verified ``pack`` every kernel is read once through the pack's
+        manifest-verified read, so an unlisted or since-modified kernel fails
+        closed and the recorded digest is the manifest digest. Without one this
+        is the explicitly unverified repository-root read.
+        """
         resolved_root = root.resolve()
         bindings: list[KernelBinding] = []
         seen: set[str] = set()
@@ -322,18 +336,20 @@ class KernelResolver:
             if rel in seen:
                 continue
             seen.add(rel)
+            # One read: the parsed semantics and the recorded digest are the
+            # same bytes, so no edit can land between them.
+            data = pack.read_verified(rel) if pack is not None else candidate.read_bytes()
             outputs: tuple[KernelOutput, ...] = ()
             context_needs: tuple[KernelContextNeed, ...] = ()
             if candidate.suffix in {".yaml", ".yml"}:
-                kernel_doc = load_yaml_file(candidate)
-                if kernel_doc is not None:
-                    outputs = _parse_declared_outputs(kernel_doc, rel)
-                    context_needs = _parse_context_needs(kernel_doc, rel)
+                kernel_doc = load_yaml_mapping(data.decode("utf-8"), source=rel)
+                outputs = _parse_declared_outputs(kernel_doc, rel)
+                context_needs = _parse_context_needs(kernel_doc, rel)
             bindings.append(
                 KernelBinding(
                     kernel_id=_kernel_id(rel),
                     source_ref=rel,
-                    source_digest=_sha256(candidate.read_bytes()),
+                    source_digest=_sha256(data),
                     outputs=outputs,
                     context_needs=context_needs,
                 )

@@ -23,7 +23,7 @@ from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.parsing import ParseErrorCode, StrictParseError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 from l9_cognitive_runtime.types import RuntimeBundle
-from tests.conftest import discovery_for, governed_signal_snapshot
+from tests.conftest import discovery_for, governed_signal_snapshot, kernel_pipeline, routing_rules
 
 GAR_REF = "runtime/kernels/architecture/global_architect_kernel.yaml"
 
@@ -91,8 +91,8 @@ def test_gar_activation_has_lens_evidence(  # type: ignore[no-untyped-def]
     intent = ObjectiveDeriver().derive(_context_pack_request(pack))
     plan = ActivationPlanner().plan(
         intent,
-        rules_path=pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
-        pipeline_path=pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        rules=routing_rules(pack),
+        pipeline=kernel_pipeline(pack),
         discovery=discovery_for(intent, _governed_snapshot()),
     )
     materiality = plan.architecture_materiality
@@ -115,8 +115,8 @@ def test_gar_developer_execution_active_for_worker_mission(  # type: ignore[no-u
     )
     plan = ActivationPlanner().plan(
         intent,
-        rules_path=pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
-        pipeline_path=pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        rules=routing_rules(pack),
+        pipeline=kernel_pipeline(pack),
         discovery=empty_discovery(intent),
     )
     assert plan.matched_route == "feature_development"

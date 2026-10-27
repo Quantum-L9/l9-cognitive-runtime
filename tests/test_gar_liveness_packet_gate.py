@@ -40,7 +40,13 @@ from l9_cognitive_runtime.models.context import (
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 from l9_cognitive_runtime.types import RuntimeBundle
-from tests.conftest import discovery_for, empty_discovery, governed_signal_snapshot
+from tests.conftest import (
+    discovery_for,
+    empty_discovery,
+    governed_signal_snapshot,
+    kernel_pipeline,
+    routing_rules,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -79,8 +85,8 @@ def _run_liveness(
     intent = ObjectiveDeriver().derive(_request(pack))
     plan = ActivationPlanner().plan(
         intent,
-        rules_path=pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
-        pipeline_path=pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        rules=routing_rules(pack),
+        pipeline=kernel_pipeline(pack),
         discovery=discovery_for(intent, snapshot if snapshot is not None else _snapshot()),
     )
     context_digest = bundle.digests()["context"]
@@ -271,8 +277,8 @@ def test_supplied_plan_without_p0_fails_realization_path_liveness() -> None:
     intent = ObjectiveDeriver().derive(CompileRequest(mission=mission))
     plan = ActivationPlanner().plan(
         intent,
-        rules_path=ROOT / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
-        pipeline_path=ROOT / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        rules=routing_rules(ROOT),
+        pipeline=kernel_pipeline(ROOT),
         discovery=empty_discovery(intent),
     )
     assert plan.matched_route == "prompt_or_kernel_compilation"

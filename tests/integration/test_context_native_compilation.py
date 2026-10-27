@@ -28,7 +28,7 @@ from l9_cognitive_runtime.models.context import ContextSnapshot
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 from l9_cognitive_runtime.types import RuntimeBundle
-from tests.conftest import discovery_for, governed_signal_snapshot
+from tests.conftest import discovery_for, governed_signal_snapshot, kernel_pipeline, routing_rules
 
 GAR_REF = "runtime/kernels/architecture/global_architect_kernel.yaml"
 MISSION = "Add safe retry behavior to this asynchronous payment worker."
@@ -67,8 +67,8 @@ def liveness_kwargs(bundle: RuntimeBundle, pack: Path, **overrides: Any) -> dict
     intent = ObjectiveDeriver().derive(request_for(pack))
     plan = ActivationPlanner().plan(
         intent,
-        rules_path=pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
-        pipeline_path=pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        rules=routing_rules(pack),
+        pipeline=kernel_pipeline(pack),
         discovery=discovery_for(intent, snapshot()),
     )
     context_digest = bundle.digests()["context"]

@@ -2,6 +2,8 @@
 
 The planner consumes the typed ``IntentContract`` plus pack-resolved routing
 rules and pipeline definition — never raw task text as its sole semantic input.
+It reads no files: the pipeline hands it the parsed documents whose bytes it
+read once and digested, so the plan and its recorded digests cannot diverge.
 Routing, phase ordering, terminal gating, and kernel selection are the single
 authoritative implementation; the legacy ``runtime/kernel_pipeline/planner/
 plan_activation.py`` script is a thin CLI wrapper over this module.
@@ -11,14 +13,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from l9_cognitive_runtime.compiler.architecture_materiality import assess_materiality
 from l9_cognitive_runtime.models import IntentContract
 from l9_cognitive_runtime.models.context import DiscoveryContext
 from l9_cognitive_runtime.models.errors import InvalidValueError
-from l9_cognitive_runtime.parsing import load_yaml_file
 
 _REQUIRED_PLAN_FIELDS = (
     "task_summary",
@@ -106,13 +106,11 @@ class ActivationPlanner:
         self,
         intent: IntentContract,
         *,
-        rules_path: Path,
-        pipeline_path: Path,
+        rules: dict[str, Any],
+        pipeline: dict[str, Any],
         discovery: DiscoveryContext,
         include_terminal: bool = False,
     ) -> ActivationPlan:
-        pipeline = load_yaml_file(pipeline_path)
-        rules = load_yaml_file(rules_path)
         phases_by_id = self._phase_map(pipeline)
         route_name, route, confidence = self._match_route(intent.mission, rules)
 

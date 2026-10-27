@@ -11,8 +11,11 @@ ExecutionGraphCompiler -> semantic digest -> ExecutionPacket ->
 validate_packet -> BundleSemanticValidator -> RuntimeBundle.
 
 All semantic inputs (routing rules, pipeline definition, kernels) are
-resolved from the verified pack and fail closed when absent. Obligations are
-derived once and conserved through every downstream IR (INV-003).
+resolved from the verified pack and fail closed when absent. Each is read once
+through ``RuntimePack.read_verified``: the parsed semantics and the recorded
+digest are the same bytes, and those bytes equal the manifest digest, so an
+unlisted or since-modified source never compiles. Obligations are derived once
+and conserved through every downstream IR (INV-003).
 
 Two bounded context projections sit inside this spine (INV-CTX-005): discovery
 before routing, and requirement-bound selection after kernel resolution.
@@ -82,7 +85,7 @@ from l9_cognitive_runtime.models.context import (
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.pack import PackProvenance, RuntimePack
-from l9_cognitive_runtime.parsing import load_yaml_file
+from l9_cognitive_runtime.parsing import confined_input_file, load_yaml_mapping
 from l9_cognitive_runtime.types import CompileRequest, RuntimeBundle
 
 RULES_REL = "runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"
@@ -94,8 +97,16 @@ PIPELINE_REL = "runtime/kernel_pipeline/KERNEL_PIPELINE.yaml"
 UNVERIFIED_ROOT_MANIFEST = "unverified:repository_root"
 
 
-def _file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def _read_source(relative: str, *, root: Path, pack: RuntimePack | None) -> bytes:
+    """Read one semantic source once.
+
+    A verified pack reads through its manifest-verified read. ``pack=None`` is
+    only the labelled unverified repository-root mode of ``compile_from_root``,
+    still confined beneath that root.
+    """
+    if pack is not None:
+        return pack.read_verified(relative)
+    return confined_input_file(root / relative, allow_root=root).read_bytes()
 
 
 def _package_version() -> str:
@@ -150,12 +161,12 @@ class CompilePipeline:
         context_snapshot: ContextSnapshot | None = None,
         expected_context_plan_id: str | None = None,
     ) -> RuntimeBundle:
-        # pack.resolve fails closed when the routing sources are absent.
+        # The verified read fails closed when a routing source is absent,
+        # unlisted, or no longer matches its manifest digest.
         return self._compile(
             request=request,
-            rules_path=pack.resolve(RULES_REL),
-            pipeline_path=pack.resolve(PIPELINE_REL),
-            kernel_root=pack.provenance.root,
+            pack=pack,
+            root=pack.provenance.root,
             provenance=pack.provenance,
             context_snapshot=context_snapshot,
             expected_context_plan_id=expected_context_plan_id,
@@ -175,9 +186,8 @@ class CompilePipeline:
         """
         return self._prepare_context_plan(
             request=request,
-            rules_path=pack.resolve(RULES_REL),
-            pipeline_path=pack.resolve(PIPELINE_REL),
-            kernel_root=pack.provenance.root,
+            pack=pack,
+            root=pack.provenance.root,
             provenance=pack.provenance,
             context_snapshot=discovery_snapshot,
         ).context_plan
@@ -218,9 +228,8 @@ class CompilePipeline:
         )
         return self._compile(
             request=request,
-            rules_path=resolved / RULES_REL,
-            pipeline_path=resolved / PIPELINE_REL,
-            kernel_root=resolved,
+            pack=None,
+            root=resolved,
             provenance=provenance,
             context_snapshot=context_snapshot,
             include_terminal=include_terminal,
@@ -232,9 +241,8 @@ class CompilePipeline:
         self,
         *,
         request: CompileRequest,
-        rules_path: Path,
-        pipeline_path: Path,
-        kernel_root: Path,
+        pack: RuntimePack | None,
+        root: Path,
         provenance: PackProvenance,
         context_snapshot: ContextSnapshot | None,
         include_terminal: bool = False,
@@ -243,9 +251,8 @@ class CompilePipeline:
     ) -> RootCompilation:
         prepared = self._prepare_context_plan(
             request=request,
-            rules_path=rules_path,
-            pipeline_path=pipeline_path,
-            kernel_root=kernel_root,
+            pack=pack,
+            root=root,
             provenance=provenance,
             context_snapshot=context_snapshot,
             include_terminal=include_terminal,
@@ -388,9 +395,8 @@ class CompilePipeline:
         self,
         *,
         request: CompileRequest,
-        rules_path: Path,
-        pipeline_path: Path,
-        kernel_root: Path,
+        pack: RuntimePack | None,
+        root: Path,
         provenance: PackProvenance,
         context_snapshot: ContextSnapshot | None,
         include_terminal: bool = False,
@@ -402,7 +408,14 @@ class CompilePipeline:
         finite governed snapshot; PLAN may use a minimal discovery snapshot and
         COMPILE may use the fulfilled snapshot. Both recompute the exact same
         task scope, discovery, activation, kernel bindings, and requirements.
+
+        Every semantic source is read once, before any stage consumes it, and
+        both its parse and its recorded digest come from those bytes.
         """
+        rules_source = _read_source(RULES_REL, root=root, pack=pack)
+        pipeline_source = _read_source(PIPELINE_REL, root=root, pack=pack)
+        rules = load_yaml_mapping(rules_source.decode("utf-8"), source=RULES_REL)
+        pipeline = load_yaml_mapping(pipeline_source.decode("utf-8"), source=PIPELINE_REL)
         intent = ObjectiveDeriver().derive(request)
         snapshot = context_snapshot if context_snapshot is not None else ContextSnapshot.empty()
         preflight_snapshot(snapshot)
@@ -411,13 +424,12 @@ class CompilePipeline:
         discovery = ContextDiscoveryCompiler().compile(scope, resolution)
         activation = activation_plan or ActivationPlanner().plan(
             intent,
-            rules_path=rules_path,
-            pipeline_path=pipeline_path,
+            rules=rules,
+            pipeline=pipeline,
             discovery=discovery,
             include_terminal=include_terminal,
         )
-        kernels = KernelResolver().resolve(activation.active_kernels, kernel_root)
-        pipeline = load_yaml_file(pipeline_path)
+        kernels = KernelResolver().resolve(activation.active_kernels, root, pack=pack)
         requirement_plan = ContextRequirementPlanner().plan(scope, discovery, activation, kernels)
         context_plan = ContextPlan(
             task_scope=scope,
@@ -427,8 +439,8 @@ class CompilePipeline:
                 binding.source_ref: binding.source_digest for binding in kernels
             },
             pack_manifest_digest=provenance.manifest_digest,
-            routing_rules_digest=_file_sha256(rules_path),
-            pipeline_digest=_file_sha256(pipeline_path),
+            routing_rules_digest=hashlib.sha256(rules_source).hexdigest(),
+            pipeline_digest=hashlib.sha256(pipeline_source).hexdigest(),
             compiler_identity=CompilerIdentity(
                 package_version=_package_version(),
                 semantics_version=CONTEXT_COMPILER_SEMANTICS_VERSION,

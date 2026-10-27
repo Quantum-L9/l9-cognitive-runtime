@@ -30,6 +30,7 @@ from l9_cognitive_runtime.compiler.task_context import (
     AUTHORITY_PROVEN_NEGATIVE,
     ContextCompiler,
     SnapshotResolution,
+    _repository_subjects,
     _Selection,
     _unknown_status_decisions,
     authority_disposition,
@@ -71,6 +72,7 @@ from l9_cognitive_runtime.models.context import (
     MissingPolicy,
     PriorDecision,
     RepositoryState,
+    TaskScope,
     UnknownMateriality,
     UnknownReasonCode,
     authority_semantic_key,
@@ -1010,6 +1012,21 @@ def test_rg002c_without_a_governed_repository_identity_nothing_is_granted(
     assert gap[0].details["subject_ref"] is None
     assert gap[0].details["state"] == "absent"
     assert gap[0].materiality is UnknownMateriality.NON_BLOCKING
+
+
+def test_rg002c_an_informative_repository_state_never_supplies_the_subject() -> None:
+    """The governed-only filter itself: an informative ``RepositoryState`` a
+    kernel need selected names the target, yet supplies no subject.
+
+    A kernel need may select repository state below the governed floor (only
+    authority and capability facts are raised to it), so the filter in
+    ``_repository_subjects`` is the only thing keeping such a fact out.
+    """
+    scope = TaskScope(mission=MUTATION_MISSION, task_type="mutation", target_refs=[TOKENIZER])
+    informative = repository_fact("repo-a", TOKENIZER, authority=AuthorityLevel.INFORMATIVE)
+    governed = repository_fact("repo-a", TOKENIZER)
+    assert _repository_subjects(scope, [informative]) == [(None, [TOKENIZER])]
+    assert _repository_subjects(scope, [governed]) == [("repo-a", [TOKENIZER])]
 
 
 # ---------------------------------------------------------------------------
@@ -2193,6 +2210,33 @@ def test_a_conflict_does_not_dispose_a_min_items_shortfall_beyond_its_key() -> N
             requirement_plan=plan,
             resolution=resolution,
             kernels=[],
+        )
+
+
+def test_a_conflict_unknown_on_an_unconflicted_key_disposes_nothing() -> None:
+    """A conflict unknown is a claim: it disposes its key only when the
+    recomputed view holds a conflicting group under that key. One naming an
+    absent key cannot stand in for the missing-context shortfall it replaced."""
+    requirement = _required_keyed()
+    context, plan, resolution = _select_requirement(requirement, (law("LAW_1"),))
+    report = ContextClosureValidator().validate(
+        context=context, requirement_plan=plan, resolution=resolution, kernels=[]
+    )
+    assert report.passed
+    forged = ContextUnknown(
+        requirement_ref=requirement.requirement_id,
+        semantic_key="LAW_2",
+        reason_code=UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS,
+        materiality=UnknownMateriality.NON_BLOCKING,
+        details={"context_kind": requirement.context_kind.value},
+    )
+    substituted = _without_missing(context)
+    substituted = substituted.model_copy(
+        update={"unresolved_unknowns": [*substituted.unresolved_unknowns, forged]}
+    )
+    with pytest.raises(InvalidValueError, match="context closure check failed"):
+        ContextClosureValidator().validate(
+            context=substituted, requirement_plan=plan, resolution=resolution, kernels=[]
         )
 
 

@@ -295,7 +295,7 @@ class ContextClosureValidator:
         # 9. Budgets hold on the finished artifact — per requirement *and*
         # globally. A per-requirement breach that fits inside the global budget
         # is exactly what a global-only check misses.
-        breaches = _budget_breaches(context, requirement_plan)
+        breaches = _budget_breaches(context, requirement_plan, views)
         budget = requirement_plan.global_budget
         total_bytes = sum(canonical_cost(item) for item in selected)
         global_ok = (
@@ -429,14 +429,29 @@ def _eligible_items(view: ResolvedCandidates) -> dict[str, str]:
     }
 
 
-def _conflict_disposed_keys(context: CompiledTaskContext) -> dict[str, set[str]]:
-    """Semantic keys each requirement disposed as an unresolvable conflict."""
+def _conflict_disposed_keys(
+    context: CompiledTaskContext, views: dict[str, ResolvedCandidates]
+) -> dict[str, set[str]]:
+    """Semantic keys each requirement disposed as an unresolvable conflict.
+
+    A conflict unknown is a claim, not a proof: it disposes its key only when
+    the recomputed view of that requirement holds a conflicting group under
+    the same key. A conflict unknown naming a key with no such group disposes
+    nothing, so it cannot stand in for a missing-context shortfall.
+    """
+    conflicted = {
+        (requirement_ref, semantic_key)
+        for requirement_ref, view in views.items()
+        for (_, semantic_key), group in view.groups.items()
+        if group.conflict
+    }
     keys: dict[str, set[str]] = {}
     for unknown in context.unresolved_unknowns:
         if (
             unknown.reason_code is UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS
             and unknown.requirement_ref
             and unknown.semantic_key
+            and (unknown.requirement_ref, unknown.semantic_key) in conflicted
         ):
             keys.setdefault(unknown.requirement_ref, set()).add(unknown.semantic_key)
     return keys
@@ -592,7 +607,7 @@ def _coverage_breaches(
 ) -> list[dict[str, object]]:
     """Prove every requirement's coverage mode against its own eligible set."""
     selected = context.selected_items()
-    disposed = _conflict_disposed_keys(context)
+    disposed = _conflict_disposed_keys(context, views)
     breaches: list[dict[str, object]] = []
     for requirement in requirement_plan.requirements:
         taken = [item for item in selected if requirement.requirement_id in item.selected_because]
@@ -694,11 +709,12 @@ def _coverage_breach(
 def _budget_breaches(
     context: CompiledTaskContext,
     requirement_plan: ContextRequirementPlan,
+    views: dict[str, ResolvedCandidates],
 ) -> list[dict[str, object]]:
     """Recompute each requirement's own footprint from the finished context."""
     selected = context.selected_items()
     breaches: list[dict[str, object]] = []
-    conflict_keys = _conflict_disposed_keys(context)
+    conflict_keys = _conflict_disposed_keys(context, views)
     shortfalls = _shortfall_dispositions(context)
 
     for requirement in requirement_plan.requirements:

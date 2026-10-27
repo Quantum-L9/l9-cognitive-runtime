@@ -37,7 +37,11 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
-from l9_cognitive_runtime.mcp import READ_ONLY_TOOLS, build_server
+from l9_cognitive_runtime.mcp import (
+    READ_ONLY_TOOLS,
+    STREAMABLE_HTTP_TRANSPORT,
+    build_server,
+)
 from l9_cognitive_runtime.mcp.auth import (
     HostedAuthConfig,
     HostedAuthConfigurationError,
@@ -168,7 +172,12 @@ def create_http_app(
     auth_settings: AuthSettings | None = None,
 ) -> Starlette:
     """Build the Streamable HTTP app for the read-only MCP server."""
-    server = build_server(pack_root, token_verifier=token_verifier, auth_settings=auth_settings)
+    server = build_server(
+        pack_root,
+        token_verifier=token_verifier,
+        auth_settings=auth_settings,
+        transport=STREAMABLE_HTTP_TRANSPORT,
+    )
     origins = _allowed_origins() if allowed_origins is None else allowed_origins
     hosts = _allowed_hosts() if allowed_hosts is None else allowed_hosts
     # DNS-rebinding protection at the transport layer (defense in depth alongside
@@ -198,7 +207,7 @@ def create_http_app(
 
     async def healthz(_: Request) -> JSONResponse:
         # No principal or credential data.
-        return JSONResponse({"status": "ok", "transport": "streamable_http"})
+        return JSONResponse({"status": "ok", "transport": STREAMABLE_HTTP_TRANSPORT})
 
     async def readyz(_: Request) -> JSONResponse:
         return JSONResponse({"status": "ready", "tools": sorted(READ_ONLY_TOOLS)})

@@ -20,7 +20,10 @@ from l9_cognitive_runtime.compiler.context_closure import (
     CONTEXT_CHECKS,
     ContextClosureValidator,
 )
-from l9_cognitive_runtime.compiler.context_requirements import ContextRequirementPlanner
+from l9_cognitive_runtime.compiler.context_requirements import (
+    GLOBAL_MAX_BYTES,
+    ContextRequirementPlanner,
+)
 from l9_cognitive_runtime.compiler.execution import AUTHORITY_ORDER
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelContextNeed
 from l9_cognitive_runtime.compiler.task_context import (
@@ -59,8 +62,10 @@ from l9_cognitive_runtime.models.context import (
     ContextUnknown,
     CoverageMode,
     DecisionStatus,
+    DependencyContext,
     DiscoveryContext,
     EffectiveAuthorityOrderSource,
+    EntityContext,
     FreshnessRequirement,
     GovernedConstraint,
     MissingPolicy,
@@ -1922,6 +1927,188 @@ def test_an_optional_requirement_still_records_no_missing_context_unknown() -> N
         )
         == []
     )
+
+
+# ---------------------------------------------------------------------------
+# F-004: a global budget witness is proven against the selection state at the
+# moment of the stop, not against what later requirements went on to admit.
+# ---------------------------------------------------------------------------
+
+
+def _padded(build: Any, cost: int) -> Any:
+    """An item whose canonical cost is exactly ``cost`` bytes."""
+    padding = cost - canonical_cost(build(""))
+    item = build("x" * padding)
+    assert canonical_cost(item) == cost
+    return item
+
+
+def _global_byte_stop_snapshot() -> tuple[ContextSnapshot, DependencyContext, PriorDecision]:
+    """Four earlier requirements fill the global byte budget almost to the brim.
+
+    The dependency requirement's only candidate then no longer fits the global
+    budget (while still fitting its own), and the prior-decision requirement
+    planned after it admits a candidate small enough to fit what is left.
+    """
+    filler = 65_000
+    remaining = GLOBAL_MAX_BYTES - 4 * filler
+    blocked = _padded(
+        lambda pad: DependencyContext(
+            semantic_key="dep:uses:runtime:pkg",
+            authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+            source_ref=source("dep"),
+            scope_mode=ContextScopeMode.GLOBAL,
+            dependency_id="dep",
+            relationship="runtime",
+            direction="uses",
+            target_ref="pkg",
+            version_or_revision=f"v1{pad}",
+        ),
+        remaining + 1_000,
+    )
+    later = _padded(
+        lambda pad: PriorDecision(
+            semantic_key="DEC_LATE",
+            authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+            source_ref=source("DEC_LATE"),
+            scope_mode=ContextScopeMode.GLOBAL,
+            decision_id="DEC_LATE",
+            status=DecisionStatus.ACTIVE,
+            statement=f"DEC_LATE decided{pad}",
+        ),
+        remaining - 1_000,
+    )
+    snapshot = ContextSnapshot(
+        architecture_constraints=[
+            _padded(
+                lambda pad: GovernedConstraint(
+                    semantic_key="ARCH_FILL",
+                    authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+                    source_ref=source("ARCH_FILL"),
+                    scope_mode=ContextScopeMode.GLOBAL,
+                    constraint_id="ARCH_FILL",
+                    statement=f"ARCH_FILL{pad}",
+                ),
+                filler,
+            )
+        ],
+        applicable_law=[_padded(lambda pad: law("LAW_FILL", statement=f"LAW_FILL{pad}"), filler)],
+        repository_state=[
+            _padded(
+                lambda pad: RepositoryState(
+                    semantic_key="repo:src/fill:size",
+                    authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+                    source_ref=source("repo-fill"),
+                    scope_mode=ContextScopeMode.GLOBAL,
+                    repository_id="repo",
+                    revision="rev-1",
+                    subject_ref="src/fill",
+                    fact_type="size",
+                    value=pad,
+                ),
+                filler,
+            )
+        ],
+        relevant_entities=[
+            _padded(
+                lambda pad: EntityContext(
+                    semantic_key="module:fill",
+                    authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+                    source_ref=source("entity-fill"),
+                    scope_mode=ContextScopeMode.GLOBAL,
+                    entity_id="fill",
+                    entity_type="module",
+                    relation_to_task=f"fills the budget{pad}",
+                ),
+                filler,
+            )
+        ],
+        dependency_context=[blocked],
+        prior_decisions=[later],
+    )
+    return snapshot, blocked, later
+
+
+def _compile_capturing_closure(
+    pack: Path, snapshot: ContextSnapshot, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Any, dict[str, Any]]:
+    """Compile, keeping the exact inputs the pipeline handed to closure."""
+    captured: dict[str, Any] = {}
+    original = ContextClosureValidator.validate
+
+    def spy(self: ContextClosureValidator, **kwargs: Any) -> Any:
+        captured.update(kwargs)
+        return original(self, **kwargs)
+
+    monkeypatch.setattr(ContextClosureValidator, "validate", spy)
+    return _compile(pack, NEUTRAL_MISSION, snapshot), captured
+
+
+def test_a_global_byte_stop_followed_by_a_later_admission_is_proven(
+    valid_pack: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RG-004a: the stop is judged against the state the selector actually saw."""
+    snapshot, blocked, later = _global_byte_stop_snapshot()
+    bundle, captured = _compile_capturing_closure(valid_pack, snapshot, monkeypatch)
+    context = bundle.task_context
+    selected = {item.item_id for item in context.selected_items()}
+    assert blocked.item_id not in selected
+    # The later, smaller admission that made the end-of-compile state differ
+    # from the stop-time state.
+    assert later.item_id in selected
+    dependency = next(
+        requirement
+        for requirement in captured["requirement_plan"].requirements
+        if requirement.context_kind is ContextKind.DEPENDENCY_CONTEXT
+    )
+    stops = [
+        unknown
+        for unknown in _budget_unknowns(context)
+        if unknown.requirement_ref == dependency.requirement_id
+    ]
+    assert len(stops) == 1
+    assert stops[0].details["bound"] == "global_max_bytes"
+    assert stops[0].details["blocked_item_id"] == blocked.item_id
+    assert stops[0].details["observed_bytes"] < sum(
+        canonical_cost(item) for item in context.selected_items()
+    )
+    assert closure_module._budget_stop_independently_proven(
+        context,
+        dependency,
+        captured["resolution"].resolve(lambda item: matches_requirement(dependency, item)),
+        captured["requirement_plan"],
+    )
+
+
+def test_a_global_byte_witness_with_altered_observed_bytes_is_rejected(
+    valid_pack: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RG-004b: the stop-time reconstruction still refuses a forged witness."""
+    snapshot, _, _ = _global_byte_stop_snapshot()
+    bundle, captured = _compile_capturing_closure(valid_pack, snapshot, monkeypatch)
+    context = bundle.task_context
+    forged = [
+        ContextUnknown(
+            requirement_ref=unknown.requirement_ref,
+            semantic_key=unknown.semantic_key,
+            reason_code=unknown.reason_code,
+            materiality=unknown.materiality,
+            details={**unknown.details, "observed_bytes": unknown.details["observed_bytes"] - 1},
+            source_refs=unknown.source_refs,
+        )
+        if unknown.reason_code is UnknownReasonCode.BUDGET_INSUFFICIENT
+        and unknown.details.get("bound") == "global_max_bytes"
+        else unknown
+        for unknown in context.unresolved_unknowns
+    ]
+    assert forged != context.unresolved_unknowns
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=context.model_copy(update={"unresolved_unknowns": forged}),
+            requirement_plan=captured["requirement_plan"],
+            resolution=captured["resolution"],
+            kernels=captured["kernels"],
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -531,7 +531,19 @@ def _budget_stop_independently_proven(
             and witness["observed_bytes"] == observed
             and observed + canonical_cost(blocked) > requirement.max_bytes
         )
-    unique = {item.item_id: item for item in context.selected_items()}
+    # A global bound is proven against the shared selection state *at the
+    # stop*, not the finished one: requirements planned after this one may
+    # still admit smaller items. The compiler iterates the plan's requirements
+    # in order, so that state is everything admitted by an earlier requirement
+    # plus this requirement's own admissions before the blocked candidate.
+    order = [entry.requirement_id for entry in requirement_plan.requirements]
+    earlier = set(order[: order.index(requirement.requirement_id)])
+    unique = {
+        item.item_id: item
+        for item in context.selected_items()
+        if earlier & set(item.selected_because)
+    }
+    unique.update((item.item_id, item) for item in admitted)
     if blocked.item_id in unique:
         return False
     budget = requirement_plan.global_budget

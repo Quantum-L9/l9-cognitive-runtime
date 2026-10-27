@@ -13,6 +13,7 @@ Gate coverage:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -21,12 +22,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from l9_cognitive_runtime.deployment import (
     build_deployment_pack,
     validate_deployment_closure,
 )
-from l9_cognitive_runtime.models.errors import ModelValidationError
+from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
 from l9_cognitive_runtime.pack import PackLoader
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
@@ -99,6 +101,39 @@ def test_no_repository_relative_hidden_dependency(tmp_path: Path) -> None:
     # Closure proof re-runs cleanly against the sealed pack.
     report = validate_deployment_closure(pack)
     assert report["count"] >= 7
+
+
+def test_closure_rejects_a_route_whose_mission_compiles_another_route(tmp_path: Path) -> None:
+    """RG-009a: closure evidence names only routes that were actually compiled.
+
+    ``code_review_ci`` is given ``audit`` as its first token, so its
+    representative mission ("Representative audit mission") ties with — and
+    routes to — ``pack_review``. The compile succeeds, but it compiled
+    ``pack_review``; recording ``code_review_ci`` as closed would be false.
+    """
+    pack = _sealed_pack(tmp_path)
+    rules_rel = "runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"
+    rules_file = pack / rules_rel
+    rules = yaml.safe_load(rules_file.read_text(encoding="utf-8"))
+    route = rules["task_routes"]["code_review_ci"]
+    route["match_any"] = ["audit", *route["match_any"]]
+    rules_file.write_text(yaml.safe_dump(rules, sort_keys=False), encoding="utf-8")
+    manifest = json.loads((pack / "MANIFEST.json").read_text(encoding="utf-8"))
+    for entry in manifest["files"]:
+        if entry["path"] == rules_rel:
+            data = rules_file.read_bytes()
+            entry["sha256"] = hashlib.sha256(data).hexdigest()
+            entry["bytes"] = len(data)
+    (pack / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(InvalidValueError) as excinfo:
+        validate_deployment_closure(pack)
+    assert excinfo.value.path == "code_review_ci"
+    assert excinfo.value.details == {
+        "route": "code_review_ci",
+        "matched_route": "pack_review",
+        "mission": "Representative audit mission",
+    }
 
 
 def test_isolated_wheel_and_sealed_pack_compile(tmp_path: Path) -> None:

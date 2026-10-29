@@ -1261,6 +1261,21 @@ def test_an_unbound_selected_item_is_detected_by_closure() -> None:
         )
 
 
+def test_a_selected_item_bound_to_an_unplanned_requirement_is_detected_by_closure() -> None:
+    """A non-empty relevance binding must still name a planned requirement: an
+    unplanned id would exempt the item from every per-requirement check."""
+    item = law("LAW_1").model_copy(update={"selected_because": ["REQ.NOT_IN_THE_PLAN"]})
+    context = _context(laws=[item])
+    plan = _plan([_requirement()])
+    with pytest.raises(InvalidValueError, match="every_selected_item_has_relevance_binding"):
+        ContextClosureValidator().validate(
+            context=context,
+            requirement_plan=plan,
+            resolution=SnapshotResolution(),
+            kernels=[],
+        )
+
+
 def test_an_undisposed_required_capability_is_detected_by_closure(valid_pack: Path) -> None:
     """Dropping the recorded gap must not read as 'no gap'."""
     from l9_cognitive_runtime.compiler.kernels import KernelResolver

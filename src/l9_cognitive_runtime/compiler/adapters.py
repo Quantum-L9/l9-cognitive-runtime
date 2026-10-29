@@ -31,11 +31,15 @@ from typing import Any
 
 from l9_cognitive_runtime.models.canonical import sha256_digest
 from l9_cognitive_runtime.models.errors import InvalidValueError
+from l9_cognitive_runtime.pack.loader import RuntimePack
 
 ADAPTER_TEMPLATE_DIR = "runtime/contract_compiler/adapters"
 
 # A template placeholder token: ``{{name}}``. Matched against template text only.
 _PLACEHOLDER = re.compile(r"\{\{[^{}]*\}\}")
+# A placeholder delimiter left over once every well-formed token is removed: a
+# malformed token such as ``{{a{b}}}`` that the token pattern cannot match.
+_STRAY_DELIMITER = re.compile(r"\{\{|\}\}")
 
 ADAPTER_TEMPLATES = {
     "claude_code": "claude_code.md",
@@ -233,7 +237,17 @@ def gar_output_refs(packet: dict[str, Any]) -> tuple[str, ...]:
 class AdapterRenderer:
     """Deterministic packet projections per adapter target."""
 
-    def __init__(self, pack_root: Path | None = None) -> None:
+    def __init__(self, pack_root: Path | None = None, *, pack: RuntimePack | None = None) -> None:
+        """Bind the template source.
+
+        ``pack`` reads templates through the verified manifest, so a rendered
+        projection is always built from digested bytes. ``pack_root`` reads an
+        unverified directory, as ``compile_from_root`` does. With neither, the
+        deterministic built-in template is used.
+        """
+        if pack is not None and pack_root is not None:
+            raise InvalidValueError("pass pack or pack_root, not both")
+        self._pack = pack
         self._pack_root = pack_root
 
     def render(self, packet: dict[str, Any], adapter: str) -> AdapterPacket:
@@ -273,7 +287,9 @@ class AdapterRenderer:
     def _render_template(self, template_name: str, packet: dict[str, Any], digest: str) -> str:
         """Render the pack template or the deterministic fallback projection."""
         template: str | None = None
-        if self._pack_root is not None:
+        if self._pack is not None:
+            template = self._verified_template(self._pack, template_name)
+        elif self._pack_root is not None:
             template_path = self._pack_root / ADAPTER_TEMPLATE_DIR / template_name
             if template_path.is_file():
                 template = template_path.read_text(encoding="utf-8")
@@ -319,13 +335,37 @@ class AdapterRenderer:
         unresolved = sorted(
             {token for token in _PLACEHOLDER.findall(template) if token not in placeholders}
         )
-        if unresolved:
+        malformed = [
+            line.strip()
+            for line in _PLACEHOLDER.sub("", template).splitlines()
+            if _STRAY_DELIMITER.search(line)
+        ]
+        if unresolved or malformed:
+            details: dict[str, Any] = {"placeholders": unresolved}
+            if malformed:
+                details["malformed"] = malformed
             raise InvalidValueError(
                 "adapter template left placeholders unresolved",
                 path=template_name,
-                details={"placeholders": unresolved},
+                details=details,
             )
         return _PLACEHOLDER.sub(lambda match: placeholders[match.group(0)], template)
+
+    @staticmethod
+    def _verified_template(pack: RuntimePack, template_name: str) -> str | None:
+        """A listed template read through the manifest; ``None`` when the pack ships none.
+
+        A template present on disk but absent from the manifest was never
+        verified, so it fails closed rather than silently falling back.
+        """
+        relative = f"{ADAPTER_TEMPLATE_DIR}/{template_name}"
+        if relative in pack.provenance.file_digests:
+            return pack.read_verified(relative).decode("utf-8")
+        if (pack.provenance.root / relative).exists():
+            raise InvalidValueError(
+                "adapter template is not listed in the verified manifest", path=relative
+            )
+        return None
 
     @staticmethod
     def _adapter_for_template(template_name: str) -> str:

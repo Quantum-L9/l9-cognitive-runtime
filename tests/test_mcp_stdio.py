@@ -11,6 +11,7 @@ import anyio
 import pytest
 
 from l9_cognitive_runtime.mcp import READ_ONLY_TOOLS, build_server, main
+from l9_cognitive_runtime.models.errors import InvalidValueError
 
 
 def _run(coro: Any) -> Any:
@@ -184,6 +185,29 @@ def test_missing_kernel_resource_rejected(valid_pack: Path) -> None:
     server = build_server(valid_pack)
     with pytest.raises(Exception):  # noqa: B017
         list(_run(server.read_resource("l9://packs/test-pack/kernels/ghost.yaml")))
+
+
+def test_kernel_resource_tampered_after_load_is_not_served(valid_pack: Path) -> None:
+    """A kernel edited after the server verified the pack is refused, not served:
+    a client must never read kernel text other than what the compiler digested."""
+    server = build_server(valid_pack)
+    (valid_pack / "kernels" / "repo_auditor.yaml").write_text(
+        "kernel_id: rewritten_after_load\n", encoding="utf-8"
+    )
+    with pytest.raises(Exception) as excinfo:  # noqa: B017 - SDK wraps the typed cause
+        list(_run(server.read_resource("l9://packs/test-pack/kernels/repo_auditor.yaml")))
+    assert isinstance(excinfo.value.__cause__, InvalidValueError)
+    assert "tamper detected" in str(excinfo.value.__cause__)
+
+
+def test_kernel_resource_not_in_manifest_is_not_served(valid_pack: Path) -> None:
+    """A file present on disk but never verified by the manifest fails closed."""
+    server = build_server(valid_pack)
+    (valid_pack / "kernels" / "unlisted.yaml").write_text("kernel_id: unlisted\n", encoding="utf-8")
+    with pytest.raises(Exception) as excinfo:  # noqa: B017 - SDK wraps the typed cause
+        list(_run(server.read_resource("l9://packs/test-pack/kernels/unlisted.yaml")))
+    assert isinstance(excinfo.value.__cause__, InvalidValueError)
+    assert "not listed in the verified manifest" in str(excinfo.value.__cause__)
 
 
 # --- wire-level: initialize handshake + clean shutdown -----------------------

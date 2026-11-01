@@ -240,8 +240,10 @@ def build_server(
             raise InvalidValueError("unknown pack_ref", path=requested)
 
     def _read_pack_file(relative: str) -> str:
-        # pack.resolve confines beneath the pack root and rejects traversal.
-        return pack.resolve(relative).read_text(encoding="utf-8")
+        # read_verified confines beneath the pack root, rejects traversal, and
+        # serves only the manifest-verified bytes: a resource never shows a
+        # client text other than what the compiler digested (RU-03).
+        return pack.read_verified(relative).decode("utf-8")
 
     hosted_auth = token_verifier is not None and auth_settings is not None
     auth_mode = "oauth2_bearer" if hosted_auth else "none"

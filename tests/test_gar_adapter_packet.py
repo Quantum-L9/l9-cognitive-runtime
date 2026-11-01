@@ -35,7 +35,9 @@ from l9_cognitive_runtime.compiler.providers import (
 )
 from l9_cognitive_runtime.mcp import build_server
 from l9_cognitive_runtime.models.errors import InvalidValueError
+from l9_cognitive_runtime.pack.loader import PackLoader
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
+from tests.conftest import write_manifest
 
 
 def _gar_packet(valid_pack: Path) -> dict[str, Any]:
@@ -155,6 +157,60 @@ def test_adapter_template_with_unknown_placeholder_fails(valid_pack: Path) -> No
     with pytest.raises(InvalidValueError, match="placeholders unresolved") as excinfo:
         AdapterRenderer(pack_root=valid_pack).render(packet, "cursor")
     assert excinfo.value.details["placeholders"] == ["{{not_a_placeholder}}"]
+
+
+def test_adapter_template_with_brace_bearing_placeholder_fails(valid_pack: Path) -> None:
+    """A malformed token the token pattern cannot see still fails closed, rather
+    than passing through to the projection as literal template syntax."""
+    packet = _gar_packet(valid_pack)
+    template = valid_pack / ADAPTER_TEMPLATE_DIR / "cursor.md"
+    template.write_text(
+        template.read_text(encoding="utf-8") + "\nscope: {{a{b}}}\n", encoding="utf-8"
+    )
+    with pytest.raises(InvalidValueError, match="placeholders unresolved") as excinfo:
+        AdapterRenderer(pack_root=valid_pack).render(packet, "cursor")
+    assert excinfo.value.details["placeholders"] == []
+    assert excinfo.value.details["malformed"] == ["scope: {{a{b}}}"]
+
+
+def test_verified_adapter_renders_from_the_manifest(valid_pack: Path) -> None:
+    """A verified pack renders every adapter from its digested templates, and the
+    projection equals the unverified pack_root render of the same bytes."""
+    packet = _gar_packet(valid_pack)
+    pack = PackLoader().load(valid_pack)
+    for adapter in ("claude_code", "cursor", "codex", "chatgpt", "human_operator"):
+        verified = AdapterRenderer(pack=pack).render(packet, adapter)
+        unverified = AdapterRenderer(pack_root=valid_pack).render(packet, adapter)
+        assert verified.content == unverified.content, adapter
+
+
+def test_verified_adapter_refuses_a_template_tampered_after_load(valid_pack: Path) -> None:
+    packet = _gar_packet(valid_pack)
+    pack = PackLoader().load(valid_pack)
+    template = valid_pack / ADAPTER_TEMPLATE_DIR / "cursor.md"
+    template.write_text(template.read_text(encoding="utf-8") + "\nedited\n", encoding="utf-8")
+    with pytest.raises(InvalidValueError, match="tamper detected"):
+        AdapterRenderer(pack=pack).render(packet, "cursor")
+
+
+def test_verified_adapter_refuses_an_unlisted_template(valid_pack: Path) -> None:
+    """An on-disk template the manifest never verified fails closed instead of
+    silently falling back to the built-in template."""
+    packet = _gar_packet(valid_pack)
+    template = valid_pack / ADAPTER_TEMPLATE_DIR / "cursor.md"
+    original = template.read_text(encoding="utf-8")
+    template.unlink()
+    write_manifest(valid_pack)
+    pack = PackLoader().load(valid_pack)
+    template.write_text(original, encoding="utf-8")
+    with pytest.raises(InvalidValueError, match="not listed in the verified manifest"):
+        AdapterRenderer(pack=pack).render(packet, "cursor")
+
+
+def test_adapter_renderer_takes_one_template_source(valid_pack: Path) -> None:
+    pack = PackLoader().load(valid_pack)
+    with pytest.raises(InvalidValueError, match="pack or pack_root"):
+        AdapterRenderer(pack_root=valid_pack, pack=pack)
 
 
 def test_mcp_remains_read_only_with_packet_resource(valid_pack: Path) -> None:

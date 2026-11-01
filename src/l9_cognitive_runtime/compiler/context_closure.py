@@ -215,9 +215,19 @@ class ContextClosureValidator:
             {"semantic_key_mismatch": mismatched_keys, "item_id_mismatch": mismatched_ids},
         )
 
-        # 4. Nothing is in the context without a reason it is there.
+        # 4. Nothing is in the context without a reason it is there, and the
+        # reason is a planned requirement: an unplanned id would otherwise exempt
+        # the item from every per-requirement eligibility check below.
+        planned_ids = {requirement.requirement_id for requirement in requirement_plan.requirements}
         unbound = [item.item_id for item in selected if not item.selected_because]
-        check("every_selected_item_has_relevance_binding", not unbound, {"item_ids": unbound})
+        unplanned = [
+            item.item_id for item in selected if not set(item.selected_because) <= planned_ids
+        ]
+        check(
+            "every_selected_item_has_relevance_binding",
+            not unbound and not unplanned,
+            {"item_ids": unbound, "unplanned_item_ids": unplanned},
+        )
 
         # 5. The context's kernels are the bindings downstream actually uses.
         check(

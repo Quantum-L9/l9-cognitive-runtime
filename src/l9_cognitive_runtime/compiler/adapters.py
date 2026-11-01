@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,6 +33,9 @@ from l9_cognitive_runtime.models.canonical import sha256_digest
 from l9_cognitive_runtime.models.errors import InvalidValueError
 
 ADAPTER_TEMPLATE_DIR = "runtime/contract_compiler/adapters"
+
+# A template placeholder token: ``{{name}}``. Matched against template text only.
+_PLACEHOLDER = re.compile(r"\{\{[^{}]*\}\}")
 
 ADAPTER_TEMPLATES = {
     "claude_code": "claude_code.md",
@@ -308,17 +312,20 @@ class AdapterRenderer:
             "{{unknowns}}": "\n".join(f"- {u}" for u in packet["unknowns"]),
             "{{gar_outputs}}": "\n".join(f"- {r}" for r in gar_output_refs(packet)),
         }
-        rendered = template
-        for key, value in placeholders.items():
-            rendered = rendered.replace(key, value)
-        unresolved = [key for key in placeholders if key in rendered]
+        # One pass over the template text. Unknown placeholders are detected in
+        # the template, never in substituted values, and every value is inserted
+        # verbatim: a mission naming a placeholder is data, not template syntax
+        # (INV-CTX-031 projection fidelity).
+        unresolved = sorted(
+            {token for token in _PLACEHOLDER.findall(template) if token not in placeholders}
+        )
         if unresolved:
             raise InvalidValueError(
                 "adapter template left placeholders unresolved",
                 path=template_name,
                 details={"placeholders": unresolved},
             )
-        return rendered
+        return _PLACEHOLDER.sub(lambda match: placeholders[match.group(0)], template)
 
     @staticmethod
     def _adapter_for_template(template_name: str) -> str:

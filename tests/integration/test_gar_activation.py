@@ -11,7 +11,7 @@ import pytest
 from l9_cognitive_runtime.models.context import ContextSnapshot
 from l9_cognitive_runtime.parsing import StrictParseError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
-from tests.conftest import discovery_for, governed_signal_snapshot
+from tests.conftest import discovery_for, governed_signal_snapshot, kernel_pipeline, routing_rules
 
 GAR_REF = "runtime/kernels/architecture/global_architect_kernel.yaml"
 
@@ -53,10 +53,8 @@ def test_live002_gar_lenses_and_developer_execution(valid_pack: Path) -> None:
     intent = ObjectiveDeriver().derive(_gar_request(valid_pack))
     plan = ActivationPlanner().plan(
         intent,
-        rules_path=(
-            valid_pack / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml"
-        ),
-        pipeline_path=valid_pack / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml",
+        rules=routing_rules(valid_pack),
+        pipeline=kernel_pipeline(valid_pack),
         discovery=discovery_for(intent, _gar_snapshot()),
     )
     for lens in ("temporal_lens", "failure_lens", "ownership_lens"):

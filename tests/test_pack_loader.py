@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ import pytest
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.pack import PackLoader
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest, RuntimeBundle
+from tests.conftest import write_manifest
 
 
 def _sha(path: Path) -> str:
@@ -65,8 +67,9 @@ def test_explicit_pack_ref_required() -> None:
 def test_bundle_contains_provenance(tmp_path: Path) -> None:
     root = _tiny_pack(tmp_path)
     # The live spine resolves routing rules, the pipeline definition, and
-    # activated kernels from the pack; copy the runtime tree in (unlisted
-    # files are permitted — the loader only verifies listed files).
+    # activated kernels from the pack; copy the runtime tree in. Every source
+    # the compiler consumes must be manifest-listed (RU-03), so the manifest
+    # is rewritten over the completed pack before compiling.
     repo_root = Path(__file__).resolve().parents[1]
     for src in (repo_root / "runtime").rglob("*"):
         if not src.is_file():
@@ -135,7 +138,44 @@ def test_bundle_contains_provenance(tmp_path: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
+    write_manifest(root)
     service = CognitiveRuntimeService()
     bundle = service.compile_runtime(CompileRequest(mission="with pack", pack_root=root))
     assert isinstance(bundle, RuntimeBundle)
     assert bundle.provenance.pack_ref == str(root.resolve())
+
+
+def test_unlisted_activated_kernel_fails_compile_naming_it(
+    tmp_path: Path, pack_builder: Callable[..., Path]
+) -> None:
+    """RG-003a: a kernel the manifest does not list is never read as verified.
+
+    The file stays on disk; only its manifest entry is gone. Verification is a
+    property of the bytes the compiler consumes, so an unlisted kernel must
+    fail closed with a typed error naming it and produce no bundle.
+    """
+    pack = pack_builder(tmp_path / "pack")
+    request = CompileRequest(mission="Audit this repository.", pack_root=pack)
+    kernel = CognitiveRuntimeService().compile_runtime(request).execution.kernel_activation[0]
+    assert (pack / kernel).is_file()
+    manifest = json.loads((pack / "MANIFEST.json").read_text(encoding="utf-8"))
+    manifest["files"] = [entry for entry in manifest["files"] if entry["path"] != kernel]
+    (pack / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(InvalidValueError) as excinfo:
+        CognitiveRuntimeService().compile_runtime(request)
+    assert excinfo.value.path == kernel
+    assert kernel in str(excinfo.value)
+
+
+def test_packet_kernel_digests_equal_the_manifest_digests(valid_pack: Path) -> None:
+    """Every recorded kernel digest is the manifest-verified digest (RU-03)."""
+    pack = PackLoader().load(valid_pack)
+    bundle = CognitiveRuntimeService().compile_runtime(
+        CompileRequest(mission="Audit this repository.", pack_root=valid_pack)
+    )
+    recorded = bundle.packet["provenance"]["kernel_digests"]
+    assert recorded
+    assert recorded == {ref: pack.provenance.file_digests[ref] for ref in recorded}
+    assert bundle.context_plan is not None
+    assert bundle.context_plan.active_kernel_digests == recorded

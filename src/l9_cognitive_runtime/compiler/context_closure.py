@@ -91,6 +91,11 @@ DISPOSING_REASON_CODES = frozenset(
     }
 )
 
+# The subset that disposes a requirement's *shortfall*. A conflict unknown
+# disposes only its own semantic key: it is never a licence to leave another
+# key, or the rest of a ``min_items`` floor, uncovered.
+_SHORTFALL_REASON_CODES = DISPOSING_REASON_CODES - {UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS}
+
 
 @dataclass(frozen=True)
 class ContextClosureReport:
@@ -290,7 +295,7 @@ class ContextClosureValidator:
         # 9. Budgets hold on the finished artifact — per requirement *and*
         # globally. A per-requirement breach that fits inside the global budget
         # is exactly what a global-only check misses.
-        breaches = _budget_breaches(context, requirement_plan, unknown_requirements)
+        breaches = _budget_breaches(context, requirement_plan, views)
         budget = requirement_plan.global_budget
         total_bytes = sum(canonical_cost(item) for item in selected)
         global_ok = (
@@ -424,17 +429,49 @@ def _eligible_items(view: ResolvedCandidates) -> dict[str, str]:
     }
 
 
-def _conflict_disposed_keys(context: CompiledTaskContext) -> dict[str, set[str]]:
-    """Semantic keys each requirement disposed as an unresolvable conflict."""
+def _conflict_disposed_keys(
+    context: CompiledTaskContext, views: dict[str, ResolvedCandidates]
+) -> dict[str, set[str]]:
+    """Semantic keys each requirement disposed as an unresolvable conflict.
+
+    A conflict unknown is a claim, not a proof: it disposes its key only when
+    the recomputed view of that requirement holds a conflicting group under
+    the same key. A conflict unknown naming a key with no such group disposes
+    nothing, so it cannot stand in for a missing-context shortfall.
+    """
+    conflicted = {
+        (requirement_ref, semantic_key)
+        for requirement_ref, view in views.items()
+        for (_, semantic_key), group in view.groups.items()
+        if group.conflict
+    }
     keys: dict[str, set[str]] = {}
     for unknown in context.unresolved_unknowns:
         if (
             unknown.reason_code is UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS
             and unknown.requirement_ref
             and unknown.semantic_key
+            and (unknown.requirement_ref, unknown.semantic_key) in conflicted
         ):
             keys.setdefault(unknown.requirement_ref, set()).add(unknown.semantic_key)
     return keys
+
+
+def _shortfall_dispositions(context: CompiledTaskContext) -> dict[str, set[str]]:
+    """Requirements with a recorded shortfall -> the semantic keys it names.
+
+    Presence in the mapping means a ``MISSING_REQUIRED_CONTEXT`` or
+    ``BUDGET_INSUFFICIENT`` unknown is bound to the requirement; the value is
+    the union of the ``missing_semantic_keys`` those unknowns list.
+    """
+    recorded: dict[str, set[str]] = {}
+    for unknown in context.unresolved_unknowns:
+        if unknown.reason_code in _SHORTFALL_REASON_CODES and unknown.requirement_ref:
+            keys = recorded.setdefault(unknown.requirement_ref, set())
+            listed = unknown.details.get("missing_semantic_keys")
+            if isinstance(listed, list):
+                keys.update(str(key) for key in listed)
+    return recorded
 
 
 _BUDGET_WITNESS_KEYS = (
@@ -531,7 +568,19 @@ def _budget_stop_independently_proven(
             and witness["observed_bytes"] == observed
             and observed + canonical_cost(blocked) > requirement.max_bytes
         )
-    unique = {item.item_id: item for item in context.selected_items()}
+    # A global bound is proven against the shared selection state *at the
+    # stop*, not the finished one: requirements planned after this one may
+    # still admit smaller items. The compiler iterates the plan's requirements
+    # in order, so that state is everything admitted by an earlier requirement
+    # plus this requirement's own admissions before the blocked candidate.
+    order = [entry.requirement_id for entry in requirement_plan.requirements]
+    earlier = set(order[: order.index(requirement.requirement_id)])
+    unique = {
+        item.item_id: item
+        for item in context.selected_items()
+        if earlier & set(item.selected_because)
+    }
+    unique.update((item.item_id, item) for item in admitted)
     if blocked.item_id in unique:
         return False
     budget = requirement_plan.global_budget
@@ -558,7 +607,7 @@ def _coverage_breaches(
 ) -> list[dict[str, object]]:
     """Prove every requirement's coverage mode against its own eligible set."""
     selected = context.selected_items()
-    disposed = _conflict_disposed_keys(context)
+    disposed = _conflict_disposed_keys(context, views)
     breaches: list[dict[str, object]] = []
     for requirement in requirement_plan.requirements:
         taken = [item for item in selected if requirement.requirement_id in item.selected_because]
@@ -660,12 +709,13 @@ def _coverage_breach(
 def _budget_breaches(
     context: CompiledTaskContext,
     requirement_plan: ContextRequirementPlan,
-    disposed_requirements: set[str],
+    views: dict[str, ResolvedCandidates],
 ) -> list[dict[str, object]]:
     """Recompute each requirement's own footprint from the finished context."""
     selected = context.selected_items()
     breaches: list[dict[str, object]] = []
-    conflict_keys = _conflict_disposed_keys(context)
+    conflict_keys = _conflict_disposed_keys(context, views)
+    shortfalls = _shortfall_dispositions(context)
 
     for requirement in requirement_plan.requirements:
         items = [item for item in selected if requirement.requirement_id in item.selected_because]
@@ -677,7 +727,8 @@ def _budget_breaches(
             cost=cost,
             keys={item.semantic_key for item in items},
             disposed_keys=conflict_keys.get(requirement.requirement_id, set()),
-            was_disposed=requirement.requirement_id in disposed_requirements,
+            shortfall_recorded=requirement.requirement_id in shortfalls,
+            recorded_missing_keys=shortfalls.get(requirement.requirement_id, set()),
         )
         if breach is not None:
             breaches.append(breach)
@@ -691,7 +742,8 @@ def _requirement_breach(
     cost: int,
     keys: set[str],
     disposed_keys: set[str],
-    was_disposed: bool,
+    shortfall_recorded: bool,
+    recorded_missing_keys: set[str],
 ) -> dict[str, object] | None:
     if requirement.max_items is not None and count > requirement.max_items:
         return {
@@ -707,16 +759,17 @@ def _requirement_breach(
             "bytes": cost,
             "max_bytes": requirement.max_bytes,
         }
-    if was_disposed:
-        # An explicitly disposed requirement is allowed to be under-covered;
-        # that disposition is what check 1 verified.
-        return None
     if not requirement.required:
         # ``min_items`` on an optional requirement is a target, not a floor: its
         # OPTIONAL missing policy is precisely the statement that taking nothing
         # is legal. Ceilings above still apply to it — a ceiling is a ceiling.
         return None
-    if count < requirement.min_items:
+    # Under-coverage is legal only as far as it is explicitly disposed. A
+    # conflict unknown disposes exactly its own semantic key, so it accounts
+    # for that key alone; any shortfall beyond it must be recorded by a
+    # MISSING_REQUIRED_CONTEXT or BUDGET_INSUFFICIENT unknown for this
+    # requirement, and an uncovered required key must be named in one.
+    if count + len(disposed_keys - keys) < requirement.min_items and not shortfall_recorded:
         return {
             "requirement_id": requirement.requirement_id,
             "breach": "min_items",
@@ -724,7 +777,9 @@ def _requirement_breach(
             "min_items": requirement.min_items,
         }
     if requirement.coverage_mode is CoverageMode.SEMANTIC_KEYS:
-        missing = sorted(set(requirement.required_semantic_keys) - keys - disposed_keys)
+        missing = sorted(
+            set(requirement.required_semantic_keys) - keys - disposed_keys - recorded_missing_keys
+        )
         if missing:
             return {
                 "requirement_id": requirement.requirement_id,

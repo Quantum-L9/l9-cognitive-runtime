@@ -84,6 +84,56 @@ def test_capabilities_declare_read_only(valid_pack: Path) -> None:
     assert data["shell"] is False
 
 
+def test_stdio_runtime_capabilities_report_stdio(valid_pack: Path) -> None:
+    """RG-014b (preserved): the stdio and Manus entry points report stdio."""
+    from l9_cognitive_runtime.mcp.manus_adapter import MANUS_TOOL_PREFIX
+    from l9_cognitive_runtime.mcp.manus_adapter import build_server as build_manus_server
+
+    data = _tool_data(_run(build_server(valid_pack).call_tool("runtime_capabilities", {})))
+    assert data["transport"] == "stdio"
+    resource = list(_run(build_server(valid_pack).read_resource("l9://runtime/capabilities")))
+    assert json.loads(resource[0].content)["transport"] == "stdio"
+    manus = build_manus_server(valid_pack)
+    manus_data = _tool_data(_run(manus.call_tool(f"{MANUS_TOOL_PREFIX}runtime_capabilities", {})))
+    assert manus_data["transport"] == "stdio"
+    assert manus_data["tools"] == [f"{MANUS_TOOL_PREFIX}{tool}" for tool in READ_ONLY_TOOLS]
+
+
+def test_build_server_refuses_an_unknown_transport(valid_pack: Path) -> None:
+    """A server never reports a transport it cannot be served over."""
+    from l9_cognitive_runtime.models.errors import InvalidValueError
+
+    with pytest.raises(InvalidValueError, match="unsupported MCP transport"):
+        build_server(valid_pack, transport="sse")
+
+
+def test_oversized_context_snapshot_is_refused_before_typing(
+    valid_pack: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RG-016b: an MCP context_snapshot over the byte ceiling fails as a
+    ToolError at ingress, before any candidate is typed (INV-CTX-007)."""
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    from l9_cognitive_runtime.models.context import ContextSnapshot, payload_item_count
+    from tests.test_context_planning_bridge import _oversized_snapshot_payload
+
+    payload = _oversized_snapshot_payload()
+    assert payload_item_count(payload) == 1
+    typed: list[dict[str, Any]] = []
+    original = ContextSnapshot.from_mapping
+
+    def _spy(cls: type[ContextSnapshot], data: dict[str, Any]) -> ContextSnapshot:
+        typed.append(data)
+        return original(data)
+
+    monkeypatch.setattr(ContextSnapshot, "from_mapping", classmethod(_spy))
+    server = build_server(valid_pack)
+    for tool in ("compile_runtime", "plan_context_requirements"):
+        with pytest.raises(ToolError, match="maximum canonical byte size"):
+            _run(server.call_tool(tool, {"mission": "e2e compile", "context_snapshot": payload}))
+    assert typed == []
+
+
 # --- resources ---------------------------------------------------------------
 
 

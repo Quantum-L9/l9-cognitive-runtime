@@ -27,8 +27,10 @@ from mcp.server.mcpserver.exceptions import ToolError
 from l9_cognitive_runtime import __version__
 from l9_cognitive_runtime.mcp.run_store import InMemoryRunStore, RunNotFoundError
 from l9_cognitive_runtime.models.context import (
+    SNAPSHOT_MAX_BYTES,
     SNAPSHOT_MAX_ITEMS,
     ContextSnapshot,
+    payload_canonical_byte_size,
     payload_item_count,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError, ModelValidationError
@@ -40,6 +42,11 @@ DEFAULT_TASK_TYPE = "kernel_runtime_convergence"
 # stdio is local and unauthenticated; a single local principal owns its runs.
 # Hosted OAuth binds the principal to the token subject in MCP-011C.
 LOCAL_PRINCIPAL = "local-stdio"
+# Transports a server can be built for. ``runtime_capabilities`` reports the one
+# actually serving it; the stdio entry points and the HTTP app each name theirs.
+STDIO_TRANSPORT = "stdio"
+STREAMABLE_HTTP_TRANSPORT = "streamable_http"
+SUPPORTED_TRANSPORTS = (STDIO_TRANSPORT, STREAMABLE_HTTP_TRANSPORT)
 READ_ONLY_TOOLS = (
     "runtime_capabilities",
     "compile_intent",
@@ -64,6 +71,7 @@ CONTEXT_AWARE_TOOLS = (
 def _capabilities(
     pack: RuntimePack,
     *,
+    transport: str = STDIO_TRANSPORT,
     authentication: str = "none",
     server_name: str = SERVER_NAME,
     tool_names: tuple[str, ...] = READ_ONLY_TOOLS,
@@ -72,7 +80,7 @@ def _capabilities(
     return {
         "server": server_name,
         "version": __version__,
-        "transport": "stdio",
+        "transport": transport,
         # Callers should be able to discover whether this surface is protected
         # without having to provoke a 401 to find out.
         "authentication": authentication,
@@ -113,6 +121,15 @@ def parse_context_snapshot(payload: dict[str, Any] | None) -> ContextSnapshot | 
             "context_snapshot exceeds the maximum item count",
             path="context_snapshot",
             details={"items": count, "max_items": SNAPSHOT_MAX_ITEMS},
+        )
+    # Then the byte ceiling, with the preflight's own canonical measure, so an
+    # oversized payload is refused before any candidate is typed and hashed.
+    size = payload_canonical_byte_size(payload)
+    if size > SNAPSHOT_MAX_BYTES:
+        raise InvalidValueError(
+            "context_snapshot exceeds the maximum canonical byte size",
+            path="context_snapshot",
+            details={"bytes": size, "max_bytes": SNAPSHOT_MAX_BYTES},
         )
     try:
         return ContextSnapshot.from_mapping(payload)
@@ -155,6 +172,7 @@ def build_server(
     auth_settings: AuthSettings | None = None,
     server_name: str = SERVER_NAME,
     tool_name_prefix: str = "",
+    transport: str = STDIO_TRANSPORT,
 ) -> MCPServer:
     """Create a read-only MCP server bound to an explicit, verified pack root.
 
@@ -165,8 +183,12 @@ def build_server(
     by ``LOCAL_PRINCIPAL``. Authentication changes *who owns a run*; it never
     changes what the compiler produces. ``tool_name_prefix`` permits a bounded
     local adapter to expose the same six operations in a collision-free namespace;
-    it does not add operations or make the pack caller-selectable.
+    it does not add operations or make the pack caller-selectable. ``transport``
+    names the transport the caller will serve this server over, so
+    ``runtime_capabilities`` reports it rather than assuming stdio.
     """
+    if transport not in SUPPORTED_TRANSPORTS:
+        raise InvalidValueError("unsupported MCP transport", path=transport)
     root = pack_root.resolve()
     if not root.is_dir():
         raise InvalidValueError("pack_root must be an existing directory", path=str(root))
@@ -246,6 +268,7 @@ def build_server(
         """List the read-only capabilities of this MCP server."""
         return _capabilities(
             pack,
+            transport=transport,
             authentication=auth_mode,
             server_name=server_name,
             tool_names=tool_names,
@@ -357,6 +380,7 @@ def build_server(
         return json.dumps(
             _capabilities(
                 pack,
+                transport=transport,
                 authentication=auth_mode,
                 server_name=server_name,
                 tool_names=tool_names,

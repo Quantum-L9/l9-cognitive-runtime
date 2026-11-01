@@ -83,3 +83,33 @@ def test_payload_is_copied_not_aliased() -> None:
     stored = store.get(rec.run_id, "p")
     assert stored is not None
     assert stored.payload["digests"]["graph"] == "abc"
+
+
+def test_one_principal_cannot_evict_another_principals_run() -> None:
+    """RG-010a: capacity pressure evicts from the principal holding the most
+    runs, so a burst from one principal leaves another's run retrievable."""
+    store = InMemoryRunStore(max_entries=4, ttl_seconds=60)
+    alice = store.create("alice", {"n": 0})
+    mallory = [store.create("mallory", {"n": i}) for i in range(store.max_entries)]
+    assert store.require(alice.run_id, "alice") == alice
+    # The global bound is unchanged: mallory's oldest run made room.
+    assert store.get(mallory[0].run_id, "mallory") is None
+    assert len(store.list_for_principal("alice")) + len(store.list_for_principal("mallory")) == 4
+    assert [r.run_id for r in store.list_for_principal("mallory")] == [
+        r.run_id for r in mallory[1:]
+    ]
+
+
+def test_single_principal_eviction_is_oldest_first_and_bounded() -> None:
+    """RG-010b (preserved): one principal over capacity loses its least
+    recently used runs and the store never exceeds ``max_entries``."""
+    store = InMemoryRunStore(max_entries=3, ttl_seconds=60)
+    first = store.create("p", {"n": 1})
+    second = store.create("p", {"n": 2})
+    store.create("p", {"n": 3})
+    assert store.get(first.run_id, "p") is not None  # LRU touch
+    store.create("p", {"n": 4})
+    assert store.get(second.run_id, "p") is None
+    assert store.get(first.run_id, "p") is not None
+    store.create("p", {"n": 5})
+    assert len(store.list_for_principal("p")) == 3

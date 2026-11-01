@@ -266,6 +266,8 @@ A required authority names an authority identifier, the **subject** it is needed
 
 A grant that exists under the required identifier but does not cover it is a **proven negative**, distinct from having no fact at all, and MUST block rather than reading as mere absence.
 
+The subject of a compiler-derived requirement over task targets is fixed by decision D-02 option A (an owner decision, recorded 2026-10-27): it is the `repository_id` of the governed `RepositoryState` selected for those targets, one requirement per repository, and the target references that repository's governed facts name remain its action scope. The subject MUST derive only from governed snapshot items, never from `source_context` (INV-CTX-006). Targets for which no governed repository identity is available stay in a requirement with no subject: only a grant that leaves the subject unstated contains it, and a grant naming any subject is `insufficient_scope` — a missing identity is never read as a grant.
+
 Context-specific governing authority order MUST take precedence when proven. For backward compatibility, the current compiler authority order MAY remain as an explicit `compiler_default` only when no more specific governed order is available. The output MUST identify whether its effective order came from governed context or the compiler default. The compiler default is a **precedence fallback and never a grant**: it MUST NOT satisfy a required authority.
 
 Caller hints MUST NOT define effective authority order.

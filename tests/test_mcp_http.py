@@ -6,6 +6,7 @@ No authentication is exercised or asserted here — that is MCP-011.
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import httpx2 as httpx  # the mcp SDK vendors httpx as httpx2
@@ -141,5 +142,41 @@ def test_http_initialize_and_tool_parity(valid_pack: Path) -> None:
                         assert {t.name for t in tools.tools} == set(READ_ONLY_TOOLS)
                         called = await session.call_tool("compile_runtime", {"mission": "http e2e"})
                         assert called.is_error is False
+
+    asyncio.run(asyncio.wait_for(scenario(), timeout=30))
+
+
+def test_http_runtime_capabilities_report_streamable_http(valid_pack: Path) -> None:
+    """RG-014a: the capabilities a caller discovers over HTTP name the transport
+    actually serving it, matching ``/healthz`` — not the stdio literal."""
+    from mcp import ClientSession
+    from mcp.client.streamable_http import streamable_http_client
+
+    async def scenario() -> None:
+        app = create_http_app(valid_pack)
+        async with app.router.lifespan_context(app):
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://localhost") as hc:
+                health = (await hc.get("/healthz")).json()
+                async with streamable_http_client("http://localhost/v1/mcp", http_client=hc) as (
+                    read,
+                    write,
+                ):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        called = await session.call_tool("runtime_capabilities", {})
+                        assert called.is_error is False
+                        tool_caps = dict(called.structured_content or {})
+                        resource = await session.read_resource("l9://runtime/capabilities")
+                        resource_caps = json.loads(getattr(resource.contents[0], "text", ""))
+        assert health["transport"] == "streamable_http"
+        assert tool_caps["transport"] == "streamable_http"
+        assert resource_caps["transport"] == "streamable_http"
+        # Everything but the transport is unchanged.
+        assert tool_caps["tools"] == list(READ_ONLY_TOOLS)
+        assert tool_caps["authentication"] == "none"
+        assert tool_caps["writes"] is False
+        assert tool_caps["execution"] is False
+        assert tool_caps["shell"] is False
 
     asyncio.run(asyncio.wait_for(scenario(), timeout=30))

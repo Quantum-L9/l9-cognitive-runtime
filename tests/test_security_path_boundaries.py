@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from l9_cognitive_runtime.graph import validate_execution_graph_mapping
+from l9_cognitive_runtime.models.errors import InvalidValueError
+from l9_cognitive_runtime.parsing import confined_input_file, load_yaml_file
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -71,3 +76,34 @@ def test_compatibility_file_io_uses_confined_boundaries() -> None:
     assert "--output" not in visualizer
     assert "--allow-write-root" not in visualizer
     assert "confined_output_path" in planner
+
+
+def test_input_outside_every_trusted_root_is_rejected(tmp_path: Path) -> None:
+    """RG-012a: confinement never derives its authority root from the input.
+
+    An unrelated project carries its own ``pyproject.toml``. A root derived
+    from the target would make that project its own authority and accept the
+    file; only a caller-supplied trusted root may confine an input.
+    """
+    unrelated = tmp_path / "unrelated-project"
+    (unrelated / "deploy").mkdir(parents=True)
+    (unrelated / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+    secret = unrelated / "deploy" / "credentials.yaml"
+    secret.write_text("token: hunter2\n", encoding="utf-8")
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    (pack / "MANIFEST.json").write_text('{"files": []}', encoding="utf-8")
+
+    for trusted in (ROOT, pack):
+        with pytest.raises(InvalidValueError, match="escapes allow_root"):
+            confined_input_file(secret, allow_root=trusted)
+        with pytest.raises(InvalidValueError, match="escapes allow_root"):
+            load_yaml_file(secret, allow_root=trusted)
+
+    # No call shape remains that lets the target choose its own root.
+    confine: Callable[..., Path] = confined_input_file
+    load: Callable[..., dict[str, Any]] = load_yaml_file
+    with pytest.raises(TypeError):
+        confine(secret)
+    with pytest.raises(TypeError):
+        load(secret)

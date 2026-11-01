@@ -106,11 +106,14 @@ def validate_deployment_closure(pack_root: Path) -> dict[str, Any]:
     closed on — a plan with blockers is rejected by the execution compiler.
     """
     from l9_cognitive_runtime.pack import PackLoader
-    from l9_cognitive_runtime.parsing import load_yaml_file
+    from l9_cognitive_runtime.parsing import load_yaml_mapping
     from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
 
+    rules_rel = "runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"
     pack = PackLoader().load(pack_root)
-    rules = load_yaml_file(pack.resolve("runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml"))
+    # The route list is read through the verified read, like every source the
+    # compiler consumes: an unlisted or edited rules file cannot name routes.
+    rules = load_yaml_mapping(pack.read_verified(rules_rel).decode("utf-8"), source=rules_rel)
     routes = rules.get("task_routes") or {}
     service = CognitiveRuntimeService()
     compiled_routes: list[str] = []
@@ -123,6 +126,15 @@ def validate_deployment_closure(pack_root: Path) -> dict[str, Any]:
         # Full spine compile against the sealed pack: kernel resolution, context
         # closure, obligations, graph, packet, liveness — all fail closed.
         bundle = service.compile_runtime(CompileRequest(mission=mission, pack_root=pack_root))
+        # A successful compile proves the route it matched, which need not be
+        # this one: closure evidence may only name a route that was compiled.
+        matched = (bundle.execution.metadata or {}).get("matched_route")
+        if matched != route_name:
+            raise InvalidValueError(
+                "representative mission compiled a different route",
+                path=route_name,
+                details={"route": route_name, "matched_route": matched, "mission": mission},
+            )
         compiled_routes.append(route_name)
         context_digests[route_name] = bundle.digests()["context"]
     return {

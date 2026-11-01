@@ -37,6 +37,7 @@ from l9_cognitive_runtime.models.context import (
     DiscoveryContext,
     GovernedConstraint,
 )
+from l9_cognitive_runtime.parsing import load_yaml_file
 from l9_cognitive_runtime.types import CompileRequest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -131,6 +132,25 @@ def build_pack(
             shutil.copy2(src, dst)
     write_manifest(pack)
     return pack
+
+
+def routing_rules(root: Path) -> dict[str, Any]:
+    """The routing rules a direct ``ActivationPlanner.plan`` call consumes.
+
+    The planner reads no files; the pipeline hands it parsed documents. A test
+    that drives the planner directly loads them itself, confined to ``root``.
+    """
+    return load_yaml_file(
+        root / "runtime" / "kernel_pipeline" / "planner" / "TASK_ROUTING_RULES.yaml",
+        allow_root=root,
+    )
+
+
+def kernel_pipeline(root: Path) -> dict[str, Any]:
+    """The pipeline definition a direct ``ActivationPlanner.plan`` call consumes."""
+    return load_yaml_file(
+        root / "runtime" / "kernel_pipeline" / "KERNEL_PIPELINE.yaml", allow_root=root
+    )
 
 
 def execution_mapping(**overrides: Any) -> dict[str, Any]:

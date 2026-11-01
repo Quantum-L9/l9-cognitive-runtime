@@ -1,7 +1,10 @@
-"""Bounded in-memory MCP run result store with TTL and LRU eviction.
+"""Bounded in-memory MCP run result store with TTL and per-principal LRU eviction.
 
 Isolation guarantees: collision-resistant run IDs, per-principal ownership,
-TTL + maximum-entry bounds, and thread-safe access. Retrieval is
+TTL + maximum-entry bounds, and thread-safe access. When the entry bound is
+exceeded, the least recently used run of the principal holding the most runs
+is evicted, so one principal's burst cannot crowd out a principal holding
+fewer runs. Retrieval is
 anti-enumerating — unknown, expired, and cross-principal lookups all raise the
 same typed ``RunNotFoundError``. The principal is a caller-supplied string until
 hosted OAuth binds it to the token subject (MCP-011C); this is a pre-auth
@@ -59,9 +62,24 @@ class InMemoryRunStore:
             self._items[run_id] = record
             self._order.append(run_id)
             while len(self._order) > self.max_entries:
-                old = self._order.pop(0)
+                old = self._capacity_victim_locked()
+                self._order.remove(old)
                 self._items.pop(old, None)
         return record
+
+    def _capacity_victim_locked(self) -> str:
+        """Least recently used run of the principal holding the most runs.
+
+        Ties resolve to the oldest run overall, so a principal's burst evicts its
+        own runs first rather than a run of a principal holding fewer.
+        O(n) over ``_order``; acceptable at the default bound.
+        """
+        counts: dict[str, int] = {}
+        for rid in self._order:
+            principal = self._items[rid].principal
+            counts[principal] = counts.get(principal, 0) + 1
+        most = max(counts.values())
+        return next(rid for rid in self._order if counts[self._items[rid].principal] == most)
 
     def get(self, run_id: str, principal: str) -> RunRecord | None:
         with self._lock:

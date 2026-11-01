@@ -9,14 +9,20 @@ from typing import Any, cast
 
 import pytest
 
+from l9_cognitive_runtime.cli import load_context_snapshot
 from l9_cognitive_runtime.cli import main as cli_main
 from l9_cognitive_runtime.models.context import (
+    SNAPSHOT_MAX_BYTES,
     AuthorityLevel,
     ContextKind,
     ContextScopeMode,
     ContextSnapshot,
     ContextSourceRef,
+    EntityContext,
     MemoryContext,
+    RepositoryState,
+    payload_canonical_byte_size,
+    payload_item_count,
 )
 from l9_cognitive_runtime.models.errors import InvalidValueError
 from l9_cognitive_runtime.service import CognitiveRuntimeService, CompileRequest
@@ -205,6 +211,103 @@ def test_cli_rejects_plan_output_with_expected_plan_binding(
     assert (
         "--expected-context-plan-id cannot be used with --plan-context" in capsys.readouterr().err
     )
+
+
+def _padded_state(value: str) -> RepositoryState:
+    return RepositoryState(
+        semantic_key="repo:src/big:content",
+        authority_level=AuthorityLevel.GOVERNED_VERIFIED,
+        source_ref=ContextSourceRef(
+            source_id="big",
+            source_kind="repository",
+            locator="repo://big",
+            immutable_coordinate="rev-1",
+        ),
+        scope_mode=ContextScopeMode.GLOBAL,
+        repository_id="repo",
+        revision="rev-1",
+        subject_ref="src/big",
+        fact_type="content",
+        value=value,
+    )
+
+
+def _oversized_snapshot_payload() -> dict[str, Any]:
+    """A valid, one-item snapshot payload whose canonical bytes exceed the ceiling."""
+    padded = _padded_state("x" * (SNAPSHOT_MAX_BYTES + 1))
+    return ContextSnapshot(repository_state=[padded]).to_canonical_dict()
+
+
+def test_cli_rejects_an_oversized_snapshot_file_before_typing_it(
+    valid_pack: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RG-016a: few items, too many bytes — refused at ingress, never typed.
+
+    Typing a candidate derives its identity, which hashes it, so the byte
+    ceiling must apply to the raw payload before ``from_mapping`` runs
+    (INV-CTX-007), not only in the compiler preflight afterwards.
+    """
+    payload = _oversized_snapshot_payload()
+    assert payload_item_count(payload) == 1
+    snapshot_file = tmp_path / "oversized.json"
+    snapshot_file.write_text(json.dumps(payload), encoding="utf-8")
+    assert snapshot_file.stat().st_size > SNAPSHOT_MAX_BYTES
+
+    typed: list[dict[str, Any]] = []
+    original = ContextSnapshot.from_mapping
+
+    def _spy(cls: type[ContextSnapshot], data: dict[str, Any]) -> ContextSnapshot:
+        typed.append(data)
+        return original(data)
+
+    monkeypatch.setattr(ContextSnapshot, "from_mapping", classmethod(_spy))
+    with pytest.raises(InvalidValueError, match="maximum canonical byte size"):
+        cli_main(
+            [
+                "--mission",
+                "Update greeting text.",
+                "--pack-root",
+                str(valid_pack),
+                "--context-snapshot",
+                str(snapshot_file),
+            ]
+        )
+    assert typed == []
+
+
+def test_cli_ingress_measure_is_canonical_not_file_formatting(tmp_path: Path) -> None:
+    """A boundary-sized snapshot the preflight accepts is not refused at ingress
+    because its file is indented: ingress measures canonical bytes, the same
+    measure ``ContextSnapshot.canonical_byte_size`` applies (INV-CTX-007)."""
+    entities = [
+        EntityContext(
+            semantic_key=f"module:m{index:03d}",
+            authority_level=AuthorityLevel.GOVERNED_VERIFIED,
+            source_ref=ContextSourceRef(
+                source_id=f"m{index:03d}",
+                source_kind="repository",
+                locator=f"repo://m{index:03d}",
+                immutable_coordinate="rev-1",
+            ),
+            scope_mode=ContextScopeMode.GLOBAL,
+            entity_id=f"m{index:03d}",
+            entity_type="module",
+            relation_to_task="target",
+        )
+        for index in range(200)
+    ]
+    base = ContextSnapshot(relevant_entities=entities, repository_state=[_padded_state("")])
+    fill = SNAPSHOT_MAX_BYTES - base.canonical_byte_size()
+    boundary = ContextSnapshot(
+        relevant_entities=entities, repository_state=[_padded_state("x" * fill)]
+    )
+    assert boundary.canonical_byte_size() == SNAPSHOT_MAX_BYTES
+    payload = boundary.to_canonical_dict()
+    assert payload_canonical_byte_size(payload) == boundary.canonical_byte_size()
+    snapshot_file = tmp_path / "boundary.json"
+    snapshot_file.write_text(json.dumps(payload, indent=4), encoding="utf-8")
+    assert snapshot_file.stat().st_size > SNAPSHOT_MAX_BYTES
+    assert load_context_snapshot(snapshot_file) == boundary
 
 
 def test_public_context_contract_schemas_ship_and_match_models() -> None:

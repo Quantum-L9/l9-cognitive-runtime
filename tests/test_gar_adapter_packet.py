@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from l9_cognitive_runtime.compiler.adapters import (
+    ADAPTER_TEMPLATE_DIR,
     AdapterRenderer,
     validate_packet,
 )
@@ -113,6 +115,46 @@ def test_adapter_validation_fails_when_obligations_dropped(valid_pack: Path) -> 
     ]
     with pytest.raises(InvalidValueError):
         AdapterRenderer().render(weakened, "cursor")
+
+
+def _template_placeholders(valid_pack: Path) -> list[str]:
+    """Every placeholder token the pack's adapter templates declare."""
+    tokens: set[str] = set()
+    for template in (valid_pack / ADAPTER_TEMPLATE_DIR).glob("*.md"):
+        tokens.update(re.findall(r"\{\{[^{}]*\}\}", template.read_text(encoding="utf-8")))
+    return sorted(tokens)
+
+
+def test_adapter_renders_mission_containing_placeholder_tokens_verbatim(
+    valid_pack: Path,
+) -> None:
+    """RG-008a: a mission is data, never template syntax. A mission naming a
+    placeholder is projected verbatim — neither expanded nor reported as an
+    unresolved template placeholder (INV-CTX-031 projection fidelity)."""
+    packet = _gar_packet(valid_pack)
+    tokens = _template_placeholders(valid_pack)
+    assert "{{mission}}" in tokens
+    assert "{{required_obligations}}" in tokens
+    for token in tokens:
+        mission = f"review the {token} parser"
+        mutated = copy.deepcopy(packet)
+        mutated["intent"]["mission"] = mission
+        for renderer in (AdapterRenderer(), AdapterRenderer(pack_root=valid_pack)):
+            for adapter in ("claude_code", "cursor", "codex", "chatgpt", "human_operator"):
+                rendered = renderer.render(mutated, adapter)
+                assert mission in rendered.content, (token, adapter)
+
+
+def test_adapter_template_with_unknown_placeholder_fails(valid_pack: Path) -> None:
+    """RG-008b: an unknown placeholder in the template itself fails closed."""
+    packet = _gar_packet(valid_pack)
+    template = valid_pack / ADAPTER_TEMPLATE_DIR / "cursor.md"
+    template.write_text(
+        template.read_text(encoding="utf-8") + "\n{{not_a_placeholder}}\n", encoding="utf-8"
+    )
+    with pytest.raises(InvalidValueError, match="placeholders unresolved") as excinfo:
+        AdapterRenderer(pack_root=valid_pack).render(packet, "cursor")
+    assert excinfo.value.details["placeholders"] == ["{{not_a_placeholder}}"]
 
 
 def test_mcp_remains_read_only_with_packet_resource(valid_pack: Path) -> None:
@@ -229,3 +271,32 @@ def test_provider_receipt_digest_mismatch_fails(valid_pack: Path) -> None:
     )
     with pytest.raises(InvalidValueError, match="digest mismatch"):
         validate_provider_acceptance(packet, acceptance)
+
+
+def test_provider_receipt_digest_binds_unsupported_obligation_ids(valid_pack: Path) -> None:
+    """RG-011a: the receipt digest binds the full acceptance it reports, so the
+    unsupported set cannot be altered after the receipt is digested."""
+    packet = _gar_packet(valid_pack)
+    required_ids = {o["obligation_id"] for o in packet["required_obligations"]}
+    unsupported = ("OBL.DELIVERY",)
+    accepted = tuple(sorted(required_ids - set(unsupported)))
+    honest = ProviderAcceptance(
+        provider_id="partial-host",
+        accepted_obligation_ids=accepted,
+        unsupported_obligation_ids=unsupported,
+        capabilities=("files",),
+        authority_limits=("read_only",),
+        receipt_digest="",
+    )
+    digest = acceptance_receipt_digest(packet, honest)
+    for altered in ((), ("OBL.DELIVERY", "OBL.NOT_REQUIRED")):
+        tampered = ProviderAcceptance(
+            provider_id=honest.provider_id,
+            accepted_obligation_ids=honest.accepted_obligation_ids,
+            unsupported_obligation_ids=altered,
+            capabilities=honest.capabilities,
+            authority_limits=honest.authority_limits,
+            receipt_digest=digest,
+        )
+        with pytest.raises(InvalidValueError, match="digest mismatch"):
+            validate_provider_acceptance(packet, tampered)

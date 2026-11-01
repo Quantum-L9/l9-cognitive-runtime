@@ -20,12 +20,17 @@ from l9_cognitive_runtime.compiler.context_closure import (
     CONTEXT_CHECKS,
     ContextClosureValidator,
 )
-from l9_cognitive_runtime.compiler.context_requirements import ContextRequirementPlanner
+from l9_cognitive_runtime.compiler.context_requirements import (
+    GLOBAL_MAX_BYTES,
+    ContextRequirementPlanner,
+)
+from l9_cognitive_runtime.compiler.execution import AUTHORITY_ORDER
 from l9_cognitive_runtime.compiler.kernels import KernelBinding, KernelContextNeed
 from l9_cognitive_runtime.compiler.task_context import (
     AUTHORITY_PROVEN_NEGATIVE,
     ContextCompiler,
     SnapshotResolution,
+    _repository_subjects,
     _Selection,
     _unknown_status_decisions,
     authority_disposition,
@@ -36,6 +41,7 @@ from l9_cognitive_runtime.compiler.task_scope import TaskScopeCompiler
 from l9_cognitive_runtime.models.context import (
     APPLICABILITY_FIELDS,
     CLAIM_EXCLUDED_FIELDS,
+    GOVERNED_LEVELS,
     ApplicableLaw,
     AuthorityContext,
     AuthorityFact,
@@ -57,12 +63,16 @@ from l9_cognitive_runtime.models.context import (
     ContextUnknown,
     CoverageMode,
     DecisionStatus,
+    DependencyContext,
     DiscoveryContext,
     EffectiveAuthorityOrderSource,
+    EntityContext,
     FreshnessRequirement,
     GovernedConstraint,
     MissingPolicy,
     PriorDecision,
+    RepositoryState,
+    TaskScope,
     UnknownMateriality,
     UnknownReasonCode,
     authority_semantic_key,
@@ -668,6 +678,355 @@ def test_a_limit_without_a_grant_is_blocking(valid_pack: Path) -> None:
     assert limited
     assert limited[0].materiality is UnknownMateriality.BLOCKING
     assert limited[0].details["state"] == "limited_without_grant"
+
+
+# ---------------------------------------------------------------------------
+# INV-CTX-021 / INV-CTX-022, decision D-01 option B: only governed facts may
+# close an authority or capability gap, or define a governed effective order.
+# ---------------------------------------------------------------------------
+
+
+def unprovenanced(source_id: str) -> ContextSourceRef:
+    """A source with no immutable coordinate: only non-governed tiers accept it."""
+    return ContextSourceRef(source_id=source_id, source_kind="host", locator=f"host://{source_id}")
+
+
+def _authority_gap(context: Any, authority_id: str) -> list[ContextUnknown]:
+    return [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.MISSING_AUTHORITY
+        and unknown.details.get("authority_id") == authority_id
+    ]
+
+
+def test_rg001a_an_informative_grant_does_not_close_the_authority_gap(
+    valid_pack: Path,
+) -> None:
+    grant = AuthorityFact(
+        semantic_key="repository_write::",
+        authority_level=AuthorityLevel.INFORMATIVE,
+        source_ref=unprovenanced("host-grants"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id="repository_write",
+        state="granted",
+    )
+    bundle = _compile(valid_pack, MUTATION_MISSION, ContextSnapshot(authority_facts=[grant]))
+    context = bundle.task_context
+    assert grant.item_id not in {fact.item_id for fact in context.authority.granted}
+    gap = _authority_gap(context, "repository_write")
+    assert gap
+    assert gap[0].details["state"] == "absent"
+    assert gap[0].materiality is UnknownMateriality.NON_BLOCKING
+
+
+def test_rg001a_a_kernel_need_cannot_lower_the_authority_floor() -> None:
+    need = KernelContextNeed(
+        need_id="authority_plane",
+        context_kind=ContextKind.AUTHORITY_FACT,
+        required=False,
+        reason="this kernel reads the authority plane",
+        coverage=CoverageMode.ALL_ELIGIBLE,
+        minimum_authority=AuthorityLevel.INFORMATIVE,
+    )
+    plan = _plan_for([binding("runtime/kernels/task/plain.yaml", need)])
+    planned = [
+        requirement
+        for requirement in plan.requirements
+        if requirement.context_kind in {ContextKind.AUTHORITY_FACT, ContextKind.CAPABILITY_FACT}
+    ]
+    assert any(requirement.kernel_need_refs for requirement in planned)
+    assert {requirement.minimum_authority for requirement in planned} == {
+        AuthorityLevel.GOVERNED_VERIFIED
+    }
+    # The eligibility rule itself holds the floor, so even a requirement that
+    # advertises a weaker one never matches an informative authority fact.
+    advertised = _requirement(
+        context_kind=ContextKind.AUTHORITY_FACT, minimum_authority=AuthorityLevel.UNVERIFIED
+    )
+    informative = AuthorityFact(
+        semantic_key="repository_write::",
+        authority_level=AuthorityLevel.INFORMATIVE,
+        source_ref=unprovenanced("host-grants"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id="repository_write",
+        state="granted",
+    )
+    assert not matches_requirement(advertised, informative)
+
+
+@pytest.mark.parametrize("plane", ["authority_fact", "applicable_law"])
+def test_rg001b_informative_precedence_never_defines_a_governed_order(
+    valid_pack: Path, plane: str
+) -> None:
+    if plane == "authority_fact":
+        snapshot = ContextSnapshot(
+            authority_facts=[
+                AuthorityFact(
+                    semantic_key="repository_write::",
+                    authority_level=AuthorityLevel.INFORMATIVE,
+                    source_ref=unprovenanced("host-grants"),
+                    scope_mode=ContextScopeMode.GLOBAL,
+                    authority_id="repository_write",
+                    state="granted",
+                    precedence=0,
+                )
+            ]
+        )
+    else:
+        snapshot = ContextSnapshot(
+            applicable_law=[law("host-law", precedence=0, authority=AuthorityLevel.INFORMATIVE)]
+        )
+    bundle = _compile(valid_pack, MUTATION_MISSION, snapshot)
+    authority = bundle.task_context.authority
+    assert authority.effective_order_source is EffectiveAuthorityOrderSource.COMPILER_DEFAULT
+    assert authority.effective_order == AUTHORITY_ORDER
+    assert bundle.execution.authority_order == AUTHORITY_ORDER
+
+
+def test_rg001c_an_informative_capability_does_not_close_the_capability_gap(
+    valid_pack: Path,
+) -> None:
+    available = CapabilityFact(
+        semantic_key="workspace_mutation",
+        authority_level=AuthorityLevel.INFORMATIVE,
+        source_ref=unprovenanced("host-env"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        capability_id="workspace_mutation",
+        state="available",
+    )
+    context = _compile(
+        valid_pack, MUTATION_MISSION, ContextSnapshot(capability_facts=[available])
+    ).task_context
+    assert context.capabilities.available == []
+    gap = [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.UNSUPPORTED_CAPABILITY
+        and unknown.details.get("capability_id") == "workspace_mutation"
+    ]
+    assert gap
+    assert gap[0].details["state"] == "absent"
+    assert gap[0].materiality is UnknownMateriality.NON_BLOCKING
+
+
+@pytest.mark.parametrize("level", sorted(GOVERNED_LEVELS))
+def test_rg001d_a_governed_grant_with_precedence_still_closes_and_orders(
+    valid_pack: Path, level: AuthorityLevel
+) -> None:
+    grant = AuthorityFact(
+        semantic_key="repository_write::",
+        authority_level=level,
+        source_ref=source("grants"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id="repository_write",
+        state="granted",
+        precedence=0,
+    )
+    available = CapabilityFact(
+        semantic_key="workspace_mutation",
+        authority_level=level,
+        source_ref=source("env"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        capability_id="workspace_mutation",
+        state="available",
+    )
+    bundle = _compile(
+        valid_pack,
+        MUTATION_MISSION,
+        ContextSnapshot(authority_facts=[grant], capability_facts=[available]),
+    )
+    context = bundle.task_context
+    assert {fact.item_id for fact in context.authority.granted} == {grant.item_id}
+    assert not _authority_gap(context, "repository_write")
+    assert {fact.item_id for fact in context.capabilities.available} == {available.item_id}
+    assert context.authority.effective_order_source is (
+        EffectiveAuthorityOrderSource.GOVERNED_CONTEXT
+    )
+    assert context.authority.effective_order == ["repository_write"]
+    assert bundle.execution.authority_order == ["repository_write"]
+
+
+def test_rg001d_governed_law_with_precedence_still_defines_the_order(
+    valid_pack: Path,
+) -> None:
+    snapshot = ContextSnapshot(applicable_law=[law("governed-law", precedence=0)])
+    authority = _compile(valid_pack, MUTATION_MISSION, snapshot).task_context.authority
+    assert authority.effective_order_source is EffectiveAuthorityOrderSource.GOVERNED_CONTEXT
+    assert authority.effective_order == ["governed-law"]
+
+
+# ---------------------------------------------------------------------------
+# INV-CTX-022, decision D-02 option A: a compiler-derived authority requirement
+# names the governed repository it is needed over; target refs stay its scope.
+# ---------------------------------------------------------------------------
+
+TOKENIZER = "src/tokenizer.py"
+GREETER = "src/greeter.py"
+
+
+def repository_fact(
+    repository_id: str,
+    target: str,
+    *,
+    authority: AuthorityLevel = AuthorityLevel.GOVERNED_VERIFIED,
+) -> RepositoryState:
+    return RepositoryState(
+        semantic_key=f"{repository_id}:{target}:exists",
+        authority_level=authority,
+        source_ref=(
+            source(f"repo-{repository_id}")
+            if authority in GOVERNED_LEVELS
+            else unprovenanced(f"repo-{repository_id}")
+        ),
+        scope_mode=ContextScopeMode.SCOPED,
+        scope_refs=[target],
+        repository_id=repository_id,
+        revision="rev-1",
+        subject_ref=target,
+        fact_type="exists",
+        value=True,
+    )
+
+
+def repository_grant(subject_ref: str | None, action_scope: list[str]) -> AuthorityFact:
+    return AuthorityFact(
+        semantic_key=authority_semantic_key("repository_write", subject_ref, action_scope),
+        authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+        source_ref=source("grants"),
+        scope_mode=ContextScopeMode.GLOBAL,
+        authority_id="repository_write",
+        state="granted",
+        subject_ref=subject_ref,
+        action_scope=action_scope,
+    )
+
+
+def _write_requirements(context: Any) -> list[AuthorityRequirement]:
+    return [r for r in context.authority.required if r.authority_id == "repository_write"]
+
+
+def test_rg002a_a_grant_over_the_governed_repository_closes_the_gap(
+    valid_pack: Path,
+) -> None:
+    snapshot = ContextSnapshot(
+        repository_state=[repository_fact("repo-a", TOKENIZER)],
+        authority_facts=[repository_grant("repo-a", [TOKENIZER])],
+    )
+    context = _compile(valid_pack, MUTATION_MISSION, snapshot, target_refs=[TOKENIZER]).task_context
+    required = _write_requirements(context)
+    assert [(r.subject_ref, r.action_scope) for r in required] == [("repo-a", [TOKENIZER])]
+    assert not _authority_gap(context, "repository_write")
+
+
+def test_rg002a_each_repository_gets_its_own_deterministic_requirement(
+    valid_pack: Path,
+) -> None:
+    facts = [repository_fact("repo-a", TOKENIZER), repository_fact("repo-b", GREETER)]
+    grant = repository_grant("repo-a", [TOKENIZER])
+    contexts = [
+        _compile(
+            valid_pack,
+            MUTATION_MISSION,
+            ContextSnapshot(repository_state=ordering, authority_facts=[grant]),
+            target_refs=targets,
+        ).task_context
+        for ordering, targets in [
+            (facts, [TOKENIZER, GREETER]),
+            (list(reversed(facts)), [GREETER, TOKENIZER]),
+        ]
+    ]
+    first, second = contexts
+    assert first.authority.required == second.authority.required
+    assert first.sha256() == second.sha256()
+    assert sorted((r.subject_ref, r.action_scope) for r in _write_requirements(first)) == [
+        ("repo-a", [TOKENIZER]),
+        ("repo-b", [GREETER]),
+    ]
+    # repo-a is covered; the grant over repo-a does not reach repo-b.
+    gaps = _authority_gap(first, "repository_write")
+    assert [(g.details["subject_ref"], g.details["state"]) for g in gaps] == [
+        ("repo-b", "insufficient_scope")
+    ]
+    assert gaps[0].materiality is UnknownMateriality.BLOCKING
+
+
+def test_rg002b_a_grant_over_another_repository_is_insufficient_scope(
+    valid_pack: Path,
+) -> None:
+    snapshot = ContextSnapshot(
+        repository_state=[repository_fact("repo-a", TOKENIZER)],
+        authority_facts=[repository_grant("repo-b", [TOKENIZER])],
+    )
+    context = _compile(valid_pack, MUTATION_MISSION, snapshot, target_refs=[TOKENIZER]).task_context
+    gap = _authority_gap(context, "repository_write")
+    assert len(gap) == 1
+    assert gap[0].details["state"] == "insufficient_scope"
+    assert gap[0].details["subject_ref"] == "repo-a"
+    assert gap[0].materiality is UnknownMateriality.BLOCKING
+    assert "insufficient_scope" in AUTHORITY_PROVEN_NEGATIVE
+
+
+@pytest.mark.parametrize("identity", ["none", "informative_state", "caller_hint"])
+def test_rg002c_without_a_governed_repository_identity_nothing_is_granted(
+    valid_pack: Path, identity: str
+) -> None:
+    """Adopted D-02 behaviour: the requirement stays subject-less.
+
+    No subject is invented — not from non-governed repository facts, not from
+    caller hints (INV-CTX-006). A subject-less requirement is contained only by
+    a grant that leaves the subject unstated, so a grant naming any subject is a
+    blocking proven negative, and no grant at all stays an explicit absence.
+    """
+    states = (
+        [repository_fact("repo-a", TOKENIZER, authority=AuthorityLevel.INFORMATIVE)]
+        if identity == "informative_state"
+        else []
+    )
+    hints: dict[str, Any] = {"target_refs": [TOKENIZER]}
+    if identity == "caller_hint":
+        hints["repository_id"] = "repo-a"
+
+    granted = _compile(
+        valid_pack,
+        MUTATION_MISSION,
+        ContextSnapshot(
+            repository_state=states, authority_facts=[repository_grant("repo-a", [TOKENIZER])]
+        ),
+        **hints,
+    ).task_context
+    assert [(r.subject_ref, r.action_scope) for r in _write_requirements(granted)] == [
+        (None, [TOKENIZER])
+    ]
+    assert granted.authority.granted  # the grant is visible ...
+    gap = _authority_gap(granted, "repository_write")
+    assert len(gap) == 1  # ... but it never closes the subject-less gap
+    assert gap[0].details["state"] == "insufficient_scope"
+    assert gap[0].materiality is UnknownMateriality.BLOCKING
+
+    ungranted = _compile(
+        valid_pack, MUTATION_MISSION, ContextSnapshot(repository_state=states), **hints
+    ).task_context
+    gap = _authority_gap(ungranted, "repository_write")
+    assert len(gap) == 1
+    assert gap[0].details["subject_ref"] is None
+    assert gap[0].details["state"] == "absent"
+    assert gap[0].materiality is UnknownMateriality.NON_BLOCKING
+
+
+def test_rg002c_an_informative_repository_state_never_supplies_the_subject() -> None:
+    """The governed-only filter itself: an informative ``RepositoryState`` a
+    kernel need selected names the target, yet supplies no subject.
+
+    A kernel need may select repository state below the governed floor (only
+    authority and capability facts are raised to it), so the filter in
+    ``_repository_subjects`` is the only thing keeping such a fact out.
+    """
+    scope = TaskScope(mission=MUTATION_MISSION, task_type="mutation", target_refs=[TOKENIZER])
+    informative = repository_fact("repo-a", TOKENIZER, authority=AuthorityLevel.INFORMATIVE)
+    governed = repository_fact("repo-a", TOKENIZER)
+    assert _repository_subjects(scope, [informative]) == [(None, [TOKENIZER])]
+    assert _repository_subjects(scope, [governed]) == [("repo-a", [TOKENIZER])]
 
 
 # ---------------------------------------------------------------------------
@@ -1585,6 +1944,300 @@ def test_an_optional_requirement_still_records_no_missing_context_unknown() -> N
         )
         == []
     )
+
+
+# ---------------------------------------------------------------------------
+# F-004: a global budget witness is proven against the selection state at the
+# moment of the stop, not against what later requirements went on to admit.
+# ---------------------------------------------------------------------------
+
+
+def _padded(build: Any, cost: int) -> Any:
+    """An item whose canonical cost is exactly ``cost`` bytes."""
+    padding = cost - canonical_cost(build(""))
+    item = build("x" * padding)
+    assert canonical_cost(item) == cost
+    return item
+
+
+def _global_byte_stop_snapshot() -> tuple[ContextSnapshot, DependencyContext, PriorDecision]:
+    """Four earlier requirements fill the global byte budget almost to the brim.
+
+    The dependency requirement's only candidate then no longer fits the global
+    budget (while still fitting its own), and the prior-decision requirement
+    planned after it admits a candidate small enough to fit what is left.
+    """
+    filler = 65_000
+    remaining = GLOBAL_MAX_BYTES - 4 * filler
+    blocked = _padded(
+        lambda pad: DependencyContext(
+            semantic_key="dep:uses:runtime:pkg",
+            authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+            source_ref=source("dep"),
+            scope_mode=ContextScopeMode.GLOBAL,
+            dependency_id="dep",
+            relationship="runtime",
+            direction="uses",
+            target_ref="pkg",
+            version_or_revision=f"v1{pad}",
+        ),
+        remaining + 1_000,
+    )
+    later = _padded(
+        lambda pad: PriorDecision(
+            semantic_key="DEC_LATE",
+            authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+            source_ref=source("DEC_LATE"),
+            scope_mode=ContextScopeMode.GLOBAL,
+            decision_id="DEC_LATE",
+            status=DecisionStatus.ACTIVE,
+            statement=f"DEC_LATE decided{pad}",
+        ),
+        remaining - 1_000,
+    )
+    snapshot = ContextSnapshot(
+        architecture_constraints=[
+            _padded(
+                lambda pad: GovernedConstraint(
+                    semantic_key="ARCH_FILL",
+                    authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+                    source_ref=source("ARCH_FILL"),
+                    scope_mode=ContextScopeMode.GLOBAL,
+                    constraint_id="ARCH_FILL",
+                    statement=f"ARCH_FILL{pad}",
+                ),
+                filler,
+            )
+        ],
+        applicable_law=[_padded(lambda pad: law("LAW_FILL", statement=f"LAW_FILL{pad}"), filler)],
+        repository_state=[
+            _padded(
+                lambda pad: RepositoryState(
+                    semantic_key="repo:src/fill:size",
+                    authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+                    source_ref=source("repo-fill"),
+                    scope_mode=ContextScopeMode.GLOBAL,
+                    repository_id="repo",
+                    revision="rev-1",
+                    subject_ref="src/fill",
+                    fact_type="size",
+                    value=pad,
+                ),
+                filler,
+            )
+        ],
+        relevant_entities=[
+            _padded(
+                lambda pad: EntityContext(
+                    semantic_key="module:fill",
+                    authority_level=AuthorityLevel.GOVERNED_AUTHORITATIVE,
+                    source_ref=source("entity-fill"),
+                    scope_mode=ContextScopeMode.GLOBAL,
+                    entity_id="fill",
+                    entity_type="module",
+                    relation_to_task=f"fills the budget{pad}",
+                ),
+                filler,
+            )
+        ],
+        dependency_context=[blocked],
+        prior_decisions=[later],
+    )
+    return snapshot, blocked, later
+
+
+def _compile_capturing_closure(
+    pack: Path, snapshot: ContextSnapshot, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Any, dict[str, Any]]:
+    """Compile, keeping the exact inputs the pipeline handed to closure."""
+    captured: dict[str, Any] = {}
+    original = ContextClosureValidator.validate
+
+    def spy(self: ContextClosureValidator, **kwargs: Any) -> Any:
+        captured.update(kwargs)
+        return original(self, **kwargs)
+
+    monkeypatch.setattr(ContextClosureValidator, "validate", spy)
+    return _compile(pack, NEUTRAL_MISSION, snapshot), captured
+
+
+def test_a_global_byte_stop_followed_by_a_later_admission_is_proven(
+    valid_pack: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RG-004a: the stop is judged against the state the selector actually saw."""
+    snapshot, blocked, later = _global_byte_stop_snapshot()
+    bundle, captured = _compile_capturing_closure(valid_pack, snapshot, monkeypatch)
+    context = bundle.task_context
+    selected = {item.item_id for item in context.selected_items()}
+    assert blocked.item_id not in selected
+    # The later, smaller admission that made the end-of-compile state differ
+    # from the stop-time state.
+    assert later.item_id in selected
+    dependency = next(
+        requirement
+        for requirement in captured["requirement_plan"].requirements
+        if requirement.context_kind is ContextKind.DEPENDENCY_CONTEXT
+    )
+    stops = [
+        unknown
+        for unknown in _budget_unknowns(context)
+        if unknown.requirement_ref == dependency.requirement_id
+    ]
+    assert len(stops) == 1
+    assert stops[0].details["bound"] == "global_max_bytes"
+    assert stops[0].details["blocked_item_id"] == blocked.item_id
+    assert stops[0].details["observed_bytes"] < sum(
+        canonical_cost(item) for item in context.selected_items()
+    )
+    assert closure_module._budget_stop_independently_proven(
+        context,
+        dependency,
+        captured["resolution"].resolve(lambda item: matches_requirement(dependency, item)),
+        captured["requirement_plan"],
+    )
+
+
+def test_a_global_byte_witness_with_altered_observed_bytes_is_rejected(
+    valid_pack: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RG-004b: the stop-time reconstruction still refuses a forged witness."""
+    snapshot, _, _ = _global_byte_stop_snapshot()
+    bundle, captured = _compile_capturing_closure(valid_pack, snapshot, monkeypatch)
+    context = bundle.task_context
+    forged = [
+        ContextUnknown(
+            requirement_ref=unknown.requirement_ref,
+            semantic_key=unknown.semantic_key,
+            reason_code=unknown.reason_code,
+            materiality=unknown.materiality,
+            details={**unknown.details, "observed_bytes": unknown.details["observed_bytes"] - 1},
+            source_refs=unknown.source_refs,
+        )
+        if unknown.reason_code is UnknownReasonCode.BUDGET_INSUFFICIENT
+        and unknown.details.get("bound") == "global_max_bytes"
+        else unknown
+        for unknown in context.unresolved_unknowns
+    ]
+    assert forged != context.unresolved_unknowns
+    with pytest.raises(InvalidValueError, match="every_coverage_mode_is_independently_proven"):
+        ContextClosureValidator().validate(
+            context=context.model_copy(update={"unresolved_unknowns": forged}),
+            requirement_plan=captured["requirement_plan"],
+            resolution=captured["resolution"],
+            kernels=captured["kernels"],
+        )
+
+
+# ---------------------------------------------------------------------------
+# F-007: a conflict unknown disposes only its own semantic key.
+# ---------------------------------------------------------------------------
+
+
+def _required_keyed(**overrides: Any) -> ContextRequirement:
+    payload: dict[str, Any] = {
+        "coverage_mode": CoverageMode.SEMANTIC_KEYS,
+        "required_semantic_keys": ["LAW_1", "LAW_2"],
+        "min_items": 2,
+        "required": True,
+        "missing_policy": MissingPolicy.PRESERVE_UNKNOWN,
+    }
+    payload.update(overrides)
+    return _requirement(**payload)
+
+
+def _without_missing(context: CompiledTaskContext) -> CompiledTaskContext:
+    kept = [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is not UnknownReasonCode.MISSING_REQUIRED_CONTEXT
+    ]
+    assert kept != context.unresolved_unknowns
+    return context.model_copy(update={"unresolved_unknowns": kept})
+
+
+def test_a_conflict_on_one_key_does_not_dispose_another_absent_key() -> None:
+    """RG-007a: K1 conflicted, K2 absent, the MISSING unknown suppressed."""
+    requirement = _required_keyed()
+    context, plan, resolution = _select_requirement(requirement, tuple(_contested("LAW_1")))
+    assert {
+        (unknown.reason_code, unknown.semantic_key) for unknown in context.unresolved_unknowns
+    } == {
+        (UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS, "LAW_1"),
+        (UnknownReasonCode.MISSING_REQUIRED_CONTEXT, None),
+    }
+    with pytest.raises(InvalidValueError, match="per_requirement_and_global_budgets"):
+        ContextClosureValidator().validate(
+            context=_without_missing(context),
+            requirement_plan=plan,
+            resolution=resolution,
+            kernels=[],
+        )
+
+
+def test_a_conflict_plus_a_missing_unknown_for_the_absent_key_passes() -> None:
+    """RG-007b: the discriminator — the compiler's own disposition is legal."""
+    requirement = _required_keyed()
+    context, plan, resolution = _select_requirement(requirement, tuple(_contested("LAW_1")))
+    missing = [
+        unknown
+        for unknown in context.unresolved_unknowns
+        if unknown.reason_code is UnknownReasonCode.MISSING_REQUIRED_CONTEXT
+    ]
+    assert [unknown.details["missing_semantic_keys"] for unknown in missing] == [["LAW_2"]]
+    report = ContextClosureValidator().validate(
+        context=context, requirement_plan=plan, resolution=resolution, kernels=[]
+    )
+    assert report.passed
+
+
+def test_a_conflict_does_not_dispose_a_min_items_shortfall_beyond_its_key() -> None:
+    """One conflicted key accounts for one item, not for the whole floor."""
+    requirement = _requirement(
+        coverage_mode=CoverageMode.MINIMUM,
+        min_items=2,
+        required=True,
+        missing_policy=MissingPolicy.PRESERVE_UNKNOWN,
+    )
+    context, plan, resolution = _select_requirement(requirement, tuple(_contested("LAW_1")))
+    assert (
+        ContextClosureValidator()
+        .validate(context=context, requirement_plan=plan, resolution=resolution, kernels=[])
+        .passed
+    )
+    with pytest.raises(InvalidValueError, match="per_requirement_and_global_budgets"):
+        ContextClosureValidator().validate(
+            context=_without_missing(context),
+            requirement_plan=plan,
+            resolution=resolution,
+            kernels=[],
+        )
+
+
+def test_a_conflict_unknown_on_an_unconflicted_key_disposes_nothing() -> None:
+    """A conflict unknown is a claim: it disposes its key only when the
+    recomputed view holds a conflicting group under that key. One naming an
+    absent key cannot stand in for the missing-context shortfall it replaced."""
+    requirement = _required_keyed()
+    context, plan, resolution = _select_requirement(requirement, (law("LAW_1"),))
+    report = ContextClosureValidator().validate(
+        context=context, requirement_plan=plan, resolution=resolution, kernels=[]
+    )
+    assert report.passed
+    forged = ContextUnknown(
+        requirement_ref=requirement.requirement_id,
+        semantic_key="LAW_2",
+        reason_code=UnknownReasonCode.CONFLICTING_GOVERNED_CLAIMS,
+        materiality=UnknownMateriality.NON_BLOCKING,
+        details={"context_kind": requirement.context_kind.value},
+    )
+    substituted = _without_missing(context)
+    substituted = substituted.model_copy(
+        update={"unresolved_unknowns": [*substituted.unresolved_unknowns, forged]}
+    )
+    with pytest.raises(InvalidValueError, match="context closure check failed"):
+        ContextClosureValidator().validate(
+            context=substituted, requirement_plan=plan, resolution=resolution, kernels=[]
+        )
 
 
 # ---------------------------------------------------------------------------

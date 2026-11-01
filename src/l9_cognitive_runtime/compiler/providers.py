@@ -72,6 +72,9 @@ def acceptance_receipt_digest(packet: dict[str, Any], acceptance: ProviderAccept
         ).hexdigest(),
         "provider_id": acceptance.provider_id,
         "accepted_obligation_ids": sorted(acceptance.accepted_obligation_ids),
+        # The unsupported set decides whether the packet blocks (A0704), so the
+        # receipt binds it too; an unbound set could be altered after digesting.
+        "unsupported_obligation_ids": sorted(acceptance.unsupported_obligation_ids),
         "capabilities": sorted(acceptance.capabilities),
         "authority_limits": sorted(acceptance.authority_limits),
     }

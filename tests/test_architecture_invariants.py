@@ -175,11 +175,17 @@ def test_no_trace_or_span_ownership_leaked_into_the_compiler() -> None:
 
 
 def test_manifest_bound_pack_reads_remain_available_to_the_compiler() -> None:
-    """``pathlib`` is permitted; the pack is an immutable verified input."""
+    """``pathlib`` is permitted; the pack is an immutable verified input.
+
+    The activation planner is deliberately not a reader: it consumes the
+    routing rules and pipeline the spine read once and digested, so a second
+    read of its own could never diverge from the recorded digests (RU-03).
+    """
     users = {
         path.name for path in python_sources(SEMANTIC_COMPILER) if "pathlib" in imported_roots(path)
     }
-    assert {"pipeline.py", "kernels.py", "activation.py", "adapters.py"} <= users
+    assert {"pipeline.py", "kernels.py", "adapters.py"} <= users
+    assert "activation.py" not in users
 
 
 def test_the_context_projections_perform_no_file_io() -> None:

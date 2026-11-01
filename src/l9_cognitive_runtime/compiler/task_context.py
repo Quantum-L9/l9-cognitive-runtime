@@ -57,6 +57,7 @@ from l9_cognitive_runtime.models.context import (
     AUTHORITY_RANK,
     CONTEXT_COMPILER_SEMANTICS_VERSION,
     GOVERNED_LEVELS,
+    GOVERNED_ONLY_KINDS,
     SNAPSHOT_MAX_BYTES,
     SNAPSHOT_MAX_ITEMS,
     ApplicableLaw,
@@ -715,6 +716,11 @@ def matches_requirement(requirement: ContextRequirement, item: ContextItemIdenti
         return False
     if item.authority_rank > AUTHORITY_RANK[requirement.minimum_authority]:
         return False
+    # The governed floor is held here, not only advertised by the planner, so
+    # no requirement — a kernel-declared need included — can let a non-governed
+    # fact close an authority or capability gap (INV-CTX-021/022, D-01 option B).
+    if item.context_kind in GOVERNED_ONLY_KINDS and item.authority_level not in GOVERNED_LEVELS:
+        return False
     if requirement.scope_mode is ContextScopeMode.GLOBAL:
         if item.scope_mode is not ContextScopeMode.GLOBAL:
             return False
@@ -1265,11 +1271,13 @@ def _compile_authority(
     sources = _requirement_sources(intent, activation, kernels)
     required: list[AuthorityRequirement] = []
 
-    def need(authority_id: str, reason: str, action_scope: list[str]) -> None:
+    def need(
+        authority_id: str, reason: str, action_scope: list[str], subject_ref: str | None = None
+    ) -> None:
         required.append(
             AuthorityRequirement(
                 authority_id=authority_id,
-                subject_ref=None,
+                subject_ref=subject_ref,
                 action_scope=action_scope,
                 reason=reason,
                 source_refs=sources,
@@ -1277,11 +1285,13 @@ def _compile_authority(
         )
 
     if intent.objective.realization_mode.value == "MUTATION":
-        need(
-            "repository_write",
-            "realization mode MUTATION writes to the workspace",
-            list(scope.target_refs),
-        )
+        for subject_ref, targets in _repository_subjects(scope, selected):
+            need(
+                "repository_write",
+                "realization mode MUTATION writes to the workspace",
+                targets,
+                subject_ref,
+            )
     if intent.objective.delivery_required:
         need(
             "delivery",
@@ -1336,6 +1346,40 @@ def _compile_authority(
     )
 
 
+def _repository_subjects(
+    scope: TaskScope, selected: Sequence[ContextItemIdentity]
+) -> list[tuple[str | None, list[str]]]:
+    """The subjects a repository write is needed over, with their target refs.
+
+    Decision D-02 option A (INV-CTX-022): the subject is the ``repository_id``
+    of the governed ``RepositoryState`` selected for the targets — a governed
+    fact names a target as its subject or in its scope — and the targets stay
+    the action scope. One requirement per repository, in canonical order, so
+    identity is independent of input order (INV-CTX-012).
+
+    The subject derives only from governed snapshot items, never from caller
+    context (INV-CTX-006). Targets no governed repository fact names stay in a
+    subject-less requirement: only a grant leaving the subject unstated
+    contains it, so a missing identity is never read as a grant.
+    """
+    targets = set(scope.target_refs)
+    by_repository: dict[str, set[str]] = {}
+    for item in selected:
+        if not isinstance(item, RepositoryState) or item.authority_level not in GOVERNED_LEVELS:
+            continue
+        named = targets & ({item.subject_ref} | set(item.scope_refs))
+        if named:
+            by_repository.setdefault(item.repository_id, set()).update(named)
+    subjects: list[tuple[str | None, list[str]]] = [
+        (repository_id, sorted(by_repository[repository_id]))
+        for repository_id in sorted(by_repository)
+    ]
+    unnamed = targets - set().union(*by_repository.values())
+    if unnamed or not subjects:
+        subjects.append((None, sorted(unnamed)))
+    return subjects
+
+
 def _effective_authority_order(
     selected: Sequence[ContextItemIdentity],
     granted: Sequence[AuthorityFact],
@@ -1345,10 +1389,16 @@ def _effective_authority_order(
     """Governed precedence wins when proven; otherwise the labelled default.
 
     Caller hints never reach here (INV-CTX-022): only governed authority facts
-    and selected applicable law can define an order. The returned default is a
+    and selected governed applicable law can define an order. Informative or
+    unverified precedence is not proof of anything, so it never earns the
+    ``governed_context`` label (D-01 option B). The returned default is a
     precedence fallback, never a grant.
     """
-    ranked_facts = [fact for fact in [*granted, *limits] if fact.precedence is not None]
+    ranked_facts = [
+        fact
+        for fact in [*granted, *limits]
+        if fact.precedence is not None and fact.authority_level in GOVERNED_LEVELS
+    ]
     if ranked_facts:
         ordered = sorted(ranked_facts, key=lambda fact: (fact.precedence or 0, fact.authority_id))
         return (
@@ -1356,7 +1406,11 @@ def _effective_authority_order(
             EffectiveAuthorityOrderSource.GOVERNED_CONTEXT,
         )
     ranked_law = [
-        item for item in selected if isinstance(item, ApplicableLaw) and item.precedence is not None
+        item
+        for item in selected
+        if isinstance(item, ApplicableLaw)
+        and item.precedence is not None
+        and item.authority_level in GOVERNED_LEVELS
     ]
     if ranked_law:
         ordered_law = sorted(ranked_law, key=lambda item: (item.precedence or 0, item.law_id))

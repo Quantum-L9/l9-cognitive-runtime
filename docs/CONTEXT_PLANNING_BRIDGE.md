@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.docs_context_planning_bridge__md"
+title: "CONTEXT PLANNING BRIDGE"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "docs/CONTEXT_PLANNING_BRIDGE.md"
+content_hash: "a9beb8e50b70e4c59709e6ba9d7224a963813e76dcbaf9c675078fb83a06d418"
+token_cost_estimate: 918
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["compile", "plan", "retrieve"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Context Planning Bridge
 
 ## Purpose

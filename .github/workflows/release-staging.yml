@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.github_workflows_release_staging__yml
+# title: release staging
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: .github/workflows/release-staging.yml
+# content_hash: 0782c8bd277461fa10921427d4a9619c9bc37848ebfef82b936e09a87a95025a
+# token_cost_estimate: 765
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 name: release-staging
 
 on:

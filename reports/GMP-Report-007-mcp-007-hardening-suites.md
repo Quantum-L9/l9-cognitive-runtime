@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_007_mcp_007_hardening_suites__md"
+title: "GMP Report 007 mcp 007 hardening suites"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-007-mcp-007-hardening-suites.md"
+content_hash: "a3f6349e1eccc76681b0d03a614ed1cd48ca46292e29c4397933fd8e40f4d702"
+token_cost_estimate: 714
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "auditor"
+description: "Unknown"
+activation_signals: ["check", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Evidence Report — MCP-007 hardening suites + CI gate enforcement
 
 - **contract_id:** L9CR-MCP-PR-REMEDIATION-001 / logical contract MCP-007

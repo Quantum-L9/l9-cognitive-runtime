@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_run_store__py
+# title: test run store
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_run_store.py
+# content_hash: 5b8069591f5c93fd9766dd461da763a2f4a04dcca8725c89dde2eefa0b86a924
+# token_cost_estimate: 1053
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Isolation, eviction, and typed-not-found tests for the MCP run store."""
 
 from __future__ import annotations

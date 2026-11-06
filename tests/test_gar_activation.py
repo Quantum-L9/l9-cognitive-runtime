@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_gar_activation__py
+# title: test gar activation
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_gar_activation.py
+# content_hash: 6d9b47684a62431dcc2e20dac51862531d0e33d1ca478f33437530e6aa2532d2
+# token_cost_estimate: 2246
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """PHASE-04 gate evidence: Global Architect liveness (INV-004, INV-005).
 
 Covers L9CR.GAR.PHASE2.INTEGRATION.001 PHASE-04 and the LIVE-002..005

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_duplicate_kernel_policy__yaml
+# title: DUPLICATE KERNEL POLICY
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/DUPLICATE_KERNEL_POLICY.yaml
+# content_hash: c183720a0f37aede2a76131cfd6d67b631027f0fc84b791fe3e4542f5fa3bb4e
+# token_cost_estimate: 215
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 duplicate_kernel_policy:
   objective: "Prevent multiple active kernels from governing the same decision surface."
   rules:

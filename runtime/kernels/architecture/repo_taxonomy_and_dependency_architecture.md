@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.kernel.runtime_kernels_architecture_repo_taxonomy_and_dependency_architecture__md"
+title: "repo taxonomy and dependency architecture"
+artifact_type: "kernel"
+mcp_primitive: "tool"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/kernels/architecture/repo_taxonomy_and_dependency_architecture.md"
+content_hash: "bfdef2425e40308bf40c39f67c868d9d3bc6f15cc7e062b56a6ddacd849a66a1"
+token_cost_estimate: 1642
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "meta_kernel_forge"
+description: "Unknown"
+activation_signals: ["kernel", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # L9 Coding Kernel: Repo Taxonomy and Dependency Architecture
 
 ```yaml

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_constitutional_k04_domain_spec_yaml_authoring__yaml
+# title: K04 domain spec yaml authoring
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/constitutional/K04-domain-spec-yaml-authoring.yaml
+# content_hash: 70c6d7df1d4710a13bd8f24ef518e2a4aba7b3c422f6879d4785cf65d30bba09
+# token_cost_estimate: 3187
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # =============================================================================
 # K04 — DOMAIN SPEC, YAML AUTHORING & TILE SCHEMA
 # L9 Master Kernel Pack | Category: repo_alignment_and_remediation

@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_129_build_pr67_audit_nits_3f9c1a2e_plan_md__md"
+title: "GMP 129 build pr67 audit nits 3f9c1a2e plan md"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-129-build-pr67-audit-nits-3f9c1a2e-plan-md.md"
+content_hash: "2df8189d43b3ceeb71264c5e95b475724de5ad4d335d1a37111e272d04541aa7"
+token_cost_estimate: 207
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "auditor"
+description: "Unknown"
+activation_signals: ["audit", "check", "build", "kernel", "plan"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # GMP-129
 
 **Task:** Build pr67_audit_nits_3f9c1a2e.plan.md

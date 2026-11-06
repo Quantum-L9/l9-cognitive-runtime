@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_contract_compiler_compile_validation_contract__py
+# title: compile validation contract
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/contract_compiler/compile_validation_contract.py
+# content_hash: 26e5bcded8f34506da43501609b1d2bba16255de9cce9ab3e287b397e96b6a64
+# token_cost_estimate: 392
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Validation-contract compiler CLI — thin wrapper over the typed compiler spine.
 
 All semantic compilation lives in

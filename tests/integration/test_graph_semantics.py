@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_integration_test_graph_semantics__py
+# title: test graph semantics
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/integration/test_graph_semantics.py
+# content_hash: c169f3672d6e2383d28b3bd75a69de0f8054a605b61f94ef96933189d9128386
+# token_cost_estimate: 360
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Integration-scope graph semantics: structured steps, obligations in nodes,
 kernel refs from the contract, terminal dispositions."""
 

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_pipeline__py
+# title: pipeline
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/pipeline.py
+# content_hash: e8baea4ea0bd9b52dfc96c7e51dc14ebac69c7c21ce67a1a247e14370343e04c
+# token_cost_estimate: 5375
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """The single live compilation spine (INV-001, INV-CTX-002).
 
 Exactly one authoritative path composes fresh missions into a runtime bundle:

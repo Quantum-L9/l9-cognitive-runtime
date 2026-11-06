@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_planner_plan_activation__py
+# title: plan activation
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/planner/plan_activation.py
+# content_hash: 0b61e0114f8a221813263f6af47a88bb59b7b72a0af7f687cc4f49608757b95f
+# token_cost_estimate: 754
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Kernel activation planner CLI — a projection over the canonical spine.
 
 All routing, phase ordering, terminal gating, and kernel selection live in

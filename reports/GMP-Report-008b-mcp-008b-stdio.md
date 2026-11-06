@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_008b_mcp_008b_stdio__md"
+title: "GMP Report 008b mcp 008b stdio"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-008b-mcp-008b-stdio.md"
+content_hash: "3b15deece27379b422b8de36827377fd2f09503e530eb4fec5a60d57308177b4"
+token_cost_estimate: 789
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Evidence Report — MCP-008B read-only stdio MCP server
 
 - **contract_id:** L9CR-MCP-PR-REMEDIATION-001 / logical contract MCP-008B

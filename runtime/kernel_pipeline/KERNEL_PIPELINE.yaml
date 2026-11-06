@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_kernel_pipeline__yaml
+# title: KERNEL PIPELINE
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/KERNEL_PIPELINE.yaml
+# content_hash: d9b872b4740e597e9158ca7cf2aa668640eebf3213314780f1c87c84c3280866
+# token_cost_estimate: 1085
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 pipeline_id: l9_clean_kernel_pipeline.v1
 status: ACTIVE
 supersedes: L9 Cognitive Runtime (kernels).zip

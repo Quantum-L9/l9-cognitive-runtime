@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_planner_activation_plan_schema__yaml
+# title: ACTIVATION PLAN SCHEMA
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/planner/ACTIVATION_PLAN_SCHEMA.yaml
+# content_hash: 80acf2c62f02836ffdd71cf67cd74a74386394d21d46c3feab370f4c4d10c9fe
+# token_cost_estimate: 149
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 schema_id: kernel_activation_plan.schema.v1
 required_fields:
   task_summary: string

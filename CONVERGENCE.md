@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.convergence__md"
+title: "CONVERGENCE"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "CONVERGENCE.md"
+content_hash: "2b2bda15c0eb6b9ac01136815d04be5b777ea93f37e80f1a19f8d113b7a2678c"
+token_cost_estimate: 338
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["render", "kernel", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Convergence Report
 
 convergence_status: converged

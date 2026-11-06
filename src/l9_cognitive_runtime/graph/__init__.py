@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_graph_init__py
+# title: init
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/graph/__init__.py
+# content_hash: c9a207d1b4545f5a636ccd6a971dfb8ec77918d5f5ae5a242001710b83a160e5
+# token_cost_estimate: 1551
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Derive and validate execution graphs from structured execution contracts.
 
 This module owns the canonical graph semantics. Compatibility CLIs under

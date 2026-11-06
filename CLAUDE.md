@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.claude__md"
+title: "CLAUDE"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "CLAUDE.md"
+content_hash: "7574ee3791c9193519a47108f9aa16e65f178ba1b7a0eff5e317625b32905407"
+token_cost_estimate: 952
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "auditor"
+description: "Unknown"
+activation_signals: ["check", "agent", "law"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # CLAUDE.md — authority pointer
 
 This file exists to be **loaded**, not to be comprehensive. It is deliberately short

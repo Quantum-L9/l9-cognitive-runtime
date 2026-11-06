@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_validation__py
+# title: validation
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/validation.py
+# content_hash: dc26a85edeb7c5fd824899198fbe4db881f9748fc8000cec39df04d936073f4d
+# token_cost_estimate: 983
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Live validation-contract compilation.
 
 The validation contract is compiled from the live intent, execution contract,

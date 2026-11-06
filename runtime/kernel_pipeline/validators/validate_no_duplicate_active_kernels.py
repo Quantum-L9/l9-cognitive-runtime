@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_validators_validate_no_duplicate_active_kernels__py
+# title: validate no duplicate active kernels
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/validators/validate_no_duplicate_active_kernels.py
+# content_hash: 6a3465686760af41266e5402637d1e6c9ea5a45eedc58329215ca94629db7193
+# token_cost_estimate: 438
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 from __future__ import annotations
 
 from collections import defaultdict

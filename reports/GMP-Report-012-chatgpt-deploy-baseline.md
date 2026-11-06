@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_012_chatgpt_deploy_baseline__md"
+title: "GMP Report 012 chatgpt deploy baseline"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-012-chatgpt-deploy-baseline.md"
+content_hash: "a517308cc8bcd26531dbd90b8400357232a3c21f9f22cec1d3c6f5cdab79d6be"
+token_cost_estimate: 428
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "meta_kernel_forge"
+description: "Unknown"
+activation_signals: ["kernel"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Evidence Report — ChatGPT MCP deployment baseline
 
 - **scope:** deployment packaging and real container-network MCP smoke

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_deployment_pack__py
+# title: test deployment pack
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_deployment_pack.py
+# content_hash: 01c32625d5558374af5ff744fcc9db64a2f2f319fb7c170fa9067cefa50c504a
+# token_cost_estimate: 1159
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Deployment-pack tests for hosted MCP packaging."""
 
 from __future__ import annotations

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_types__py
+# title: types
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/types.py
+# content_hash: de0136ff4bf6e30f267a5cc9ec890825eac629a6fde46bb4c250e2f7cf1f811d
+# token_cost_estimate: 618
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Service-level types shared by the facade and the live compiler spine.
 
 Living here (rather than in ``service.py``) keeps the compiler package free of

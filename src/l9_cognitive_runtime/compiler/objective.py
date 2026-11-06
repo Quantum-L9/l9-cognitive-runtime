@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_objective__py
+# title: objective
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/objective.py
+# content_hash: a921163a893b40303d0f8f205b44a49bbc55cdef99fd31cf113d71432c19a84d
+# token_cost_estimate: 1183
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Canonical objective derivation (INV-002): exactly one owner of intent facts.
 
 ``ObjectiveDeriver`` turns a ``CompileRequest`` into the canonical typed

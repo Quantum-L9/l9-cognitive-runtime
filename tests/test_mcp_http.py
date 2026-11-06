@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_mcp_http__py
+# title: test mcp http
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_mcp_http.py
+# content_hash: 29c07cc81cf8ff5e6edff0d737dad53a7a713f47c6de465254389edda053e7d0
+# token_cost_estimate: 1890
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Streamable HTTP transport tests (L9CR-MCP-010).
 
 No authentication is exercised or asserted here — that is MCP-011.

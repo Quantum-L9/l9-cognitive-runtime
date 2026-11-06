@@ -1,0 +1,30 @@
+schema: l9.meta-authority/v1
+writer:
+  repository: Quantum-L9/l9-meta-injector
+  ref: f134e8d54dea51e94f94e6c4afb820931dbc9775
+default_carrier: inline_managed
+legacy_writers: forbidden
+inline_allow:
+  - "**/*.md"
+  - "**/*.py"
+  - "**/*.sh"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.toml"
+  - "**/*.ts"
+  - "**/*.js"
+  - "Makefile"
+  - "Repo.mk"
+  - ".editorconfig"
+  - ".gitignore"
+  - ".github/CODEOWNERS"
+  - ".github/workflows/**/*.yaml"
+  - ".github/workflows/**/*.yml"
+inline_exclude:
+  - "tests/fixtures/**"
+  - "**/golden_tests/**"
+  - "**/datasets/**"
+  - "**/generated/**"
+  - "dist/**"
+  - "build/**"
+validation_commands: []

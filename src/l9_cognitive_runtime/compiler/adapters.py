@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_adapters__py
+# title: adapters
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/adapters.py
+# content_hash: 11db2d5c10901f3f41e85015fb3e28084535b1c4be112d228f0bbf7b232da78c
+# token_cost_estimate: 4632
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Deterministic adapter projections of the canonical execution packet.
 
 Adapters never own runtime law: each adapter payload is a projection of the

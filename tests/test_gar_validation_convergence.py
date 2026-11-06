@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_gar_validation_convergence__py
+# title: test gar validation convergence
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_gar_validation_convergence.py
+# content_hash: 2c6907f95bfa26b13bf45a0073fed4d9073bbca3b4ba41d137d9e458b113987c
+# token_cost_estimate: 2167
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """PHASE-06 gate evidence: validation & convergence derivation (INV-007/008).
 
 Covers L9CR.GAR.PHASE2.INTEGRATION.001 PHASE-06:

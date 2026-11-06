@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.commit_pack__md"
+title: "COMMIT PACK"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "COMMIT_PACK.md"
+content_hash: "8d61e5f77c666188a3c0b08f993435cf76c830471566490eeb2a5c57bdc0e30e"
+token_cost_estimate: 332
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["render", "kernel", "plan", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # L9 Cognitive Runtime Kernel Pack v5 Commit Pack
 
 ## Commit Title

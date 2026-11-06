@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_gar_graph_semantics__py
+# title: test gar graph semantics
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_gar_graph_semantics.py
+# content_hash: fa0accb15ecf6ff3311537e51f20326c9115513fff63332b02b7c77f7c8b43f1
+# token_cost_estimate: 1558
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """PHASE-05 gate evidence: structured execution graph semantics (INV-006).
 
 Gate coverage:

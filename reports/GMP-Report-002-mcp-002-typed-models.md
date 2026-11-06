@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_002_mcp_002_typed_models__md"
+title: "GMP Report 002 mcp 002 typed models"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-002-mcp-002-typed-models.md"
+content_hash: "61d9d84951538ce3265ddebaf94bf8092182c5c2ef40e2d63d46ac1151eb7ca6"
+token_cost_estimate: 342
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "builder"
+description: "Unknown"
+activation_signals: ["create", "plan", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # GMP Report 002 — Add canonical typed models for cognitive runtime artifacts
 
 **Run ID:** GMP-L9CR-MCP-002

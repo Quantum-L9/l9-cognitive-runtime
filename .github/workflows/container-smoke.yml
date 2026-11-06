@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.github_workflows_container_smoke__yml
+# title: container smoke
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: .github/workflows/container-smoke.yml
+# content_hash: 43bd8267ea2a8e780fef326b1a42c30ebc264909205a482ec33c2d72ad29d0dc
+# token_cost_estimate: 1573
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 name: container-smoke
 
 on:

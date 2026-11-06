@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.invariants__md"
+title: "INVARIANTS"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "INVARIANTS.md"
+content_hash: "c4aabe6732b77e3f04e49998a22cf4d3c555f44cede1f551a0e512fac8188da4"
+token_cost_estimate: 12459
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "domain_agent"
+description: "Unknown"
+activation_signals: ["agent", "law"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # L9 Cognitive Runtime Invariants
 
 - Status: CANONICAL ARCHITECTURE LAW

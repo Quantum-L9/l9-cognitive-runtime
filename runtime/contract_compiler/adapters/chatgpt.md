@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.runtime_contract_compiler_adapters_chatgpt__md"
+title: "chatgpt"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/contract_compiler/adapters/chatgpt.md"
+content_hash: "3d2e474947e6a893fb3df11f28b08bc1377900e86054247f5465a84310ff83ce"
+token_cost_estimate: 262
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["law"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # {{adapter}} Adapter — deterministic projection of the execution packet
 
 Packet digest: {{packet_digest}}

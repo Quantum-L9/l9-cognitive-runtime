@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_contract_compiler_compile_execution_contract__py
+# title: compile execution contract
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/contract_compiler/compile_execution_contract.py
+# content_hash: bd58df13fdd862d3a7a57f8c66abf67975fbf9d2c94e74764bf5ebb5c97dd03c
+# token_cost_estimate: 632
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Execution-contract compiler CLI — thin wrapper over the typed compiler spine.
 
 All semantic compilation lives in

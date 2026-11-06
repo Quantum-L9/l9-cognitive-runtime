@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_init__py
+# title: init
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/__init__.py
+# content_hash: 581dc6d437c688960d8c4d4a98e08c17ea1312e80707a94536318cd1514122dd
+# token_cost_estimate: 590
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Live compilation spine for the L9 Cognitive Runtime.
 
 Exactly one authoritative composition root exists for fresh missions

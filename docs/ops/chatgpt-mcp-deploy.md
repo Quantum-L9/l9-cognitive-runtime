@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.docs_ops_chatgpt_mcp_deploy__md"
+title: "chatgpt mcp deploy"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "private"
+source_path: "docs/ops/chatgpt-mcp-deploy.md"
+content_hash: "1845f7ecb5e31a853bf28f677e28fe8130c9a547ca8117461b5683b4f4172b19"
+token_cost_estimate: 1013
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["build"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # ChatGPT MCP deployment and connection
 
 Status: deployment baseline for the existing read-only MCP surface. Hosted OAuth is not implemented by this change and must not be claimed.

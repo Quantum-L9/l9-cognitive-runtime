@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_cli__py
+# title: cli
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/cli.py
+# content_hash: 0b881c6a9909cd01b2f096a124be54d9afc05b0b85e37bead00baa5b087d13ad
+# token_cost_estimate: 1801
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """CLI compatibility wrappers that preserve existing scripts and add in-memory compile.
 
 The CLI is an outer host, so reading a governed ``ContextSnapshot`` from a file

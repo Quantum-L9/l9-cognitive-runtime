@@ -1,11 +1,32 @@
 ---
-kernel_id: recursive_improvement.v1
-canonical_name: Recursive Improvement Kernel
-category: improvement
-status: ACTIVE
+kernel_id: "recursive_improvement.v1"
+canonical_name: "Recursive Improvement Kernel"
+category: "improvement"
+status: "ACTIVE"
 supersedes:
   - "10X Kernels/Recursive Improvement (L9).md"
 source_role: "Improvement loop retained, narrowed, and gated."
+id: "l9-cognitive-runtime.kernel.runtime_kernels_improvement_recursive_improvement__md"
+title: "recursive improvement"
+artifact_type: "kernel"
+mcp_primitive: "tool"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/kernels/improvement/recursive_improvement.md"
+content_hash: "91edda5fcdf37d410a1eacf79cf3429441d2a74f6c45f70110830a8b93f0a47c"
+token_cost_estimate: 288
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "auditor"
+description: "Unknown"
+activation_signals: ["validate", "kernel", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
 ---
 
 # Recursive Improvement Kernel

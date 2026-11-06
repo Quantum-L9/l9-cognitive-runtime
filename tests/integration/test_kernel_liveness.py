@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_integration_test_kernel_liveness__py
+# title: test kernel liveness
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/integration/test_kernel_liveness.py
+# content_hash: c960f426ca7291627389668d97f0a4e1178f146254d949bb6451af33003dfa09
+# token_cost_estimate: 976
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """LIVE-005: activating GAR without a downstream consumer fails liveness."""
 
 from __future__ import annotations

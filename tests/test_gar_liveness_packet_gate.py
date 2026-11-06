@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_gar_liveness_packet_gate__py
+# title: test gar liveness packet gate
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_gar_liveness_packet_gate.py
+# content_hash: e1f54f1a7f2940c8f04ac4cb90ee418bb0a39d5dc3c8f79fe2457dcc19509cb5
+# token_cost_estimate: 2922
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """INV-013 / A0702: the adapter-weakening liveness check must be real.
 
 `no_adapter_drops_blocking_obligation` was declared in `_ALL_CHECKS` and

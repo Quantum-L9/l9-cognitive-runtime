@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.environment_skill_adapters_skill_adapter_roots__yaml
+# title: SKILL ADAPTER ROOTS
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: environment/skill-adapters/SKILL_ADAPTER_ROOTS.yaml
+# content_hash: 56be18d571f251a0e7886222777aa2f817e0dc8ca0f7ca6e6eb5c1888277aa36
+# token_cost_estimate: 214
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # LLM skill discovery adapters.
 # Single maintainable corpus: governance `skills/` (== `.cursor-commands/skills`).
 # Adapters receive per-skill symlinks only — never copies, never whole-dir duplicates.

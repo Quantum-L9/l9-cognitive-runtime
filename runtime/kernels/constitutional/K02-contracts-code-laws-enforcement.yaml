@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_constitutional_k02_contracts_code_laws_enforcement__yaml
+# title: K02 contracts code laws enforcement
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/constitutional/K02-contracts-code-laws-enforcement.yaml
+# content_hash: 6d20b92d363531f7493e3c2167cdb92ded41f297efe7c6b97c6e06461e9bfbb6
+# token_cost_estimate: 4360
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 kernel_id: K02-contracts-code-laws-enforcement
 canonical_name: Contracts, Code Laws & Enforcement Pipeline
 version: "2.1.0"

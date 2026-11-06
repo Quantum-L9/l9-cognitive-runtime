@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_pack_loader__py
+# title: test pack loader
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_pack_loader.py
+# content_hash: ea6f9a2954cd0444a3ac25d06b3dc340b9a2fee7e02fe28d914efd31995d5844
+# token_cost_estimate: 1667
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Tamper, traversal, and provenance tests for PackLoader."""
 
 from __future__ import annotations

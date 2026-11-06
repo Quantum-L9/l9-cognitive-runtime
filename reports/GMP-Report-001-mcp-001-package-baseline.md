@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_001_mcp_001_package_baseline__md"
+title: "GMP Report 001 mcp 001 package baseline"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-001-mcp-001-package-baseline.md"
+content_hash: "66adce5cc4b417390234ea3b111f822e42550fdb1b637d784bf85dfa0395da25"
+token_cost_estimate: 1079
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["build", "plan", "roadmap", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # GMP Report 001 — Establish installable Python package and build baseline
 
 **Run ID:** GMP-L9CR-MCP-001

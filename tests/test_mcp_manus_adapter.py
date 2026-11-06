@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_mcp_manus_adapter__py
+# title: test mcp manus adapter
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_mcp_manus_adapter.py
+# content_hash: 0f6f0beb6a996e0ddd194d1efc4611e4b78dd3b1a77e25b228b670d1a3675ea9
+# token_cost_estimate: 1066
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Tests for the bounded, locally-connected Manus Cog adapter."""
 
 from __future__ import annotations

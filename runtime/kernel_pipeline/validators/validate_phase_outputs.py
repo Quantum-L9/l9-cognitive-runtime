@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_validators_validate_phase_outputs__py
+# title: validate phase outputs
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/validators/validate_phase_outputs.py
+# content_hash: d23908cc6bd781b07a29a50270034f844bb94922eeeaf572bb153bbd8c24ed84
+# token_cost_estimate: 742
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 from __future__ import annotations
 
 import argparse

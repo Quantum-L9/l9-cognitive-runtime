@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_kernels__py
+# title: kernels
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/kernels.py
+# content_hash: 8aa0216ab0c93869264633d662a8aabdd97db58c64f56e8401c304121b511d29
+# token_cost_estimate: 3392
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Kernel resolution: bind every activated kernel to a present, digested source.
 
 Replaces the service's former static ``kernel_activation`` enforcement with a

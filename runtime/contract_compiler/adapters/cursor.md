@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.runtime_contract_compiler_adapters_cursor__md"
+title: "cursor"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/contract_compiler/adapters/cursor.md"
+content_hash: "d3067f635fd6af5178387a7ca7dc90e8ee80665f0aff223172559fdea78b5a12"
+token_cost_estimate: 286
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["law"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # {{adapter}} Adapter — deterministic projection of the execution packet
 
 Packet digest: {{packet_digest}}

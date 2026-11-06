@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_service__py
+# title: test service
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_service.py
+# content_hash: 8a453620b263a0832820f3aa09cbf5c2ec8cd46505ccf53d7c6838c3edad1146
+# token_cost_estimate: 1667
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Facade tests for CognitiveRuntimeService."""
 
 from __future__ import annotations

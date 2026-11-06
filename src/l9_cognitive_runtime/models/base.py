@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_models_base__py
+# title: base
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/models/base.py
+# content_hash: fc292768d696b7182e03d06296f7a8d2f79ce28441827771d6a7ddded43923ff
+# token_cost_estimate: 422
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Shared BaseModel helpers for fail-closed artifact models."""
 
 from __future__ import annotations

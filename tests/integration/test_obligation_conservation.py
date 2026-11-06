@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_integration_test_obligation_conservation__py
+# title: test obligation conservation
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/integration/test_obligation_conservation.py
+# content_hash: 7bffcb64e0588bccdc0dcdf4878f4403ba88b1b1354bcd13a03e8ec52ed61cb2
+# token_cost_estimate: 447
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """LIVE-006: dropping a required obligation between IRs fails compilation."""
 
 from __future__ import annotations

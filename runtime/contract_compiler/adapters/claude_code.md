@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.runtime_contract_compiler_adapters_claude_code__md"
+title: "claude code"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/contract_compiler/adapters/claude_code.md"
+content_hash: "18c0399214a0f586b478538182676d76e67b872da8b4669826ff3998c61281f3"
+token_cost_estimate: 287
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["law"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # {{adapter}} Adapter — deterministic projection of the execution packet
 
 Packet digest: {{packet_digest}}

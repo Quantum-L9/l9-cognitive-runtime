@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_deployment_contract__py
+# title: test deployment contract
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_deployment_contract.py
+# content_hash: 64420f56c32951c25ddbffcbd2afd0ca1575c0aaab56c20e289696e739e6cbe4
+# token_cost_estimate: 1255
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Static deployment/release contract checks."""
 
 from __future__ import annotations

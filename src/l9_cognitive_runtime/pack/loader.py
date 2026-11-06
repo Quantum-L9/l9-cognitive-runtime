@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_pack_loader__py
+# title: loader
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/pack/loader.py
+# content_hash: a18b46864a7bd6bc501dc9877665cf9af5fb370c6fa800e325732e455e0f0ee7
+# token_cost_estimate: 1484
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Immutable runtime pack loading, manifest verification, and provenance."""
 
 from __future__ import annotations

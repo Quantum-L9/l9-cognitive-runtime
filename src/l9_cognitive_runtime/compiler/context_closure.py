@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_context_closure__py
+# title: context closure
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/context_closure.py
+# content_hash: da60df1de6c9a65b36e1228bc2749b136fa2dc7925e5cfb638e34b052545ae5a
+# token_cost_estimate: 8224
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Fail-closed context semantic validation (INV-CTX-025).
 
 Context closure runs after the context is compiled and *before* any downstream

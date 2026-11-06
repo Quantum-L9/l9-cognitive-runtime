@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_validators_validate_intent_and_execution_graph__py
+# title: validate intent and execution graph
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/validators/validate_intent_and_execution_graph.py
+# content_hash: 7a9918ed9fcf287f534584b476de3b45063eedaec0bddfadf630970629594b7b
+# token_cost_estimate: 789
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 from __future__ import annotations
 
 import argparse

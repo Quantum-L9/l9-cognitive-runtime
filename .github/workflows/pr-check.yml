@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.github_workflows_pr_check__yml
+# title: pr check
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: .github/workflows/pr-check.yml
+# content_hash: 82766918e747d53e591a2d1561864cb67eeb7bac21c9ca2449815e7b662772c0
+# token_cost_estimate: 476
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 name: pr-check
 
 on:

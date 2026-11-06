@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_architecture_materiality__py
+# title: architecture materiality
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/architecture_materiality.py
+# content_hash: 45380c3db33d1c231ff7040a2c7d1b48627f57383295c935f280bd88c0b9e954
+# token_cost_estimate: 957
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Architecture materiality assessment (GAR activation rule, A0402, INV-CTX-014).
 
 Global Architect activates when architecture materiality is proven by intent

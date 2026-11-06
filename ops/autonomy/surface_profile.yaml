@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.ops_autonomy_surface_profile__yaml
+# title: surface profile
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: ops/autonomy/surface_profile.yaml
+# content_hash: 3da5a9f2f64c811e8287b72d8b5379689ffa233de745df8be2d515091071977a
+# token_cost_estimate: 4147
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # Autonomy Surface Profile — SSOT for adapter A4 velocity + L4 local autonomy.
 # Consumers (must not fork prose): CANONICAL_LAW (cite), project_llm_rules.py,
 # SessionStart, peer boot carriers, ADR-0001 (pointer).

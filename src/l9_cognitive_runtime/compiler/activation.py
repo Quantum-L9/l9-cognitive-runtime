@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_activation__py
+# title: activation
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/activation.py
+# content_hash: 3ef85844ce4fe9c7447ba48a5e318a7768dc778794a635790e0657da53c2631c
+# token_cost_estimate: 2691
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Typed activation planning over the canonical intent contract.
 
 The planner consumes the typed ``IntentContract`` plus pack-resolved routing

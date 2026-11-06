@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_execution_graph_graph_visualizer__py
+# title: graph visualizer
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/execution_graph/graph_visualizer.py
+# content_hash: 5f6427f1f90f9e4deab95a78511c0e9638e366e4bd8d53cdffd4ebf3e8bb6eef
+# token_cost_estimate: 368
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 from __future__ import annotations
 
 import argparse

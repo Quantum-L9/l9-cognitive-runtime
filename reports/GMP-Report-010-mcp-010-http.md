@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_010_mcp_010_http__md"
+title: "GMP Report 010 mcp 010 http"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-010-mcp-010-http.md"
+content_hash: "8c2b262324d863f59c6677691ec80134477a40117aee633a2240384525d90f35"
+token_cost_estimate: 785
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Evidence Report — MCP-010 Streamable HTTP transport
 
 - **contract_id:** L9CR-MCP-PR-REMEDIATION-001 / logical contract MCP-010

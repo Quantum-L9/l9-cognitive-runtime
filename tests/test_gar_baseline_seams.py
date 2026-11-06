@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_gar_baseline_seams__py
+# title: test gar baseline seams
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_gar_baseline_seams.py
+# content_hash: 5f27aae23545400b99ec4a8bb43fa9b0776af594d306c86debabd6302e81765c
+# token_cost_estimate: 974
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """PHASE-00/PHASE-01 baseline locks for GAR Phase 2 integration (L9CR.GAR.PHASE2.INTEGRATION.001).
 
 Each test pins a museum seam so later phases can prove the seam is removed:

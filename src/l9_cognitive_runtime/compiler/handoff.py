@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_handoff__py
+# title: handoff
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/handoff.py
+# content_hash: 08b9274e31b1f9ad85f9a6855280eafd8e5eb4d121f463c9e246cc9bf45f982c
+# token_cost_estimate: 626
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Live handoff-contract compilation.
 
 The handoff contract carries the plan-derived next action, unknowns, and

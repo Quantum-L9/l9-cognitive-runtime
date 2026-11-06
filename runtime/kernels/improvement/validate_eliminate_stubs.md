@@ -1,12 +1,33 @@
 ---
-kernel_id: validate_eliminate_stubs.v1
-canonical_name: Validate & Eliminate Stubs Kernel
-category: improvement
-status: ACTIVE
+kernel_id: "validate_eliminate_stubs.v1"
+canonical_name: "Validate & Eliminate Stubs Kernel"
+category: "improvement"
+status: "ACTIVE"
 supersedes:
   - "10X Kernels/Validate & Fill Gaps.md"
   - "10X Kernels/Validate & Eliminate Stubs.md"
 source_role: "Merged gap-fill and stub-elimination into one enforcement kernel."
+id: "l9-cognitive-runtime.kernel.runtime_kernels_improvement_validate_eliminate_stubs__md"
+title: "validate eliminate stubs"
+artifact_type: "kernel"
+mcp_primitive: "tool"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/kernels/improvement/validate_eliminate_stubs.md"
+content_hash: "cd1c576fcf2055cbe0359192302704b7134002c1c97221afe8a27d544303ce4b"
+token_cost_estimate: 288
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "auditor"
+description: "Unknown"
+activation_signals: ["validate", "scan", "build", "kernel", "find", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
 ---
 
 # Validate & Eliminate Stubs Kernel

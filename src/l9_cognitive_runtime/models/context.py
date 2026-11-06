@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_models_context__py
+# title: context
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/models/context.py
+# content_hash: 6d09c2dc3a97f4f17dafec4df6dcbcd61914295dda7f507be47b37b2968ce8a4
+# token_cost_estimate: 10964
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Canonical context artifact models (INV-CTX-003, INV-CTX-011).
 
 These are the typed IR of the context-native compiler. Every model is a

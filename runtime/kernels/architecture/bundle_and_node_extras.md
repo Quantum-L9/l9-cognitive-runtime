@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.kernel.runtime_kernels_architecture_bundle_and_node_extras__md"
+title: "bundle and node extras"
+artifact_type: "kernel"
+mcp_primitive: "tool"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/kernels/architecture/bundle_and_node_extras.md"
+content_hash: "d7ca353a0043e99a2205ac6f65df1192e80143b7109e59b5f77f5bbac0838204"
+token_cost_estimate: 1038
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "meta_kernel_forge"
+description: "Unknown"
+activation_signals: ["kernel", "install"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # L9 Coding Kernel: Bundle and Node Extras
 
 ```yaml

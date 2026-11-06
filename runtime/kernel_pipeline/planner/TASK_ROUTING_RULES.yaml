@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_planner_task_routing_rules__yaml
+# title: TASK ROUTING RULES
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/planner/TASK_ROUTING_RULES.yaml
+# content_hash: b9198f300bad14a0f23fbf95cf6960e20c8b4a424e96edbb628bb00ca5b9df96
+# token_cost_estimate: 1946
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 planner_id: l9_kernel_activation_planner.v1
 status: ACTIVE
 purpose: 'Select the smallest valid kernel set for a task while preserving constitutional

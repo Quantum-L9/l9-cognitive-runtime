@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_context__py
+# title: context
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/context.py
+# content_hash: 79f764c5f063659c26f680bed957773493927403a0c5e3cb5eb87691e3470b2b
+# token_cost_estimate: 726
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Repo-root compatibility surface for the legacy ``runtime/`` CLI wrappers.
 
 These functions exist so the ``runtime/contract_compiler/*.py`` scripts keep

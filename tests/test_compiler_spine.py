@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_compiler_spine__py
+# title: test compiler spine
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_compiler_spine.py
+# content_hash: 6c12b54f8a5fb8594a825fc0e3fb122488a0468bd11f8118926fb091691f6d98
+# token_cost_estimate: 2466
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """PHASE-01 gate evidence: exactly one live compilation spine.
 
 Covers the single-spine gate of L9CR.GAR.PHASE2.INTEGRATION.001:

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_mcp_run_store__py
+# title: run store
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/mcp/run_store.py
+# content_hash: f79fcd6812acf394f2d499d072782be51501f2d2afce507aeaadb2b442573acf
+# token_cost_estimate: 1068
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Bounded in-memory MCP run result store with TTL and per-principal LRU eviction.
 
 Isolation guarantees: collision-resistant run IDs, per-principal ownership,

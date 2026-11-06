@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_contract_compiler_compile_handoff_contract__py
+# title: compile handoff contract
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/contract_compiler/compile_handoff_contract.py
+# content_hash: f372717a5035891629274761726d60d6ac7238adfe58f78b6b488fc5ccc4f7ee
+# token_cost_estimate: 377
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Handoff-contract compiler CLI — thin wrapper over the typed compiler spine.
 
 All semantic compilation lives in

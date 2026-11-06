@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_task_l9_engine_build_kernel__yaml
+# title: l9 engine build kernel
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/task/l9_engine_build_kernel.yaml
+# content_hash: 9601be257bc95f57f9bb853962d1b85563ebd70b295cf4d6d3bd7c36924673ec
+# token_cost_estimate: 359
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # DORA META | component: L9 Engine Build Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
 ---
 file: L9_ENGINE_BUILD_KERNEL.yaml

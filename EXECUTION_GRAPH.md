@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.execution_graph__md"
+title: "EXECUTION GRAPH"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "EXECUTION_GRAPH.md"
+content_hash: "c215e3eee8c9ffaf98b84301a9b93007e82ace07ad3c27555359b5890b0cf3c8"
+token_cost_estimate: 267
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "Unknown"
+description: "Unknown"
+activation_signals: "Unknown"
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Execution Graph
 
 - `front_end_intake`: Phase 0 Front-End / Intent Intake -> FRONT_END_INTAKE.md

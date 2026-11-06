@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_context_planning_bridge__py
+# title: test context planning bridge
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_context_planning_bridge.py
+# content_hash: 84a9c3bc99fecd413b66b3364b87771db0fdee902744705fef688b7fbed70806
+# token_cost_estimate: 3084
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Public plan-first context bridge and plan-bound compilation (INV-CTX-045..047)."""
 
 from __future__ import annotations

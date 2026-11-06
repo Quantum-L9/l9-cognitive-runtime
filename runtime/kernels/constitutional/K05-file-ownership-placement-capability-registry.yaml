@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_constitutional_k05_file_ownership_placement_capability_registry__yaml
+# title: K05 file ownership placement capability registry
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/constitutional/K05-file-ownership-placement-capability-registry.yaml
+# content_hash: 1205ece946d2da8ad0699c37da6cefec286469e19c44d5fb2e8dda0f550a6fc1
+# token_cost_estimate: 3586
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 kernel_id: K05-file-ownership-placement-capability-registry
 canonical_name: File Ownership, Placement & Capability Registry
 version: "2.1.0"

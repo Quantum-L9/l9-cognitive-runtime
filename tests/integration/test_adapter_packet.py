@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_integration_test_adapter_packet__py
+# title: test adapter packet
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/integration/test_adapter_packet.py
+# content_hash: af9d1ed9b8785c6f8c7babcc64fc001734a1f3ae03c14e062d427869d6504ca5
+# token_cost_estimate: 453
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """LIVE-007: an adapter that omits the architectural integrity obligation
 fails validation — weakening is never silent."""
 

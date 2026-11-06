@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.readme__md"
+title: "README"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "README.md"
+content_hash: "e8e3d04c63f56be2d623617d064afb328dd598b59557cb9acbabfd1524c04b5d"
+token_cost_estimate: 2193
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "auditor"
+description: "Unknown"
+activation_signals: ["lint", "kernel", "install"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # L9 Cognitive Runtime Kernel Pack - Clean Superseding Pack
 
 This pack supersedes the uploaded `L9 Cognitive Runtime (kernels).zip` by deduping overlapping kernel material into a smaller kernel-first runtime layout.

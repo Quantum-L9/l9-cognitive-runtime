@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_006_mcp_006_contract_graph__md"
+title: "GMP Report 006 mcp 006 contract graph"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-006-mcp-006-contract-graph.md"
+content_hash: "bc3ee5757eb96e712e25f60d392c4abf9d79180aca80870b61a640c81f96a243"
+token_cost_estimate: 673
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Evidence Report — MCP-006 contract-derived execution graphs
 
 - **contract_id:** L9CR-MCP-PR-REMEDIATION-001 / logical contract MCP-006

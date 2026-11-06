@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.docs_ops_mcp_stdio_client_setup__md"
+title: "mcp stdio client setup"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "private"
+source_path: "docs/ops/mcp-stdio-client-setup.md"
+content_hash: "bfc7aa21a8575353c6063daea95adda5a4fb037bec9ddeba4d368061e11c0e1b"
+token_cost_estimate: 602
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Local stdio MCP client setup (L9CR-MCP-008B)
 
 The `l9-cognitive-runtime-mcp` console script starts a **read-only, stdio-only**

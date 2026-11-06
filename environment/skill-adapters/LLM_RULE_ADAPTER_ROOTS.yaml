@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.environment_skill_adapters_llm_rule_adapter_roots__yaml
+# title: LLM RULE ADAPTER ROOTS
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: environment/skill-adapters/LLM_RULE_ADAPTER_ROOTS.yaml
+# content_hash: a05bd7e4843d650d7dc36caea53f578e392d2e776e07daceff26a36946eb1761
+# token_cost_estimate: 123
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # LLM rule discovery adapters (.md peers).
 # SSOT for content: rules/*.mdc → projected to environment/generated/llm-rules/.
 # Adapters get a directory symlink to the generated mount — never to raw rules/.

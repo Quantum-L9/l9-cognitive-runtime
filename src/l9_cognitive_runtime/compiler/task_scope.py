@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_task_scope__py
+# title: task scope
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/task_scope.py
+# content_hash: b45e7a1c2341778dcd82b0c50ea5863c352216f1622059f96d0eb35f490573a1
+# token_cost_estimate: 1235
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Deterministic task-scope derivation (INV-CTX-006).
 
 ``TaskScopeCompiler`` turns the canonical ``IntentContract`` plus the caller's

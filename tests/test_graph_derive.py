@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_graph_derive__py
+# title: test graph derive
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_graph_derive.py
+# content_hash: 08b0b6bf6f2f4ac0ee44d1cc117f57e9e0550ca166f6ae3e275f948fdfc3f0ec
+# token_cost_estimate: 1737
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Structured-execution-graph derivation tests (PHASE-05)."""
 
 from __future__ import annotations

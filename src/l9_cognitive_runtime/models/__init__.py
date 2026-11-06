@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_models_init__py
+# title: init
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/models/__init__.py
+# content_hash: 733724be89bbd2439cc34851abec098c887a6137b8443c3fa39d492aa1681c02
+# token_cost_estimate: 923
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Canonical typed models for L9 cognitive-runtime artifacts."""
 
 from __future__ import annotations

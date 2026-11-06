@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.gitignore
+# title: gitignore
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: .gitignore
+# content_hash: 1db2b0324da7977b0502e1ab876fa6952b4c019431ea32f7337aa1520c544aa6
+# token_cost_estimate: 178
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 *.pyc
 __pycache__/
 

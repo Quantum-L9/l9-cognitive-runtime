@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_service__py
+# title: service
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/service.py
+# content_hash: 5693429c0f47f637be1a4a5527e7615363928d5e384be81a2560201fa026d1f3
+# token_cost_estimate: 994
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """In-memory cognitive runtime application service (L9CR-MCP-003/005).
 
 ``CognitiveRuntimeService`` is the sole live composition root for fresh

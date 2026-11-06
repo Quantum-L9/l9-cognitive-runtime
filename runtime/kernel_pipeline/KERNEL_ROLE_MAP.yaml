@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_kernel_role_map__yaml
+# title: KERNEL ROLE MAP
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/KERNEL_ROLE_MAP.yaml
+# content_hash: f599b511f1ecf9fdcd3c749db5b8869bdcede00e3ddb36894fe325c3534d9691
+# token_cost_estimate: 214
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 role_map:
   constitutional_law:
     directory: runtime/kernels/constitutional

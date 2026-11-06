@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_providers__py
+# title: providers
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/providers.py
+# content_hash: ebb5e908f2f4b8db81b560d6f04ea80b2d56befa5d78254ac820d2d7f223b542
+# token_cost_estimate: 1292
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Provider capability/obligation acceptance (A0704).
 
 A capable downstream host accepts obligations explicitly. Required

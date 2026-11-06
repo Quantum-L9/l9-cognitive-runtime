@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.runtime_contract_compiler_readme__md"
+title: "README"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/contract_compiler/README.md"
+content_hash: "080079dac9e5d44a86d0ebaaef1fa0868d5b2d9c72f2a6378f9d71373a2efc09"
+token_cost_estimate: 217
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["render", "kernel", "plan", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Runtime Contract Compiler
 
 The contract compiler converts a `KERNEL_ACTIVATION_PLAN.yaml` into canonical runtime contracts before any tool-specific rendering.

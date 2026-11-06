@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_task_repo_auditor_kernel__yaml
+# title: repo auditor kernel
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/task/repo_auditor_kernel.yaml
+# content_hash: 1af652b020df28d8559b6a323d00b3b0b0d7db84f8da0abbd47af6d566ae8f46
+# token_cost_estimate: 374
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # DORA META | component: Repo Auditor Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
 ---
 file: REPO_AUDITOR_KERNEL.yaml

@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.validation_evidence__md"
+title: "VALIDATION EVIDENCE"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "VALIDATION_EVIDENCE.md"
+content_hash: "7e49b57f712be9b824601da150a22360d56eb0d50480f231445ba704bbb29765"
+token_cost_estimate: 946
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "meta_kernel_forge"
+description: "Unknown"
+activation_signals: ["kernel", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Validation Evidence
 
 validation_status: passed

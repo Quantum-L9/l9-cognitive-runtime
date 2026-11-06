@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.final_execution_contract__yaml
+# title: FINAL EXECUTION CONTRACT
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: FINAL_EXECUTION_CONTRACT.yaml
+# content_hash: 4d61abb5826e85b148a8b83b16bb4289337208a0d0fde94a4d98a05c1c87dd47
+# token_cost_estimate: 559
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 contract_id: FINAL_EXECUTION_CONTRACT
 contract_type: universal_execution_contract
 version: 1.0.0

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_hardening_test_runtime_hardening__py
+# title: test runtime hardening
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/hardening/test_runtime_hardening.py
+# content_hash: bb1fc5dc103dd1ca5d633e97dc2fa25f4bfa598df9181d36a86205dcc00f98dc
+# token_cost_estimate: 727
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Runtime hardening suites: golden, determinism, concurrency, path safety.
 
 Compiles run against the ``valid_pack`` fixture (a manifest-verified pack); the

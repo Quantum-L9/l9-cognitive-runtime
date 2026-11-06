@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gar_phase2_completion_receipt__md"
+title: "GAR PHASE2 COMPLETION RECEIPT"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GAR-PHASE2-COMPLETION-RECEIPT.md"
+content_hash: "f5c5863d7c80c30d578afe64b5ddf56ff9f260fc12f2d14099fb46a5b6223ce4"
+token_cost_estimate: 2194
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "builder"
+description: "Unknown"
+activation_signals: ["install", "agent", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # GAR Phase 2 Completion Receipt
 
 **Contract:** L9CR.GAR.PHASE2.INTEGRATION.001 · GAR Phase 2 Cognitive Runtime Integration

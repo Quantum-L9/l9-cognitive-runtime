@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_constitutional_k03_constellation_transport_authority__yaml
+# title: K03 constellation transport authority
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/constitutional/K03-constellation-transport-authority.yaml
+# content_hash: f73f61e7d1fbb3a253c3c75dfcd9e5ee1b06be55e8bdb3d4d86da20590a13b79
+# token_cost_estimate: 2925
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 kernel_id: K03-constellation-transport-authority
 canonical_name: Constellation Transport Authority & Boundary Model
 version: "2.1.0"

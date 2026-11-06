@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_task_code_review_ci_kernel__yaml
+# title: code review ci kernel
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/task/code_review_ci_kernel.yaml
+# content_hash: b2884681291ddd6273023846e24466c3989fd68f041380fea5dccdae6c13db78
+# token_cost_estimate: 337
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # DORA META | component: Code Review CI Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
 ---
 file: CODE_REVIEW_CI_KERNEL.yaml

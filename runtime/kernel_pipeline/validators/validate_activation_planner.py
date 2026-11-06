@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_validators_validate_activation_planner__py
+# title: validate activation planner
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/validators/validate_activation_planner.py
+# content_hash: 1b750ae9573d3fdbe8304d0f4e40a83a987757599e24a04550b95a45ee8c9763
+# token_cost_estimate: 830
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Validate the kernel activation planner files and core routing behavior."""
 from __future__ import annotations
 

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_planner_kernel_activation_plan_example__yaml
+# title: KERNEL ACTIVATION PLAN example
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/planner/KERNEL_ACTIVATION_PLAN.example.yaml
+# content_hash: a5093924a8272759f57fe30e6e9b348498884d280f8923c312f17a3e0c0e677d
+# token_cost_estimate: 418
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 task_summary: clean and dedupe this L9 kernel pack, then prepare a build contract
 matched_route: prompt_or_kernel_compilation
 confidence: high

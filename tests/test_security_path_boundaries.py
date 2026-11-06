@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_security_path_boundaries__py
+# title: test security path boundaries
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_security_path_boundaries.py
+# content_hash: 6c5fe922137df72ce5b825c755439e3c263cd847171d62439fef7f6c37183476
+# token_cost_estimate: 1029
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Regression locks for file/path and compatibility-validator security boundaries."""
 
 from __future__ import annotations

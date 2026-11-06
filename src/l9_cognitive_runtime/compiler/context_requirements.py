@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_context_requirements__py
+# title: context requirements
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/context_requirements.py
+# content_hash: c5270b137bed31e57fd3d11b00015ca61031995ea729f7bd9fb90ce30d8f95e2
+# token_cost_estimate: 4456
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Explicit context requirement planning (INV-CTX-008).
 
 Detailed context selection is never ad hoc: it is driven by a typed

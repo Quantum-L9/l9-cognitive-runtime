@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.runtime_kernel_pipeline_planner_readme__md"
+title: "README"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/kernel_pipeline/planner/README.md"
+content_hash: "1272921b45763a4bf6762af89fac4d764a972bc6066bc35a80d7bca0229fc78d"
+token_cost_estimate: 240
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["build", "kernel", "route", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Kernel Activation Planner
 
 Deterministic task-to-kernel router for the clean L9 Cognitive Runtime kernel pack.

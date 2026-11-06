@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_integration_test_gar_activation__py
+# title: test gar activation
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/integration/test_gar_activation.py
+# content_hash: 463c454de718c6dbbc38b725406d6f57febcf562d30e7391aa86b5f556d75abc
+# token_cost_estimate: 831
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """LIVE-002/003/004: GAR activation evidence, fail-closed absence, and
 provenance sensitivity at integration scope."""
 

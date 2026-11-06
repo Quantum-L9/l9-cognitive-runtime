@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_gar_adapter_packet__py
+# title: test gar adapter packet
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_gar_adapter_packet.py
+# content_hash: 94d39fce0ac60c2d25fd503007f93ab8a193119a1ce56fd9d6defa544444f149
+# token_cost_estimate: 3829
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """PHASE-07 gate evidence: adapter/provider boundary (INV-012/013, A0701-A0704).
 
 Gate coverage:

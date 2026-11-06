@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.roadmap__md"
+title: "ROADMAP"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "ROADMAP.md"
+content_hash: "9e1236a88d8ec6fc37aeca341bb40977d7b99d1448caa7331998bf4891b293a6"
+token_cost_estimate: 721
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["render", "kernel", "roadmap", "agent", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Roadmap
 
 ## Current Convergence Baseline

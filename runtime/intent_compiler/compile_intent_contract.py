@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_intent_compiler_compile_intent_contract__py
+# title: compile intent contract
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/intent_compiler/compile_intent_contract.py
+# content_hash: c92b1b06ddee32735ec95ed133c906737767fd485bcf03b36f5a267b9416bc50
+# token_cost_estimate: 455
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Intent-contract compiler CLI — thin wrapper over the typed objective deriver.
 
 All intent derivation lives in

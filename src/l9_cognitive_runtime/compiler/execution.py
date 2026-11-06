@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_execution__py
+# title: execution
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/execution.py
+# content_hash: 8f18a73dbc1a3e6239db9f03c8d24cb2d78ccbe83d6e11aadb63cc862e106187
+# token_cost_estimate: 2603
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Live execution-contract compilation.
 
 The execution contract is compiled from the canonical intent, the typed

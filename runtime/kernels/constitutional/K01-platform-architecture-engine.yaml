@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_constitutional_k01_platform_architecture_engine__yaml
+# title: K01 platform architecture engine
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/constitutional/K01-platform-architecture-engine.yaml
+# content_hash: 43df2cc07c12757f77235885bbc32cb0136a17882619615a68888f031731a60c
+# token_cost_estimate: 2746
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 kernel_id: K01-platform-architecture-engine
 canonical_name: Platform Architecture & Engine Boundary
 version: "2.1.0"

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_context_compiler__py
+# title: test context compiler
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_context_compiler.py
+# content_hash: 11ffa33d288e6c3ec18b413953e49890e217dd9ff4768e77f3449da2111423f5
+# token_cost_estimate: 24908
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Context compiler law: supersession, scope, kernel needs, gaps, and closure.
 
 Each test here is a discriminator: it pairs the case that must hold with the

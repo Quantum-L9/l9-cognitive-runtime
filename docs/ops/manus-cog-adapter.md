@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.docs_ops_manus_cog_adapter__md"
+title: "manus cog adapter"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "private"
+source_path: "docs/ops/manus-cog-adapter.md"
+content_hash: "9664a5a6a87255232e9afe54228cf88796c2b714ed2240a55821477b8435b2ee"
+token_cost_estimate: 608
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "auditor"
+description: "Unknown"
+activation_signals: ["review"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Bounded Manus Cog MCP Adapter
 
 The `l9-cognitive-runtime-manus-mcp` entrypoint provides a local stdio adapter for Manus while the independently authenticated Cog HTTP deployment remains under review. It is a narrow wrapper around the package-owned compiler surface, not a governance repository shell, generic runner, or deployment substitute.

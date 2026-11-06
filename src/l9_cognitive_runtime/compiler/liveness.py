@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_liveness__py
+# title: liveness
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/liveness.py
+# content_hash: a14a38dd5ec507f2fca80b42fa1a8024c45b768a355e962a55e1760c66e5cd6b
+# token_cost_estimate: 4509
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Compile-time semantic liveness validation (contract
 ``compile_time_liveness_validator``: ``validate_runtime_semantic_liveness``).
 

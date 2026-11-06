@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_intent_compiler_intent_compiler__yaml
+# title: INTENT COMPILER
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/intent_compiler/INTENT_COMPILER.yaml
+# content_hash: 97d2541c8a2d34ae6d4642c634cf63f25670b69d7c778131ab14014c96952ff0
+# token_cost_estimate: 293
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 compiler_id: l9_intent_compiler.v1
 status: active
 purpose: Normalize human intent into a canonical intent contract before kernel planning.

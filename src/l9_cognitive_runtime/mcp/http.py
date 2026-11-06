@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_mcp_http__py
+# title: http
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/mcp/http.py
+# content_hash: 156a5c6c8e1760d4c4e022f23084e51ccbff7828d6a563ee29b8f363e53e4660
+# token_cost_estimate: 2709
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Streamable HTTP transport for the read-only MCP server (L9CR-MCP-010).
 
 Serves MCP over Streamable HTTP at ``/v1/mcp`` with ``/healthz`` / ``/readyz``.

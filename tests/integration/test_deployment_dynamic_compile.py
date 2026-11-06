@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_integration_test_deployment_dynamic_compile__py
+# title: test deployment dynamic compile
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/integration/test_deployment_dynamic_compile.py
+# content_hash: cb03eea2c8f79e2974106860100b5fc5d19433090418eb8cfff9f800d3517b01
+# token_cost_estimate: 805
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """LIVE-009/LIVE-010: static artifacts have no fresh authority; sealed packs
 compile identically across CLI and MCP."""
 

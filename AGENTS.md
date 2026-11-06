@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.agents__md"
+title: "AGENTS"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "AGENTS.md"
+content_hash: "ca87ab710547aa161acb60d725d1f8231206f1d5c14e8ce1fb92eab04f4c005b"
+token_cost_estimate: 574
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "auditor"
+description: "Unknown"
+activation_signals: ["validate", "roadmap", "find", "agent", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # AGENTS.md — operating instructions
 
 Authority order is in [`CLAUDE.md`](CLAUDE.md). This file says how to work here, not

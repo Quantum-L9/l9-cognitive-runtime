@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_task_context__py
+# title: task context
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/task_context.py
+# content_hash: 2e49bfb318a885446d8e0d1dca3de0814fa45e8c5644bd13a9558f546d6bf8ee
+# token_cost_estimate: 14842
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Bounded context discovery and requirement-driven context compilation.
 
 Two bounded projections over one immutable injected snapshot (INV-CTX-005) —

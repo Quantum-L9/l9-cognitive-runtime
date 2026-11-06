@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_plugin_package__py
+# title: test plugin package
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_plugin_package.py
+# content_hash: d5031cdf35f9c6642ccb525f00bd9e39f4a63ebb1c8b13ef2382b5295a113fc5
+# token_cost_estimate: 2871
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Private Agent Plugin package for the existing read-only MCP server (issue #61).
 
 The plugin is guidance and packaging only. These tests prove it stays that way:

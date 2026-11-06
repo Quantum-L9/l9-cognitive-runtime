@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_architecture_global_architect_kernel__yaml
+# title: global architect kernel
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/architecture/global_architect_kernel.yaml
+# content_hash: ec06fea2632a65fb58fd2f62fbe5508cb0add13b1a38ac7e1355e6b3bdd0f943
+# token_cost_estimate: 557
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 kernel_id: global_architect_kernel
 kernel_name: L9 Global Architect Runtime Kernel (GAR)
 version: 1.0.0

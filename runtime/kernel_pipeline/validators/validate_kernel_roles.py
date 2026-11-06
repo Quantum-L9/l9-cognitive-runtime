@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_validators_validate_kernel_roles__py
+# title: validate kernel roles
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/validators/validate_kernel_roles.py
+# content_hash: bda858f5aa4dd44d031d62967e519d7a36b374bb30fd67ffb63b867be0a9d0a3
+# token_cost_estimate: 1526
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Validate kernel role declarations, identity uniqueness, dependency
 resolution, and ownership topology (A0403).
 

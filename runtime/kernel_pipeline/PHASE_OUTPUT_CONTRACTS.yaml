@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_phase_output_contracts__yaml
+# title: PHASE OUTPUT CONTRACTS
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/PHASE_OUTPUT_CONTRACTS.yaml
+# content_hash: 8fe242d632ff2695d00e49898f3c2c2cb42b1b644a42a79f19908131b73ad07a
+# token_cost_estimate: 184
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 phase_output_contracts:
   P0_UNPACK: [SYSTEM_MAP.md, KERNEL_INVENTORY.json, UNKNOWN_QUEUE.md]
   P1_CONSTITUTIONAL_PREFLIGHT: [CONSTITUTIONAL_PREFLIGHT_REPORT.md]

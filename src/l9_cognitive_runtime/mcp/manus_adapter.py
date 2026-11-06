@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_mcp_manus_adapter__py
+# title: manus adapter
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/mcp/manus_adapter.py
+# content_hash: 94b61134926abc075058f2a1d1cdf3b7878a4aef1a688a1dc05055a02902b166
+# token_cost_estimate: 607
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Bounded Manus-facing MCP adapter for the L9 Cognitive Runtime.
 
 This local stdio adapter is intentionally a narrow alias of the package-owned

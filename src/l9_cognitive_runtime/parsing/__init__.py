@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_parsing_init__py
+# title: init
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/parsing/__init__.py
+# content_hash: 2b7178bfa1c2e9d391a72b709bddf12965a460d90e80edde333e37a14c5915d7
+# token_cost_estimate: 1146
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Strict YAML/JSON parsing — no silent fallbacks or guessed defaults."""
 
 from __future__ import annotations

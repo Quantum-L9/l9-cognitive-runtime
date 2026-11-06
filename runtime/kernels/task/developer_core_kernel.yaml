@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.kernel.runtime_kernels_task_developer_core_kernel__yaml
+# title: developer core kernel
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernels/task/developer_core_kernel.yaml
+# content_hash: 317059262f59704f4c745b83b2df8e31e475104429ea01d84878b3d9c0d5ce29
+# token_cost_estimate: 381
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # DORA META | component: Developer Core Kernel | version: 1.0.0 | ring: R5 | layer: primary_task
 ---
 file: DEVELOPER_CORE_KERNEL.yaml

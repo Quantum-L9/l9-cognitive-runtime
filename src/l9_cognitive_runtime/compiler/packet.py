@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_packet__py
+# title: packet
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/packet.py
+# content_hash: c91e92f97f222993caedc4e6661e8444686893b3288ebf8f7cb10c03be6dd11e
+# token_cost_estimate: 1066
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Canonical execution packet (PHASE-07): the immutable, self-contained
 projection of a compiled runtime that downstream capable hosts consume.
 

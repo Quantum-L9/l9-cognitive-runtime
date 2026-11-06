@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.ops_autonomy_profile_loader__py
+# title: profile loader
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: ops/autonomy/profile_loader.py
+# content_hash: b023a3f86c56f7b5db3281c38cec36dc50fd442d7680f3b84df0d8cb07e7d1fc
+# token_cost_estimate: 696
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Load ops/autonomy/surface_profile.yaml for SessionStart / projectors / tests.
 
 SessionStart must work with bare `python3` (no venv, no PyYAML). Block extractors

@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_gar_intent_objective__py
+# title: test gar intent objective
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_gar_intent_objective.py
+# content_hash: 9cc2c688547f4359e8e0ca7b3bb0c8cfb87f5186cf58edfd456e8335f675b694
+# token_cost_estimate: 1352
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """PHASE-02 gate evidence: intent & objective strengthening.
 
 Covers L9CR.GAR.PHASE2.INTEGRATION.001 PHASE-02:

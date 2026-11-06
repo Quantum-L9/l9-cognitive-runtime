@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.docs_supersedes__md"
+title: "SUPERSEDES"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "docs/SUPERSEDES.md"
+content_hash: "3d66a1fc4c74ff201bf46a511e925f2838ca0fe1607485aaa12a86ad326c134a"
+token_cost_estimate: 234
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["build", "kernel", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Supersession Notes
 
 This clean pack supersedes the uploaded messy kernel pack.

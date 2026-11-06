@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_architecture_invariants__py
+# title: test architecture invariants
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_architecture_invariants.py
+# content_hash: d9f5c8cfba70621e2c1a59c9b58414fcffd47585e13cf2da0824e0f9e406a3f2
+# token_cost_estimate: 4216
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Static architecture drift guards (INV-CTX-002, 033, 034, 035, 039, 041).
 
 These are repository-shape checks, deliberately *not* per-compile runtime

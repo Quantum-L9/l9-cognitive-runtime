@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_009_mcp_009_run_store__md"
+title: "GMP Report 009 mcp 009 run store"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-009-mcp-009-run-store.md"
+content_hash: "f62ac8d19e7c22b235f2606201e07542349950789ff5aa3dee8fe90a25c359ae"
+token_cost_estimate: 697
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Evidence Report — MCP-009 isolated MCP run result store
 
 - **contract_id:** L9CR-MCP-PR-REMEDIATION-001 / logical contract MCP-009

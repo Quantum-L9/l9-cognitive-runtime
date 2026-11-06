@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.kernel.runtime_kernels_architecture_dependency_birth_and_mirror_codegen__md"
+title: "dependency birth and mirror codegen"
+artifact_type: "kernel"
+mcp_primitive: "tool"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/kernels/architecture/dependency_birth_and_mirror_codegen.md"
+content_hash: "8b5f1dae445c84d77efce958d89d3c657253a509130e7b9212a51a987d31107b"
+token_cost_estimate: 1443
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "meta_kernel_forge"
+description: "Unknown"
+activation_signals: ["kernel"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # L9 Coding Kernel: Dependency Birth and Mirror Codegen
 
 ```yaml

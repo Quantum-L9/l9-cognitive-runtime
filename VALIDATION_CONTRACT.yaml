@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.validation_contract__yaml
+# title: VALIDATION CONTRACT
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: VALIDATION_CONTRACT.yaml
+# content_hash: c336c5e3aa9f11db4da88dbc7923914238f97b763e26d1e6f26606fc9420a6cc
+# token_cost_estimate: 152
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 contract_id: VALIDATION_CONTRACT
 contract_type: validation_contract
 validation_ladder:

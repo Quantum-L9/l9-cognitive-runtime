@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_deployment__py
+# title: deployment
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/deployment.py
+# content_hash: 16968c4d58d672d92bf339b5340b148b459686b729358289a8c0150f3239a6b3
+# token_cost_estimate: 2603
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Build a semantically closed, manifest-verified pack for hosted MCP
 deployment (PHASE-08, INV-011).
 

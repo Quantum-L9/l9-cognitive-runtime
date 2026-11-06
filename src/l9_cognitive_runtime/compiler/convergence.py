@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_convergence__py
+# title: convergence
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/convergence.py
+# content_hash: a66abc4643610cf8e1067ef551e7ed7f7fab93ac69513825fb20a138e60eb997
+# token_cost_estimate: 1008
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Terminal success gate and convergence receipt (INV-008, PHASE-06).
 
 Run-level convergence is owned exclusively by the terminal doctrine: the gate

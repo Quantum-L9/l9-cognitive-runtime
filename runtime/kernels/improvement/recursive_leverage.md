@@ -1,11 +1,32 @@
 ---
-kernel_id: recursive_leverage.v1
-canonical_name: Recursive Leverage Kernel
-category: improvement
-status: ACTIVE
+kernel_id: "recursive_leverage.v1"
+canonical_name: "Recursive Leverage Kernel"
+category: "improvement"
+status: "ACTIVE"
 supersedes:
   - "10X Kernels/Recursive Leverage.md"
 source_role: "Final compression pass before terminal execution."
+id: "l9-cognitive-runtime.kernel.runtime_kernels_improvement_recursive_leverage__md"
+title: "recursive leverage"
+artifact_type: "kernel"
+mcp_primitive: "tool"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "runtime/kernels/improvement/recursive_leverage.md"
+content_hash: "7b95c5d837596604fff7ead48306c20f556da9821da572634a5c20c7647ad939"
+token_cost_estimate: 217
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "meta_kernel_forge"
+description: "Unknown"
+activation_signals: ["kernel", "create", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
 ---
 
 # Recursive Leverage Kernel

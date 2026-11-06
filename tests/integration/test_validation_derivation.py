@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_integration_test_validation_derivation__py
+# title: test validation derivation
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/integration/test_validation_derivation.py
+# content_hash: 0d51da7d6c534235c826e5f5df687e1bb71da80098ced983e2ab8e50cdecab8b
+# token_cost_estimate: 779
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """LIVE-008: a missing validation tool cannot erase the validation
 obligation; alternate discriminating evidence can satisfy the property."""
 

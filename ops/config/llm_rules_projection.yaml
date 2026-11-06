@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.ops_config_llm_rules_projection__yaml
+# title: llm rules projection
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: ops/config/llm_rules_projection.yaml
+# content_hash: fe48539f677ca36e621642780e88e132b82fcb82bc5757b594dc08262f9aec54
+# token_cost_estimate: 124
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 # Projection policy: rules/*.mdc → environment/generated/llm-rules/*.md
 # Author only rules/*.mdc. Never hand-edit the generated tree.
 #

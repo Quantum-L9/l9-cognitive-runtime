@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_validators_common__py
+# title: common
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/validators/_common.py
+# content_hash: f45c12fa15be74ee780bf0e24099e851dfddc52b81aebbff219faedc63bcc42e
+# token_cost_estimate: 700
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Shared helpers for L9 clean kernel-pack validators."""
 from __future__ import annotations
 

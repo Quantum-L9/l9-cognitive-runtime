@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_gar_deployment_closure__py
+# title: test gar deployment closure
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_gar_deployment_closure.py
+# content_hash: 1ddf518908a989d0e03ec9c1ac3ff0bf865a9dd1da988e5d19df9897556c52ca
+# token_cost_estimate: 1800
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """PHASE-08 gate evidence: deployment semantic closure (INV-011, A0801-A0803).
 
 Gate coverage:

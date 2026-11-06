@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_kernel_pipeline_validators_validate_pipeline_order__py
+# title: validate pipeline order
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/kernel_pipeline/validators/validate_pipeline_order.py
+# content_hash: d08e992456c9f559c0b798f25f4d9916530d0ef611e086542fcfb226877e5429
+# token_cost_estimate: 782
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 from __future__ import annotations
 
 from _common import STATUS_FAIL, STATUS_PASS, base_parser, emit, load_yaml, rel, resolve_root

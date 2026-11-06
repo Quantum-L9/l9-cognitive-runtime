@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_execution_graph_graph_validator__py
+# title: graph validator
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/execution_graph/graph_validator.py
+# content_hash: 723629b9459c76846ae5714fb7641c208caefa75788bcbabd53959cf6e3f5f91
+# token_cost_estimate: 358
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 from __future__ import annotations
 
 import argparse

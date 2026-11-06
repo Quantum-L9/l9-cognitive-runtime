@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.reports_gmp_report_008a_mcp_008a_governance_manifests__md"
+title: "GMP Report 008a mcp 008a governance manifests"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "reports/GMP-Report-008a-mcp-008a-governance-manifests.md"
+content_hash: "bdebb7dd61f030c1d00bacc27f3637b0dc7bd15d68f72a05348d58bcdce25c7f"
+token_cost_estimate: 424
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "legal"
+description: "Unknown"
+activation_signals: ["contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # Evidence Report — MCP-008A governance consumer manifests
 
 - **contract_id:** L9CR-MCP-PR-REMEDIATION-001 / logical contract MCP-008A

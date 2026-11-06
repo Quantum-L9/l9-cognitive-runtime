@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_integration_test_museum_artifact_guards__py
+# title: test museum artifact guards
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/integration/test_museum_artifact_guards.py
+# content_hash: 6a46ebee069a8d96502134c268d1bc8f387890fcfc0eb9b90d2ef1121188bfbd
+# token_cost_estimate: 1367
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """MUSEUM-001..010: every museum-artifact detector must pass — no required
 kernel is inert, no output unconsumed, no static fixture authoritative."""
 

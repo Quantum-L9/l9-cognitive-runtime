@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_mcp_auth__py
+# title: auth
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/mcp/auth.py
+# content_hash: 76fe648232ad1de8f3a7048a5ff08461c05af88e61d597acc7ddef99b77911bf
+# token_cost_estimate: 3686
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Hosted OAuth 2.0 / OIDC resource-server protection for the MCP HTTP ingress (MCP-011).
 
 This module is the **entire** authentication surface of the runtime. It terminates

@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_execution_graph_dependency_resolver__py
+# title: dependency resolver
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/execution_graph/dependency_resolver.py
+# content_hash: d8ffd11bf732cc0f7f92a13f2e8bb6b9ecd3bec952fdd1f631ec28ad2403276d
+# token_cost_estimate: 174
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 from __future__ import annotations
 
 def topological_order(nodes: list[dict], edges: list[dict]) -> list[str]:

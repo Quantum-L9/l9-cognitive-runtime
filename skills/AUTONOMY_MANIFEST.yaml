@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.skill.skills_autonomy_manifest__yaml
+# title: AUTONOMY MANIFEST
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: skills/AUTONOMY_MANIFEST.yaml
+# content_hash: 77e45c84c96e972ee2cbd435f4e3d48d4c71e24fd952076c9dde23316fc336e8
+# token_cost_estimate: 108
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 version: 1
 purpose: "Consumer-repo skill autonomy registry (empty — skills live in Cursor-Governance SSOT)."
 principle: "This young package repo does not host L9 skills; discovery is via ~/.cursor-governance."

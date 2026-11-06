@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.test.tests_test_mcp_stdio__py
+# title: test mcp stdio
+# artifact_type: test
+# mcp_primitive: none
+# callable: false
+# retrievable: false
+# injectable: false
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: tests/test_mcp_stdio.py
+# content_hash: 0c44b5b73d3349b59cd872adf7d6fe10e062f600a3b813c6cd5dee3c91646bdd
+# token_cost_estimate: 2595
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """End-to-end tests for the read-only stdio MCP server (L9CR-MCP-008B)."""
 
 from __future__ import annotations

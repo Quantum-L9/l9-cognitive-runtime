@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.runtime_execution_graph_build_execution_graph__py
+# title: build execution graph
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: runtime/execution_graph/build_execution_graph.py
+# content_hash: 4399177f91f4848be60602e7ef7f7dec374d3bc6c65a3a8f61c10d5efa3d3018
+# token_cost_estimate: 675
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Execution-graph builder CLI — thin wrapper over the package graph compiler.
 
 All graph semantics live in ``l9_cognitive_runtime.graph.derive_execution_graph``.

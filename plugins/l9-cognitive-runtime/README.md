@@ -1,3 +1,26 @@
+---
+id: "l9-cognitive-runtime.context.plugins_l9_cognitive_runtime_readme__md"
+title: "README"
+artifact_type: "context"
+mcp_primitive: "resource"
+callable: true
+retrievable: true
+injectable: true
+namespace: "l9-cognitive-runtime"
+sharing_scope: "agnostic"
+source_path: "plugins/l9-cognitive-runtime/README.md"
+content_hash: "6fc66bd015803882799847c6efa8e4d3a737ed0a86aa336715ca35030d7403d9"
+token_cost_estimate: 1186
+authority: "Quantum-L9"
+created_or_detected_at: "Unknown"
+family: "compiler"
+description: "Unknown"
+activation_signals: ["compile", "plan", "agent", "contract"]
+input_contract: "Unknown"
+output_contract: "Unknown"
+validation_gates: "Unknown"
+stop_conditions: "Unknown"
+---
 # l9-cognitive-runtime — private Agent Plugin
 
 Packages the existing L9 Cognitive Runtime as one private Agent Plugin

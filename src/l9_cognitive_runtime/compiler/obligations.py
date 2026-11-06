@@ -1,3 +1,20 @@
+# >>> l9:meta >>>
+# id: l9-cognitive-runtime.source.src_l9_cognitive_runtime_compiler_obligations__py
+# title: obligations
+# artifact_type: source
+# mcp_primitive: resource
+# callable: false
+# retrievable: true
+# injectable: true
+# namespace: l9-cognitive-runtime
+# sharing_scope: agnostic
+# source_path: src/l9_cognitive_runtime/compiler/obligations.py
+# content_hash: b1e9fa3a610170433e88b6013d1f05d5477eda02cc50d46f5647fb109b2057c2
+# token_cost_estimate: 3478
+# authority: Quantum-L9
+# created_or_detected_at: Unknown
+# owner: Unknown
+# <<< l9:meta <<<
 """Obligation derivation and conservation (INV-003, A0304).
 
 Obligations are stable, identifiably-typed semantic requirements derived once
